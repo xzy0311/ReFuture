@@ -41,14 +41,17 @@ public class RefutureManageAction implements IWorkbenchWindowActionDelegate {
 	@Override
 	public void selectionChanged(IAction action, ISelection selection) {
 		if (selection.isEmpty())
-			select = null;
+		{
+			select = null;}
 		else if (selection instanceof IStructuredSelection) {
 			IStructuredSelection strut = ((IStructuredSelection) selection);
 			if (strut.size() != 1)
-				select = null;
-			if (strut.getFirstElement() instanceof IJavaElement)
+				{select = null;}
+			if (strut.getFirstElement() instanceof IJavaElement) {
 				select = (IJavaElement) strut.getFirstElement();
-		} else
+			}else 
+				select = null;
+		}else
 			select = null;
 //		action.setEnabled(true);
 		action.setEnabled(select != null);

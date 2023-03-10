@@ -109,7 +109,7 @@ public class FutureTaskRefactoring extends Refactoring {
 	private void findAllCompilationUnits(IJavaProject project) {
 		try {
 			for (IJavaElement element : project.getChildren()) { // IPackageFragmentRoot
-				if (element.getElementName().equals("src")) { 
+//				if (element.getElementName().equals("src")) { 
 					IPackageFragmentRoot root = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : root.getChildren()) {
 						if (ele instanceof IPackageFragment) {
@@ -119,7 +119,7 @@ public class FutureTaskRefactoring extends Refactoring {
 							}
 						}
 					}
-				}
+//				}
 			}
 		} catch (JavaModelException e) {
 			e.printStackTrace();

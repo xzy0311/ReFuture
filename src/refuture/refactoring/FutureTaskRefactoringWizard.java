@@ -16,8 +16,8 @@ public class FutureTaskRefactoringWizard extends RefactoringWizard {
 
 	@Override
 	protected void addUserInputPages() {
-		page = new FutureTaskRefactoringWizardPage("refactor annotation");
-		addPage(page);
+		page = new FutureTaskRefactoringWizardPage("refactor FutureTask");
+//		addPage(page);
 	}
 
 }
