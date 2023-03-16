@@ -3,21 +3,11 @@
   <groupId>Refuture</groupId>
   <artifactId>Refuture</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-    	<repositories>
-		<repository>
-		    <id>jitpack.io</id>
-		    <url>https://jitpack.io</url>
-		</repository>
-	</repositories>
 	  <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 	  <dependencies>
-  	<dependency>
-	    <groupId>com.github.plume-oss</groupId>
-	    <artifactId>plume</artifactId>
-	    <version>1.2.7</version>
-	</dependency>
+	  
   </dependencies>
   <build>
     <sourceDirectory>src</sourceDirectory>
