@@ -96,10 +96,10 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 			public void widgetSelected(SelectionEvent se) {
 				if(btnCheck.getEnabled()){
 					System.out.println(btnCheck.getEnabled());
-					refactoring.needTimeout = true;
+//					refactoring.needTimeout = true;
 					txtTimeOut.setEnabled(true);
 				}else{
-					refactoring.needTimeout = false;
+//					refactoring.needTimeout = false;
 					txtTimeOut.setEnabled(false);
 				}
 				
@@ -111,7 +111,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 
 			@Override
 			public void modifyText(ModifyEvent arg0) {
-				refactoring.timeoutValue = txtTimeOut.getText();
+//				refactoring.timeoutValue = txtTimeOut.getText();
 			}
 			
 		});

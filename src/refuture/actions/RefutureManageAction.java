@@ -29,7 +29,7 @@ public class RefutureManageAction implements IWorkbenchWindowActionDelegate {
 		FutureTaskRefactoringWizard wizard = new FutureTaskRefactoringWizard(refactor);
 		RefactoringWizardOpenOperation op = new RefactoringWizardOpenOperation(wizard);
 		try {
-			op.run(null, "Inserting @Override Annotation");
+			op.run(null, "ReFuture");
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
