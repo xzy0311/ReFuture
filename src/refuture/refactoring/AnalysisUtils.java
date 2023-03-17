@@ -20,7 +20,7 @@ public class AnalysisUtils {
 	
 	public static boolean CtlImport(IJavaElement javafile, String import1, String import2) {
 
-		if 
+	
 		return false;
 	}
 	

@@ -55,6 +55,9 @@ public class FutureTaskRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
+		if (allJavaFiles.isEmpty()) {
+			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
+		}
 		for(IJavaElement javafile: allJavaFiles) {
 			if(AnalysisUtils.CtlImport(javafile,AnalysisUtils.IMPORTCONCURRENT))
 				potentialJavaFiles.add(javafile);
