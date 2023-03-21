@@ -3,7 +3,7 @@ package refuture.handlers;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
-import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.ui.ISelectionListener;
 import org.eclipse.ui.ISelectionService;
 import org.eclipse.ui.IWorkbenchPart;
@@ -20,7 +20,7 @@ import org.eclipse.ltk.ui.refactoring.RefactoringWizardOpenOperation;
 import org.eclipse.swt.widgets.Shell;
 
 public class SampleHandler extends AbstractHandler {
-	IJavaElement select;
+	IProject select;
 	Boolean firststart;
 	{
 		firststart = true;
@@ -35,8 +35,8 @@ public class SampleHandler extends AbstractHandler {
 				IStructuredSelection strut = ((IStructuredSelection) selection);
 				if (strut.size() != 1)
 					select = null;
-				if (strut.getFirstElement() instanceof IJavaElement)
-					{select = (IJavaElement) strut.getFirstElement();
+				if (strut.getFirstElement() instanceof IProject)
+					{select = (IProject) strut.getFirstElement();
 					}else {
 						select = null;
 					}
@@ -60,7 +60,7 @@ public class SampleHandler extends AbstractHandler {
 						shell,
 						"refuture",
 						"Refuture initial complete");
-				firststart = false;
+						firststart = false;
 			}else {
 				MessageDialog.openInformation(
 						shell,

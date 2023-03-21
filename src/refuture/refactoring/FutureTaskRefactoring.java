@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -31,18 +32,21 @@ import org.eclipse.ltk.core.refactoring.TextFileChange;
 import org.eclipse.text.edits.TextEdit;
 
 /**
- * 此类是重构的动作类 重构的预览也是通过此类完成
+ * 此类是重构的动作类 重构的预览可能是Wizard的功能吧。
  */
 public class FutureTaskRefactoring extends Refactoring {
 	// 所有的重构变化
-	List<Change> allChanges = new ArrayList<Change>();
-	// 项目所有的java文件
-	List<IJavaElement> allJavaFiles = new ArrayList<IJavaElement>();
-	// 项目的import中包含Callable,Runnable,Executorservice,Future,FutureTask,CompletableFuture,Executors等类的情况。
-	List<IJavaElement> potentialJavaFiles = new ArrayList<IJavaElement>();
+	List<Change> allChanges;
+	// 项目所有的java文件,将IJavaElement改成了IcompilationUnit,这是由它的初始化过程决定的。
+	List<ICompilationUnit> allJavaFiles;
+	// 项目的import中包含Callable,Runnable,Executorservice,Future,FutureTask等类的情况。可以作为分析的切入点。
+	List<IJavaElement> potentialJavaFiles;
 
-	public FutureTaskRefactoring(IJavaElement select) {		
+	public FutureTaskRefactoring(IProject select) {		
 		allJavaFiles = AnalysisUtils.collectFromSelect(select);
+		allChanges = new ArrayList<Change>();
+		potentialJavaFiles = new ArrayList<IJavaElement>();
+		
 	}
 
 
@@ -55,11 +59,14 @@ public class FutureTaskRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
+		
+		
 		if (allJavaFiles.isEmpty()) {
 			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		}
-		for(IJavaElement javafile: allJavaFiles) {
-			if(AnalysisUtils.CtlImport(javafile,AnalysisUtils.IMPORTCONCURRENT))
+		//查找潜在的异步任务定义文件.
+		for(ICompilationUnit javafile: allJavaFiles) {
+			if(AnalysisUtils.searchImport(javafile,AnalysisUtils.IMPORT_ConCurrent))
 				potentialJavaFiles.add(javafile);
 		}
 		if(potentialJavaFiles.isEmpty()) {
@@ -74,15 +81,18 @@ public class FutureTaskRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
-		// TODO Auto-generated method stub
+		
 		return null;
 	}
 
 
 	@Override
 	public Change createChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
-		// TODO Auto-generated method stub
-		return null;
+		Change[] changes = new Change[allChanges.size()];
+		System.arraycopy(allChanges.toArray(), 0, changes, 0, allChanges.size());
+		CompositeChange change = new CompositeChange("refuture 待更改", changes);
+		return change;
+		
 	}
 
 
