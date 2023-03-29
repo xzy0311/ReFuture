@@ -7,6 +7,12 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 	  <dependencies>
+	  <!-- https://mvnrepository.com/artifact/org.soot-oss/soot -->
+<dependency>
+    <groupId>org.soot-oss</groupId>
+    <artifactId>soot</artifactId>
+    <version>4.4.0</version>
+</dependency>
 	  
   </dependencies>
   <build>

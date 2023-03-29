@@ -31,6 +31,9 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.TextFileChange;
 import org.eclipse.text.edits.TextEdit;
 
+import refuture.sootUtil.SootConfig;
+
+
 /**
  * 此类是重构的动作类 重构的预览可能是Wizard的功能吧。
  */
@@ -39,13 +42,14 @@ public class FutureTaskRefactoring extends Refactoring {
 	List<Change> allChanges;
 	// 项目所有的java文件,将IJavaElement改成了IcompilationUnit,这是由它的初始化过程决定的。
 	List<ICompilationUnit> allJavaFiles;
-	// 项目的import中包含Callable,Runnable,Executorservice,Future,FutureTask等类的情况。可以作为分析的切入点。
+	// 包含异步任务的定义
 	List<IJavaElement> potentialJavaFiles;
 
-	public FutureTaskRefactoring(IProject select) {		
-		allJavaFiles = AnalysisUtils.collectFromSelect(select);
+	public FutureTaskRefactoring(IJavaProject selectProject) {		
+		allJavaFiles = AnalysisUtils.collectFromSelect(selectProject);
 		allChanges = new ArrayList<Change>();
 		potentialJavaFiles = new ArrayList<IJavaElement>();
+//		SootConfig.setupSoot(AnalysisUtils.getSootClassPath());//配置soot,用来分析类层次结构
 		
 	}
 
@@ -60,20 +64,12 @@ public class FutureTaskRefactoring extends Refactoring {
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
 		
-		
 		if (allJavaFiles.isEmpty()) {
 			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		}
-		//查找潜在的异步任务定义文件.
-		for(ICompilationUnit javafile: allJavaFiles) {
-			if(AnalysisUtils.searchImport(javafile,AnalysisUtils.IMPORT_ConCurrent))
-				potentialJavaFiles.add(javafile);
-		}
-		if(potentialJavaFiles.isEmpty()) {
-			return RefactoringStatus.createFatalErrorStatus("No potential java file can refactoring!");
-		}else {
-			return RefactoringStatus.createInfoStatus("Ininal condition has been checked");
-		}
+
+		return RefactoringStatus.createInfoStatus("Ininal condition has been checked");
+		
 		
 	}
 

@@ -1,4 +1,4 @@
-package refuture.refactoring;
+package refuture.refactoringwizard;
 
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.ltk.core.refactoring.Refactoring;

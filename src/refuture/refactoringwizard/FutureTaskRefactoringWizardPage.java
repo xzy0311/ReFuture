@@ -1,4 +1,4 @@
-package refuture.refactoring;
+package refuture.refactoringwizard;
 
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
@@ -15,6 +15,8 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
+
+import refuture.refactoring.FutureTaskRefactoring;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	

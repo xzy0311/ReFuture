@@ -1,5 +1,6 @@
 package refuture.refactoring;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -56,17 +57,23 @@ public class AnalysisUtils {
 			,"java.lang.Runnable"
 			,"java.util.concurrent.Callable");
 
+	/** The projectpath. */
+	private static String PROJECTPATH;
 	/**
 	 * Collect from select.
 	 *
 	 * @param select the selectelement
 	 * @return 传入的对象中包含的java文件列表。
 	 */
-	public static List<ICompilationUnit> collectFromSelect(IProject select) {
+	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
 		//得到选中的元素中的JAVA项目。
 
-		IJavaProject project = JavaCore.create(select);
+		try {
+			PROJECTPATH = project.getOutputLocation().toOSString();
+		}catch(JavaModelException ex){
+			System.out.println(ex);
+		}
 		
 		try {
 			//遍历项目的下一级，找到java源代码文件夹。
@@ -159,12 +166,13 @@ public class AnalysisUtils {
 
 	/**
 	 * 从给定的ASTNode（第一个形参），进行【查找】遍历，若找到对应类型的Node结构，就将它的结果放入第二个参数里。
+	 * 
+	 * 尝试用泛型，但是出问题了，不知如何解决暂时不用了。.
 	 *
-	 *尝试用泛型，但是出问题了，不知如何解决暂时不用了。
-	 * @param <T>           the generic type 要查找的特定的Node结构类型
 	 * @param astNode       the ast node 查找的节点（包含子树）
 	 * @param results       the results 结果节点列表
 	 * @param visitChildren the visit children 是否查找子树
+	 * @return the import nodes
 	 */
 //	public static <T> void getSpecificNodes(ASTNode astNode,final List<T> results,boolean visitChildren) {
 //		astNode.accept(new ASTVisitor() {
@@ -186,10 +194,12 @@ public class AnalysisUtils {
 		});
 	}
 
-	
-	
-	
-	
-	
+	public static String getProjectPath() {
+		return PROJECTPATH;
+	}
+
+	public static String getSootClassPath() {
+		return getProjectPath()+File.separator+ "target" + File.separator + "classes";
+	}
 
 }

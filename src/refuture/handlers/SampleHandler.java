@@ -4,6 +4,9 @@ import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.ui.ISelectionListener;
 import org.eclipse.ui.ISelectionService;
 import org.eclipse.ui.IWorkbenchPart;
@@ -11,7 +14,7 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
 
 import refuture.refactoring.FutureTaskRefactoring;
-import refuture.refactoring.FutureTaskRefactoringWizard;
+import refuture.refactoringwizard.FutureTaskRefactoringWizard;
 
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ISelection;
@@ -20,7 +23,7 @@ import org.eclipse.ltk.ui.refactoring.RefactoringWizardOpenOperation;
 import org.eclipse.swt.widgets.Shell;
 
 public class SampleHandler extends AbstractHandler {
-	IProject select;
+	IJavaProject selectProject;
 	Boolean firststart;
 	{
 		firststart = true;
@@ -29,21 +32,35 @@ public class SampleHandler extends AbstractHandler {
 	    @Override
 	    public void selectionChanged(IWorkbenchPart part, ISelection selection) {
 	        // 处理选择变化事件
-			if (selection.isEmpty())
-				select = null;
-			else if (selection instanceof IStructuredSelection) {
-				IStructuredSelection strut = ((IStructuredSelection) selection);
-				if (strut.size() != 1)
-					select = null;
-				if (strut.getFirstElement() instanceof IProject)
-					{select = (IProject) strut.getFirstElement();
-					}else {
-						select = null;
-					}
-			}else
-				select = null;
-//			action.setEnabled(true);
-			SampleHandler.this.setBaseEnabled(select != null);
+//			if (selection.isEmpty())
+//				select = null;
+//			else if (selection instanceof IStructuredSelection) {
+//				IStructuredSelection strut = ((IStructuredSelection) selection);
+//				if (strut.size() != 1)
+//					select = null;
+//				if (strut.getFirstElement() instanceof IProject)
+//					{select = (IProject) strut.getFirstElement();
+//					}else {
+//						select = null;
+//					}
+//			}else
+//				select = null;
+	    	selectProject = null;
+	    	if(!selection.isEmpty()&&selection instanceof IStructuredSelection) {
+	    		IStructuredSelection strut = ((IStructuredSelection) selection);
+	    		if(strut.size() == 1) {
+	    			if(strut.getFirstElement() instanceof IProject) {
+	    				IProject project = (IProject) strut.getFirstElement();
+	    				selectProject = JavaCore.create(project);
+	    			}else if(strut.getFirstElement() instanceof IJavaElement) {
+	    				IJavaElement select = (IJavaElement) strut.getFirstElement();
+	    				selectProject = select.getJavaProject();
+	    			}
+	    			
+	    		}
+	    	}
+
+			SampleHandler.this.setBaseEnabled(selectProject != null);
 		}
 	};
 	
@@ -54,7 +71,7 @@ public class SampleHandler extends AbstractHandler {
 		Shell shell = window.getShell();
 		ISelectionService selectionService = window.getSelectionService();
 		selectionService.addSelectionListener(selectionListener);
-		if(select == null) {
+		if(selectProject == null) {
 			if(firststart) {
 				MessageDialog.openInformation(
 						shell,
@@ -69,7 +86,7 @@ public class SampleHandler extends AbstractHandler {
 			}
 
 		}else {
-			FutureTaskRefactoring refactor = new FutureTaskRefactoring(select);
+			FutureTaskRefactoring refactor = new FutureTaskRefactoring(selectProject);
 			FutureTaskRefactoringWizard wizard = new FutureTaskRefactoringWizard(refactor);
 			RefactoringWizardOpenOperation op = new RefactoringWizardOpenOperation(wizard);
 			try {
