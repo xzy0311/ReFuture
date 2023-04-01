@@ -58,6 +58,8 @@ public class AnalysisUtils {
 			,"java.util.concurrent.Callable");
 
 	/** The projectpath. */
+	private static String PROJECTOUTPATH;
+	
 	private static String PROJECTPATH;
 	/**
 	 * Collect from select.
@@ -67,14 +69,22 @@ public class AnalysisUtils {
 	 */
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
-		//得到选中的元素中的JAVA项目。
 
+//得到输出的class在的文件夹，方便后继使用soot分析。
 		try {
-			PROJECTPATH = project.getOutputLocation().toOSString();
+			
+			
+			PROJECTOUTPATH = project.getOutputLocation().toOSString();
+			
+			PROJECTPATH = project.getProject().getLocation().toOSString();
+			
+			int lastIndex = PROJECTPATH.lastIndexOf("/");
+			String RUNTIMEPATH = PROJECTPATH.substring(0, lastIndex);
+			PROJECTOUTPATH = RUNTIMEPATH+PROJECTOUTPATH;
 		}catch(JavaModelException ex){
 			System.out.println(ex);
 		}
-		
+		//得到选中的元素中的JAVA项目。
 		try {
 			//遍历项目的下一级，找到java源代码文件夹。
 			for (IJavaElement element:project.getChildren()) {
@@ -199,7 +209,7 @@ public class AnalysisUtils {
 	}
 
 	public static String getSootClassPath() {
-		return getProjectPath()+File.separator+ "target" + File.separator + "classes";
+		return PROJECTOUTPATH;
 	}
 
 }

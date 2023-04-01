@@ -10,39 +10,27 @@ import soot.Scene;
 import soot.SootClass;
 import soot.options.Options;
 
-public abstract class SootConfig {
+public class SootConfig {
 
-//    private final static String EXAMPLE_ClASS_PATH = System.getProperty("user.dir") + File.separator + "target" + File.separator + "classes";
-//	private final static String EXAMPLE_ClASS_PATH = System.getProperty("user.dir");
+
     private static List<String> excludePackage;
 
     public static void setupSoot(String classPath) {
 
-//    	System.out.println("【sootdebug】当前处理的类路径"+"EXAMPLE_ClASS_PATH");
+    	System.out.println("【sootdebug】当前处理的类路径"+classPath);
         soot.G.reset();
 
         BasicOptions(classPath);
-        
 
-//        JBPhaseOptions();
+        JBPhaseOptions();
 
-//        CGPhaseOptions();
-
-
+        CGPhaseOptions();//启用Spark
 
         Scene.v().loadNecessaryClasses();
 
-//        System.out.println("[xzydebug]");
-
-//        SootClass sootClass = Scene.v().getSootClass(className);
-//
-//        if(setMain)
-//        {
-//          Scene.v().setMainClass(sootClass);
-//        }
-//
+//        Scene.v().setMainClass(sootClass);
 //        sootClass.setApplicationClass();
-//        PackManager.v().runPacks();
+        PackManager.v().runPacks();
 
     }
 

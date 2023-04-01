@@ -13,7 +13,7 @@ import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
 
-import refuture.refactoring.FutureTaskRefactoring;
+import refuture.refactoring.RefutureRefactoring;
 import refuture.refactoringwizard.FutureTaskRefactoringWizard;
 
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -32,19 +32,6 @@ public class SampleHandler extends AbstractHandler {
 	    @Override
 	    public void selectionChanged(IWorkbenchPart part, ISelection selection) {
 	        // 处理选择变化事件
-//			if (selection.isEmpty())
-//				select = null;
-//			else if (selection instanceof IStructuredSelection) {
-//				IStructuredSelection strut = ((IStructuredSelection) selection);
-//				if (strut.size() != 1)
-//					select = null;
-//				if (strut.getFirstElement() instanceof IProject)
-//					{select = (IProject) strut.getFirstElement();
-//					}else {
-//						select = null;
-//					}
-//			}else
-//				select = null;
 	    	selectProject = null;
 	    	if(!selection.isEmpty()&&selection instanceof IStructuredSelection) {
 	    		IStructuredSelection strut = ((IStructuredSelection) selection);
@@ -86,7 +73,7 @@ public class SampleHandler extends AbstractHandler {
 			}
 
 		}else {
-			FutureTaskRefactoring refactor = new FutureTaskRefactoring(selectProject);
+			RefutureRefactoring refactor = new RefutureRefactoring(selectProject);
 			FutureTaskRefactoringWizard wizard = new FutureTaskRefactoringWizard(refactor);
 			RefactoringWizardOpenOperation op = new RefactoringWizardOpenOperation(wizard);
 			try {

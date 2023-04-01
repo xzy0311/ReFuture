@@ -1,5 +1,6 @@
 package refuture.sootUtil;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import soot.Hierarchy;
@@ -12,9 +13,6 @@ import soot.SootClass;
  */
 
 public class ClassHierarchy {
-
-/** The hierarchy. */
-private static Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 	
 
 	/**
@@ -24,24 +22,38 @@ private static Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 	 * @return the sub classesfor
 	 */
 	public static List<SootClass> getSubClassesfor(String className) {
-		
+		 Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 	     SootClass sootClass = Scene.v().getSootClass(className);
 //	     sootClass.setApplicationClass();
 
 	     if (sootClass.isInterface()){
-		     for (SootClass c : hierarchy.getImplementersOf(sootClass)) {
-		         System.out.println(c.getName());
-		     }
 		     return hierarchy.getImplementersOf(sootClass);
 	     }else {
-	    	 for(SootClass c:hierarchy.getSubclassesOf(sootClass)) {
-	    		 System.out.println(c.getName());
-	    	 }
 
 	    	 return hierarchy.getSubclassesOf(sootClass);
 	     }
 
-	     
-
 	}
+	//得到输入的Executor和Future的所有的子类，作为初始条件检查的一部分。
+	public static List<String> getSubClassInJDK(String name) {
+		List<SootClass> subClassInJDK = getSubClassesfor(name);
+		List<String> classesName = new ArrayList<String>();
+		for(SootClass sc:subClassInJDK) {
+			classesName.add(sc.getName());
+//			System.out.println("[ClassHierarchy debug]"+sc.getName());
+		}
+		return classesName;
+	}
+	
+	public static List<String> initialCheckForClassHierarchy() {
+	
+		List<String> additionalExecutorClass =ExecutorSubclass.getAdditionalExecutorClass();
+
+
+		return additionalExecutorClass;
+	}
+
+	
+
+	
 }

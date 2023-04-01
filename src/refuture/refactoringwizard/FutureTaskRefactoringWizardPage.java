@@ -16,7 +16,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 
-import refuture.refactoring.FutureTaskRefactoring;
+import refuture.refactoring.RefutureRefactoring;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	
@@ -84,7 +84,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	 * define the action listener
 	 */
 	private void defineListener(){
-		FutureTaskRefactoring refactoring = (FutureTaskRefactoring) getRefactoring();
+		RefutureRefactoring refactoring = (RefutureRefactoring) getRefactoring();
 		
 		
 		btnCheck.addSelectionListener(new SelectionListener(){
