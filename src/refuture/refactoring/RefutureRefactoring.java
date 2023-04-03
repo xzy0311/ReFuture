@@ -64,7 +64,6 @@ public class RefutureRefactoring extends Refactoring {
 		allChanges = new ArrayList<Change>();
 		potentialJavaFiles = new ArrayList<IJavaElement>();
 		InitAllStaticfield.init();//初始化所有的静态字段。
-		
 		SootConfig.setupSoot(AnalysisUtils.getSootClassPath());//配置初始化soot,用来分析类层次结构
 		
 	}
@@ -79,8 +78,6 @@ public class RefutureRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
-//		Future2Completable.refactor(allJavaFiles);
-
 		List<String> additionalExecutorClass = ClassHierarchy.initialCheckForClassHierarchy();
 		if(!additionalExecutorClass.isEmpty()) {
 			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+additionalExecutorClass);
@@ -97,13 +94,18 @@ public class RefutureRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
-		
+		Future2Completable.refactor(allJavaFiles);
+		if(!Future2Completable.getStatus()) {
+			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+Future2Completable.getErrorCause());
+		}
 		return null;
 	}
 
 
 	@Override
 	public Change createChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
+		allChanges.addAll(Future2Completable.getallChanges());
+		
 		Change[] changes = new Change[allChanges.size()];
 		System.arraycopy(allChanges.toArray(), 0, changes, 0, allChanges.size());
 		CompositeChange change = new CompositeChange("refuture 待更改", changes);

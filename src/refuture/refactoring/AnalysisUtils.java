@@ -18,8 +18,11 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jface.text.Document;
 import org.eclipse.ltk.core.refactoring.Change;
 
@@ -60,11 +63,13 @@ public class AnalysisUtils {
 	/** The projectpath. */
 	private static String PROJECTOUTPATH;
 	
+	/** The projectpath. */
 	private static String PROJECTPATH;
+	
 	/**
 	 * Collect from select.
 	 *
-	 * @param select the selectelement
+	 * @param project the project
 	 * @return 传入的对象中包含的java文件列表。
 	 */
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
@@ -203,11 +208,88 @@ public class AnalysisUtils {
 			}
 		});
 	}
+	
+	/**
+	 * 得到 node所属的方法的Soot中名称，在方法体外和构造函数，则返回“void {@code<init>}()”,否则返回方法签名.
+	 *
+	 * @param node node必须保证，是类里面的语句节点，否则陷入无限循环。
+	 * @return the method name
+	 */
+	public static String getMethodName4Soot(ASTNode node) {
+		String methodSootName ="void <init>()";
+
+		while(!(node instanceof TypeDeclaration) ) {
+			if(node instanceof MethodDeclaration) {
+				MethodDeclaration mdNode = (MethodDeclaration)node;
+				String methodReturnTypeName = mdNode.getReturnType2().toString();//构造函数为null
+				if(methodReturnTypeName.equals("null")) {
+					break;
+				}
+				String methodSimpleName = mdNode.getName().toString();
+				String methodParameters = getmethodParameters(mdNode);
+				methodSootName = methodReturnTypeName+" "+methodSimpleName+"("+methodParameters+")";
+				break;
+			}
+			node = node.getParent();
+			if(node == node.getParent()) {
+				System.out.println("[getMethodName]：传入的ASTNode有问题");
+				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
+			}
+		}
+		return methodSootName;
+		
+	}
+	
+	
+	/**
+	 * 通过MethodDeclaration,得到参数的类型全名。
+	 * 需要开启绑定。
+	 *
+	 * @param mdNode the md node
+	 * @return the method parameters
+	 */
+	private static String getmethodParameters(MethodDeclaration mdNode){
+		List<ASTNode> parameterList = mdNode.parameters();
+		String parameterString = new String();
+		if(parameterList.isEmpty()) {
+			return null;
+		}else {
+			for(ASTNode astnode:parameterList) {
+				SingleVariableDeclaration param = (SingleVariableDeclaration) astnode;
+				 ITypeBinding typeBinding = param.getType().resolveBinding();
+                    String typefullName = typeBinding.getQualifiedName();
+                    if(parameterString.isEmpty()) {
+                    	parameterString = typefullName;
+                    }else {
+                    	parameterString = parameterString+","+typefullName;
+                    }
+			}
+			return parameterString;
+		}
+	}
+	public static MethodDeclaration getMethodDeclaration4node(ASTNode node) {
+
+		while(!(node instanceof TypeDeclaration) ) {
+			if(node instanceof MethodDeclaration) {
+				break;
+			}
+			node = node.getParent();
+			if(node == node.getParent()) {
+				System.out.println("[getMethodName]：传入的ASTNode有问题");
+				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
+			}
+		}
+		return (MethodDeclaration) node;
+	}
+	
+	
 
 	public static String getProjectPath() {
 		return PROJECTPATH;
 	}
 
+
+	
 	public static String getSootClassPath() {
 		return PROJECTOUTPATH;
 	}

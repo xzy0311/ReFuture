@@ -48,8 +48,6 @@ public class ClassHierarchy {
 	public static List<String> initialCheckForClassHierarchy() {
 	
 		List<String> additionalExecutorClass =ExecutorSubclass.getAdditionalExecutorClass();
-
-
 		return additionalExecutorClass;
 	}
 
