@@ -77,7 +77,8 @@ public class SootConfig {
      * 除"cg.spark"之外，soot 还支持"cg.cha"（使用CHA算法创建Call Graph）、"cg.paddle"（paddle框架创建）、"CG" （分析整个源代码，包括JDK部分）
      */
     public static void CGPhaseOptions(){
-
+    	//兼容多个main函数，并且不可抵达的方法也会进行分析。
+    	Options.v().setPhaseOption("cg", "all-reachable:true");
         // 开启创建CG
         Options.v().setPhaseOption("cg.spark","enabled:true");
         // 同 BasicOptions 中的 verbose

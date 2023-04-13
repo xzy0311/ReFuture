@@ -22,6 +22,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jface.text.Document;
 import org.eclipse.ltk.core.refactoring.Change;
@@ -118,96 +119,7 @@ public class AnalysisUtils {
 		return allJavaFiles;
 	}
 
-	/**
-	 * 操作import的方法，将JAVA文件传入，将要查找的import字符串传入.
-	 * 此后若有需要更改import的情况，我不再考虑修改，而是直接添加我所需要的Imports,
-	 * 详情查看{@ImportRewrite}
-	 *
-	 * @param javafile  JAVA文件
-	 * @param importold 要查找的import字符串
-	 * @return true, 如果存在该字符串
-	 */
-	public static boolean searchImport(ICompilationUnit javafile, List<String> importold) {
 
-		boolean flag = false;
-		try {
-			CompilationUnit astRootNode = getASTRootNode(javafile);
-
-			List<ImportDeclaration> oldImports = new ArrayList<ImportDeclaration>();
-			//得到所有的import.
-			AnalysisUtils.getImportNodes(astRootNode, oldImports, false);
-			for(String oldString :importold)
-			{
-				for(ImportDeclaration oldImport:oldImports)
-				{
-					if(oldImport.getName().toString().equals(oldString)) {
-						flag = true;
-						return flag;
-					}
-				}
-
-			}
-			
-		} catch (JavaModelException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		return flag;
-	}
-	
-	
-	/**
-	 * Gets the AST Root node,CompilationUnit类型是整个java文件在AST
-	 * 树上的表示，它的根节点就是一个CompilationUnit类型。.
-	 *
-	 * @param javafile the javafile
-	 * @return the AST Root node
-	 * @throws JavaModelException the java model exception
-	 */
-	public static CompilationUnit getASTRootNode(ICompilationUnit javafile) throws JavaModelException {
-
-		String stringSource = javafile.getSource();
-		Document document = new Document(stringSource);
-
-		ASTParser parser = ASTParser.newParser(AST.JLS8);
-		parser.setSource(javafile);
-		CompilationUnit astRootNode = (CompilationUnit) parser.createAST(null);
-//		astRoot.getRoot();//可能不需要再获取root节点了，默认可能返回的RootNode。
-		return astRootNode;
-	}
-	
-	
-
-	/**
-	 * 从给定的ASTNode（第一个形参），进行【查找】遍历，若找到对应类型的Node结构，就将它的结果放入第二个参数里。
-	 * 
-	 * 尝试用泛型，但是出问题了，不知如何解决暂时不用了。.
-	 *
-	 * @param astNode       the ast node 查找的节点（包含子树）
-	 * @param results       the results 结果节点列表
-	 * @param visitChildren the visit children 是否查找子树
-	 * @return the import nodes
-	 */
-//	public static <T> void getSpecificNodes(ASTNode astNode,final List<T> results,boolean visitChildren) {
-//		astNode.accept(new ASTVisitor() {
-//			public boolean visit(T node) {
-//				System.out.println(node);
-//				results.add(node);
-//				return visitChildren;
-//			}
-//		});
-//	}
-//	
-	public static void getImportNodes(ASTNode astNode,final List<ImportDeclaration> results,boolean visitChildren) {
-		astNode.accept(new ASTVisitor() {
-			public boolean visit(ImportDeclaration node) {
-				System.out.println(node.getName());
-				results.add(node);
-				return visitChildren;
-			}
-		});
-	}
 	
 	/**
 	 * 得到 node所属的方法的Soot中名称，在方法体外和构造函数，则返回“void {@code<init>}()”,否则返回方法签名.
@@ -215,16 +127,24 @@ public class AnalysisUtils {
 	 * @param node node必须保证，是类里面的语句节点，否则陷入无限循环。
 	 * @return the method name
 	 */
-	public static String getMethodName4Soot(ASTNode node) {
+	public static String getSootMethodName(ASTNode node) {
 		String methodSootName ="void <init>()";
 
 		while(!(node instanceof TypeDeclaration) ) {
 			if(node instanceof MethodDeclaration) {
 				MethodDeclaration mdNode = (MethodDeclaration)node;
-				String methodReturnTypeName = mdNode.getReturnType2().toString();//构造函数为null
-				if(methodReturnTypeName.equals("null")) {
-					break;
+				Type type = mdNode.getReturnType2();
+				if(type == null) {//构造函数为null,但是需要判断是否有参数
+					if(getmethodParameters(mdNode).isEmpty())
+						{break;}else {
+							methodSootName ="void <init>("+getmethodParameters(mdNode)+")";
+							break;
+						}
 				}
+				String methodReturnTypeName = type.toString();
+//				if(methodReturnTypeName.equals("null")) {
+//					break;
+//				}
 				String methodSimpleName = mdNode.getName().toString();
 				String methodParameters = getmethodParameters(mdNode);
 				methodSootName = methodReturnTypeName+" "+methodSimpleName+"("+methodParameters+")";
@@ -267,6 +187,13 @@ public class AnalysisUtils {
 			return parameterString;
 		}
 	}
+	
+	/**
+	 * 得到节点所属的方法块的方法定义节点
+	 *
+	 * @param node the node
+	 * @return the method declaration 4 node
+	 */
 	public static MethodDeclaration getMethodDeclaration4node(ASTNode node) {
 
 		while(!(node instanceof TypeDeclaration) ) {

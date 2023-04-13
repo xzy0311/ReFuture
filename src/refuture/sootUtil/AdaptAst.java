@@ -1,6 +1,7 @@
 package refuture.sootUtil;
 
 import java.util.Iterator;
+import java.util.List;
 
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -18,6 +19,7 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.jimple.Stmt;
 import soot.jimple.internal.JimpleLocalBox;
+import soot.util.Chain;
 
 
 /*
@@ -38,7 +40,7 @@ public class AdaptAst {
 		int lineNumber = cu.getLineNumber(miv.getStartPosition());//行号
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
 //		System.out.println("[getJimpleInvocStmt:]"+ivcMethodName);
-		String methodSootName = AnalysisUtils.getMethodName4Soot(miv);//得到soot中用到的subsignature。
+		String methodSootName = AnalysisUtils.getSootMethodName(miv);//得到soot中用到的subsignature。
 //		System.out.println("[getJimpleInvocStmt:]"+methodSootName);
 		TypeDeclaration td =(TypeDeclaration)AnalysisUtils.getMethodDeclaration4node(miv).getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
 		ITypeBinding itb = td.resolveBinding();//得到FullName,必须是用绑定。
@@ -47,7 +49,9 @@ public class AdaptAst {
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		SootMethod sm = sc.getMethod(methodSootName);
 		Body body =sm.retrieveActiveBody();
-//		System.out.println("[getJimpleInvocStmt:]"+body);
+//		System.out.println("[AdaptAST.getJimpleInvocStmt:]"+body);
+		
+		
         Iterator<Unit> i=body.getUnits().snapshotIterator();
         while(i.hasNext())
         {

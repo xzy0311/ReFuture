@@ -60,7 +60,7 @@ public class Future2Completable {
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
 		for(ICompilationUnit cu : allJavaFiles) {
 			IFile source = (IFile) cu.getResource();
-			TextFileChange change = new TextFileChange("Future2Completable",source);
+
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
 			parser.setResolveBindings(true);
 			parser.setStatementsRecovery(true);
@@ -70,15 +70,20 @@ public class Future2Completable {
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();
-			change = refactorExecuteRunnable(invocationNodes,change);
-			if(change !=null) {
-				allChanges.add(change);
+			for(MethodInvocation invocationNode:invocationNodes) {
+				TextFileChange change = new TextFileChange("Future2Completable",source);
+				change = refactorExecuteRunnable(invocationNode,change);
+				if(change !=null) {
+					allChanges.add(change);
+				}
 			}
+			
+			
+
 		}
 	}
 	
-	private static TextFileChange refactorExecuteRunnable(List<MethodInvocation> invocationNodes, TextFileChange change) throws JavaModelException, IllegalArgumentException {
-		for(MethodInvocation invocationNode:invocationNodes) {
+	private static TextFileChange refactorExecuteRunnable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
 			//得到execute方法的调用Node。
 			if (invocationNode.getName().toString().equals("execute")) {
 //				System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
@@ -88,7 +93,7 @@ public class Future2Completable {
 					setErrorStatus();
 					setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
 				}
-                if (ExecutorSubclass.canRefactor(invocStmt)) {
+                if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 2)) {
                 	AST ast = invocationNode.getAST();
                 	ASTRewrite rewriter = ASTRewrite.create(ast);
                 	//重构逻辑
@@ -99,18 +104,54 @@ public class Future2Completable {
                 	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
 //                	ASTNode firstArgu = rewriter.createCopyTarget((ASTNode) invocationNode.arguments().get(0));
 //                	listRewriter.insertLast(ast.newSimpleName(invocationNode.arguments().get(0).toString()), null);
-                	listRewriter.insertLast(ast.newSimpleName(invocationNode.getExpression().toString()), null);
+                	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
 //                	rewriter.replace(invocationNode, newMethodInvocation, null);
                 	TextEdit edits = rewriter.rewriteAST();
                 	change.setEdit(edits);
                 	return change;
                 }
 			}
-		}
 		return null;
 		
 	}
-	
+	/*
+	 * Refactor Future f = es.submit(Callable);
+	 * 第一版，不考虑定义的作用范围。
+	 * 直接转换为 Future f = (Future)CompletableFuture.supplyAsync(Callable,es);
+	 * 
+	 * 第一步，识别；
+	 * 
+	 */
+	private static TextFileChange refactorffSubmitCallable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
+		if (invocationNode.getName().toString().equals("submit")) {
+//			System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
+			Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
+
+			if (invocStmt == null) {
+				setErrorStatus();
+				setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
+			}
+            if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 1)) {
+            	AST ast = invocationNode.getAST();
+            	ASTRewrite rewriter = ASTRewrite.create(ast);
+            	//重构逻辑
+//            	MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+            	
+            	rewriter.set(invocationNode, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
+            	rewriter.set(invocationNode, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"), null);
+            	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
+//            	ASTNode firstArgu = rewriter.createCopyTarget((ASTNode) invocationNode.arguments().get(0));
+//            	listRewriter.insertLast(ast.newSimpleName(invocationNode.arguments().get(0).toString()), null);
+            	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
+//            	rewriter.replace(invocationNode, newMethodInvocation, null);
+            	TextEdit edits = rewriter.rewriteAST();
+            	change.setEdit(edits);
+            	return change;
+            }
+		}
+		return change;
+		
+	}
 	
 	
 	public static List<Change>  getallChanges() {

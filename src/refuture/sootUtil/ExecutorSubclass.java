@@ -6,10 +6,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import soot.ArrayType;
+import soot.Hierarchy;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
+import soot.SootClass;
+import soot.SootMethod;
+import soot.Type;
+import soot.Value;
+import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.JimpleLocalBox;
 
@@ -76,6 +83,7 @@ public class ExecutorSubclass {
         	while(it.hasNext()) {
         		Object o = it.next();
         		if (o instanceof JimpleLocalBox) {
+        			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
         			JimpleLocalBox jlb = (JimpleLocalBox) o;
         			Local local = (Local)jlb.getValue();
         			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
@@ -83,10 +91,10 @@ public class ExecutorSubclass {
         			Set typeSet = ptset.possibleTypes();
 
         			Set<String> typeSetStrings = new HashSet<>();
-//        			for (Object obj : typeSet) {
-//        				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
-//        			}
-//        			
+        			for (Object obj : typeSet) {
+        				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
+        			}
+        			
         			Set completeSetType = ExecutorSubclass.getCompleteExecutor();
         			if(completeSetType.containsAll(typeSetStrings)) {
         				//是安全重构的子集，就可以进行重构了。
@@ -96,6 +104,60 @@ public class ExecutorSubclass {
         		
         	}
         	return false;
+	}
+
+
+	/**
+	 * 	判断参数的类型是否复合要求。
+	 *
+	 * @param invocStmt the invoc stmt
+	 * @param argType   为1,代表是callable;为2,代表Runnable;为3,代表FutureTask。
+	 * @return true, if successful
+	 */
+	public static boolean canRefactorArgu(Stmt invocStmt,int argType) {
+		/*这里已经限制了调用的方法是submit或者execute，所以第一个参数一定是：callable、Runnable或者，FutureTask。
+		 * 我只分析invocStmt第一个参数，根据argType进行判断，为1,则判断是否是callable的子类，为2或者3,则判断是否是FutureTask,
+		 * 若不是，再判断是否是Runnable。lambda表达式也可以正常的分析，因为在Jinple中，lambda表达式会首先由一个Local变量指向它代表的对象。
+		 */
+		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
+		List<Value> lv =ivcExp.getArgs();
+		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+		Local la1 = (Local) lv.get(0);
+		PointsToSet ptset = pa.reachingObjects(la1);
+		Set<Type> typeSet = ptset.possibleTypes();
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		switch (argType) {
+		case 1://是否是Callable的子类.
+			for(Type type:typeSet) {
+				SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+				SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
+				if(sc.isPhantom()||callable.isPhantom()) {
+					return false;
+				}
+				return hierarchy.isClassSuperclassOf(callable, sc);
+			}
+			break;
+		default://判断是否是FutureTask类型，若是则判断是3则返回true，其他情况返回false；若不是则2返回true,其他情况返回false;
+			for(Type type:typeSet) {
+				SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+				SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
+				if(sc.isPhantom()||futureTask.isPhantom()) {
+					return false;
+				}
+				if(hierarchy.isClassSuperclassOfIncluding(futureTask, sc)) {
+					if(argType == 3) {
+						return true;
+					}
+				}else {
+					if(argType ==2) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		System.out.println("over");
+		return false;
 	}
 }
 
