@@ -60,7 +60,6 @@ public class Future2Completable {
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
 		for(ICompilationUnit cu : allJavaFiles) {
 			IFile source = (IFile) cu.getResource();
-
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
 			parser.setResolveBindings(true);
 			parser.setStatementsRecovery(true);
@@ -72,8 +71,8 @@ public class Future2Completable {
 			List<MethodInvocation> invocationNodes = miv.getResult();
 			for(MethodInvocation invocationNode:invocationNodes) {
 				TextFileChange change = new TextFileChange("Future2Completable",source);
-				change = refactorExecuteRunnable(invocationNode,change);
-				if(change !=null) {
+				boolean flag = refactorExecuteRunnable(invocationNode,change);
+				if(flag) {
 					allChanges.add(change);
 				}
 			}
@@ -83,7 +82,7 @@ public class Future2Completable {
 		}
 	}
 	
-	private static TextFileChange refactorExecuteRunnable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
+	private static boolean refactorExecuteRunnable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
 			//得到execute方法的调用Node。
 			if (invocationNode.getName().toString().equals("execute")) {
 //				System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
@@ -108,10 +107,10 @@ public class Future2Completable {
 //                	rewriter.replace(invocationNode, newMethodInvocation, null);
                 	TextEdit edits = rewriter.rewriteAST();
                 	change.setEdit(edits);
-                	return change;
+                	return true;
                 }
 			}
-		return null;
+		return false;
 		
 	}
 	/*
