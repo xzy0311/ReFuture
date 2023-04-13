@@ -134,13 +134,15 @@ public class ExecutorSubclass {
 				if(sc.isPhantom()||callable.isPhantom()) {
 					return false;
 				}
-				return hierarchy.isClassSuperclassOf(callable, sc);
+				List<SootClass> implementers =hierarchy.getImplementersOf(callable);
+				return implementers.contains(sc);
 			}
 			break;
 		default://判断是否是FutureTask类型，若是则判断是3则返回true，其他情况返回false；若不是则2返回true,其他情况返回false;
 			for(Type type:typeSet) {
 				SootClass sc = Scene.v().getSootClass(type.getEscapedName());
 				SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
+				SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
 				if(sc.isPhantom()||futureTask.isPhantom()) {
 					return false;
 				}
@@ -150,7 +152,9 @@ public class ExecutorSubclass {
 					}
 				}else {
 					if(argType ==2) {
-						return true;
+						List<SootClass> implementers =hierarchy.getImplementersOf(runnable);
+						return implementers.contains(sc);
+
 					}
 				}
 			}
