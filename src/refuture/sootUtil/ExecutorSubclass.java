@@ -138,6 +138,11 @@ public class ExecutorSubclass {
 				return implementers.contains(sc);
 			}
 			break;
+		case 4:		
+			if(lv.size()==2) {
+			return true;
+		}
+			break;
 		default://判断是否是FutureTask类型，若是则判断是3则返回true，其他情况返回false；若不是则2返回true,其他情况返回false;
 			for(Type type:typeSet) {
 				SootClass sc = Scene.v().getSootClass(type.getEscapedName());
@@ -151,7 +156,7 @@ public class ExecutorSubclass {
 						return true;
 					}
 				}else {
-					if(argType ==2) {
+					if(argType ==2&&lv.size()==1) {
 						List<SootClass> implementers =hierarchy.getImplementersOf(runnable);
 						return implementers.contains(sc);
 
@@ -160,7 +165,7 @@ public class ExecutorSubclass {
 			}
 			return false;
 		}
-		System.out.println("over");
+		System.out.println("[canRefactorArgu]FNV");
 		return false;
 	}
 }
