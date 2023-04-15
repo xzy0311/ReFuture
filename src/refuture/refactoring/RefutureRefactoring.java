@@ -2,6 +2,7 @@ package refuture.refactoring;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -58,13 +59,14 @@ public class RefutureRefactoring extends Refactoring {
 	 * Instantiates a new future task refactoring.
 	 *
 	 * @param selectProject the select project
+	 * @throws InterruptedException 
 	 */
 	public RefutureRefactoring(IJavaProject selectProject) {		
 		allJavaFiles = AnalysisUtils.collectFromSelect(selectProject);
 		allChanges = new ArrayList<Change>();
 		potentialJavaFiles = new ArrayList<IJavaElement>();
 		InitAllStaticfield.init();//初始化所有的静态字段。
-		SootConfig.setupSoot(AnalysisUtils.getSootClassPath());//配置初始化soot,用来分析类层次结构
+		SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
 		
 	}
 
@@ -78,6 +80,7 @@ public class RefutureRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
+//		return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		List<String> additionalExecutorClass = ClassHierarchy.initialCheckForClassHierarchy();
 		if(!additionalExecutorClass.isEmpty()) {
 			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+additionalExecutorClass);

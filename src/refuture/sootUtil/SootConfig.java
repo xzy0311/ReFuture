@@ -1,10 +1,12 @@
 package refuture.sootUtil;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import refuture.refactoring.AnalysisUtils;
 import soot.PackManager;
 import soot.Scene;
 import soot.SootClass;
@@ -15,19 +17,20 @@ public class SootConfig {
 
     private static List<String> excludePackage;
 
-    public static void setupSoot(String classPath) {
+    public static void setupSoot() {
 
-    	System.out.println("【sootdebug】当前处理的类路径"+classPath);
         soot.G.reset();
 
-        BasicOptions(classPath);
+        BasicOptions();
 
         JBPhaseOptions();
 
         CGPhaseOptions();//启用Spark
 
         Scene.v().loadNecessaryClasses();
-
+//        System.out.println("[testtest]"+Scene.v().getApplicationClasses());
+//        System.out.println(Scene.v().getLibraryClasses());
+        
 //        Scene.v().setMainClass(sootClass);
 //        sootClass.setApplicationClass();
         PackManager.v().runPacks();
@@ -37,10 +40,15 @@ public class SootConfig {
     /**
      * 基础配置
      */
-    public static void BasicOptions(String classPath){
-
+    public static void BasicOptions(){
+    	
+        // 将待分析的项目依赖的jar包路径和输出class路径组合
+    	String finalPath = getJarPath()+File.pathSeparator+AnalysisUtils.getSootClassPath();
         // 设置 soot 类加载路径
-        Options.v().set_soot_classpath(classPath);
+    	System.out.println(finalPath);
+    	
+        Options.v().set_soot_classpath(finalPath);
+        System.out.println(AnalysisUtils.getSootClassPath());
         // 将给定的类加载路径作为默认类加载路径
         Options.v().set_prepend_classpath(true);
         // 运行soot创建虚类，如果源码中找不到对应源码，soot 会自动创建一个虚拟的类来代替。
@@ -52,7 +60,7 @@ public class SootConfig {
         // 输入文件时，使用的编译码类型
         Options.v().set_output_format(Options.output_format_jimple);
         // 处理目录中所有的类
-        Options.v().set_process_dir(Collections.singletonList(classPath));
+        Options.v().set_process_dir(Collections.singletonList(AnalysisUtils.getSootClassPath()));
         // 详细地打印处理过程的信息
         Options.v().set_verbose(true);
         // 去除某些类
@@ -102,6 +110,24 @@ public class SootConfig {
         excludePackage.add("com.ibm.");
 
         return excludePackage;
+    }
+    public static String getJarPath() {
+    	String jarPath ="";
+    	File folder = new File(AnalysisUtils.getProjectPath()+File.separator+"lib");
+    	File[] files = folder.listFiles(new FilenameFilter() {
+    	    @Override
+    	    public boolean accept(File dir, String name) {
+    	        return name.endsWith(".jar"); // 只返回以".jar"结尾的文件
+    	    }
+    	});
+    	if(files == null) {
+    		return jarPath;
+    	}
+    	for (File file : files) {
+    		jarPath += File.pathSeparator + file.getAbsolutePath();
+    	}
+//    	System.out.println("[test]jarPath"+jarPath);
+    	return jarPath;
     }
     
     
