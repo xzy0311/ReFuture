@@ -18,6 +18,7 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
@@ -123,7 +124,7 @@ public class AnalysisUtils {
 	
 	/**
 	 * 得到 node所属的方法的Soot中名称，在方法体外和构造函数，则返回“void {@code<init>}()”,否则返回方法签名.
-	 *
+	 *方法的返回值若是引用类型，需要写全名。
 	 * @param node node必须保证，是类里面的语句节点，否则陷入无限循环。
 	 * @return the method name
 	 */
@@ -133,6 +134,7 @@ public class AnalysisUtils {
 		while(!(node instanceof TypeDeclaration) ) {
 			if(node instanceof MethodDeclaration) {
 				MethodDeclaration mdNode = (MethodDeclaration)node;
+				IMethodBinding imb =mdNode.resolveBinding();
 				Type type = mdNode.getReturnType2();
 				if(type == null) {//构造函数为null,但是需要判断是否有参数
 					if(getmethodParameters(mdNode).isEmpty())
@@ -141,10 +143,8 @@ public class AnalysisUtils {
 							break;
 						}
 				}
-				String methodReturnTypeName = type.toString();
-//				if(methodReturnTypeName.equals("null")) {
-//					break;
-//				}
+				
+				String methodReturnTypeName = imb.getReturnType().getQualifiedName().toString();
 				String methodSimpleName = mdNode.getName().toString();
 				String methodParameters = getmethodParameters(mdNode);
 				methodSootName = methodReturnTypeName+" "+methodSimpleName+"("+methodParameters+")";

@@ -79,7 +79,7 @@ public class RefutureRefactoring extends Refactoring {
 			throws CoreException, OperationCanceledException {
 		Future2Completable.refactor(allJavaFiles);
 		if(!Future2Completable.getStatus()) {
-			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+Future2Completable.getErrorCause());
+			return RefactoringStatus.createErrorStatus(Future2Completable.getErrorCause());
 		}
 		return null;
 	}

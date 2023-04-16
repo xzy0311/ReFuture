@@ -16,6 +16,7 @@ import soot.SootClass;
 import soot.SootMethod;
 import soot.Type;
 import soot.Value;
+import soot.ValueBox;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.JimpleLocalBox;
@@ -79,7 +80,8 @@ public class ExecutorSubclass {
 	 * @return true, 如果可以进行重构
 	 */
 	public static boolean canRefactor(Stmt invocStmt) {
-			Iterator it =invocStmt.getUseBoxes().iterator();
+		List<ValueBox> lvbs = invocStmt.getUseBoxes();
+			Iterator it =lvbs.iterator();
         	while(it.hasNext()) {
         		Object o = it.next();
         		if (o instanceof JimpleLocalBox) {
@@ -165,7 +167,6 @@ public class ExecutorSubclass {
 			}
 			return false;
 		}
-		System.out.println("[canRefactorArgu]FNV");
 		return false;
 	}
 }

@@ -107,8 +107,7 @@ public class Future2Completable {
 				if (invocStmt == null) {
 					setErrorStatus();
 					setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
-				}
-                if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 2)) {
+				}else if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 2)) {
                 	AST ast = invocationNode.getAST();
                 	ASTRewrite rewriter = ASTRewrite.create(ast);
                 	//重构逻辑
@@ -145,8 +144,7 @@ public class Future2Completable {
 			if (invocStmt == null) {
 				setErrorStatus();
 				setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
-			}
-            if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 1)) {
+			}else if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 1)) {
             	AST ast = invocationNode.getAST();
             	ASTRewrite rewriter = ASTRewrite.create(ast);
             	//重构逻辑
@@ -180,8 +178,7 @@ public class Future2Completable {
 			if (invocStmt == null) {
 				setErrorStatus();
 				setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
-			}
-            if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 2)) {
+			}else if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 2)) {
             	AST ast = invocationNode.getAST();
             	ASTRewrite rewriter = ASTRewrite.create(ast);
             	//重构逻辑
@@ -216,8 +213,7 @@ public class Future2Completable {
 			if (invocStmt == null) {
 				setErrorStatus();
 				setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
-			}
-            if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 3)) {
+			}else if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 3)) {
             	AST ast = invocationNode.getAST();
             	ASTRewrite rewriter = ASTRewrite.create(ast);
             	//重构逻辑
@@ -252,8 +248,7 @@ public class Future2Completable {
 			if (invocStmt == null) {
 				setErrorStatus();
 				setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
-			}
-            if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 4)) {
+			}else if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 4)) {
             	//重构逻辑
             	VariableDeclarationFragment vdf = (VariableDeclarationFragment) invocationNode.getParent();
             	VariableDeclarationStatement vds = (VariableDeclarationStatement) vdf.getParent();
@@ -304,8 +299,7 @@ public class Future2Completable {
 			if (invocStmt == null) {
 				setErrorStatus();
 				setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
-			}
-            if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 3)) {
+			}else if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 3)) {
             	AST ast = invocationNode.getAST();
             	ASTRewrite rewriter = ASTRewrite.create(ast);
             	//重构逻辑
