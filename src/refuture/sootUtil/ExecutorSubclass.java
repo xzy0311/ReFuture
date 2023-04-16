@@ -59,7 +59,7 @@ public class ExecutorSubclass {
 	
 	public static List<String> getAdditionalExecutorClass(){
 		//检查Executor的继承关系。
-		List<String> executorSubClassesName = ClassHierarchy.getSubClassInJDK("java.util.concurrent.Executor");
+		List<String> executorSubClassesName = ClassHierarchy.getSubClassesNameInProject("java.util.concurrent.Executor");
 		List<String> setExecutorSubClass = new ArrayList<String>(getJDKExecutorSubClass());
 		List<String> additionalExecutorClass = new ArrayList<String>();
 		for(String executorSubClassName:executorSubClassesName) {
