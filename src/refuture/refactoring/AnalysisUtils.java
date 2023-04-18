@@ -4,6 +4,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -136,6 +138,7 @@ public class AnalysisUtils {
 				MethodDeclaration mdNode = (MethodDeclaration)node;
 				IMethodBinding imb =mdNode.resolveBinding();
 				Type type = mdNode.getReturnType2();
+				String methodReturnTypeName;
 				if(type == null) {//构造函数为null,但是需要判断是否有参数
 					if(getmethodParameters(mdNode).isEmpty())
 						{break;}else {
@@ -143,8 +146,11 @@ public class AnalysisUtils {
 							break;
 						}
 				}
-				
-				String methodReturnTypeName = imb.getReturnType().getQualifiedName().toString();
+				if(type.resolveBinding().isTypeVariable()) {
+					methodReturnTypeName = "java.lang.Object";
+				}else {
+					methodReturnTypeName = imb.getReturnType().getQualifiedName().toString();
+				}
 				String methodSimpleName = mdNode.getName().toString();
 				String methodParameters = getmethodParameters(mdNode);
 				methodSootName = methodReturnTypeName+" "+methodSimpleName+"("+methodParameters+")";
@@ -156,6 +162,32 @@ public class AnalysisUtils {
 				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
 			}
 		}
+		System.out.println("[xzy处理前]"+methodSootName);
+		//最后对methodsubsignature进行处理，将形式参数去除,将多余的空格去除，使用正则表达式。
+//		String patternY = "<(\\w+)>"; // 匹配形如<asdf>的命令y
+//		String patternX = "(?<=<)\\w+(?=>)"; // 匹配形如<asdf>中的命令x
+//		String replacement = "java.lang.Object"; // 替换为java.lang.Object
+//		Pattern patternYObj = Pattern.compile(patternY);
+//		Matcher matcherY = patternYObj.matcher(methodSootName);
+//		while (matcherY.find()) {
+//		    String commandY = matcherY.group();
+//		    Pattern patternXObj = Pattern.compile(patternX);
+//		    Matcher matcherX = patternXObj.matcher(commandY);
+//		    if (matcherX.find()) {
+//		        String commandX = matcherX.group();
+//		        methodSootName = methodSootName.replaceAll(commandY, "").replaceAll("(?<!\\S)" + commandX + "(?!\\S)", replacement);
+//		    }
+//		}
+//		methodSootName = methodSootName.replaceAll("\\s+", " ").trim();
+		//去除额外的<>和因此产生的空格。
+	    String result = methodSootName.replaceAll("<[^<>]*>", "");
+	    do {
+	    	methodSootName = result;
+		    result = methodSootName.replaceAll("<[^<>]*>", "");
+	    }while(!result.equals(methodSootName));
+
+		methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
+		System.out.println("[xzy处理后]"+methodSootName);
 		return methodSootName;
 		
 	}
@@ -172,17 +204,24 @@ public class AnalysisUtils {
 		List<ASTNode> parameterList = mdNode.parameters();
 		String parameterString = new String();
 		if(parameterList.isEmpty()) {
-			return null;
+			return "";
 		}else {
 			for(ASTNode astnode:parameterList) {
 				SingleVariableDeclaration param = (SingleVariableDeclaration) astnode;
 				 ITypeBinding typeBinding = param.getType().resolveBinding();
-                    String typefullName = typeBinding.getQualifiedName();
-                    if(parameterString.isEmpty()) {
-                    	parameterString = typefullName;
-                    }else {
-                    	parameterString = parameterString+","+typefullName;
-                    }
+				 String typefullName;
+				 if(typeBinding.isTypeVariable()) {
+					 typefullName = "java.lang.Object";
+				 }else if(typeBinding.isPrimitive()){
+					 typefullName = typeBinding.getQualifiedName();
+				 }else {
+					 typefullName = typeBinding.getBinaryName();
+				 }
+                if(parameterString.isEmpty()) {
+                	parameterString = typefullName;
+                }else {
+                	parameterString = parameterString+","+typefullName;
+                }
 			}
 			return parameterString;
 		}
