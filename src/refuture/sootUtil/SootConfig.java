@@ -45,10 +45,10 @@ public class SootConfig {
         // 将待分析的项目依赖的jar包路径和输出class路径组合
     	String finalPath = getJarPath()+File.pathSeparator+AnalysisUtils.getSootClassPath();
         // 设置 soot 类加载路径
-    	System.out.println(finalPath);
+    	System.out.println("[BasicOptions:allPath]"+finalPath);
     	
         Options.v().set_soot_classpath(finalPath);
-        System.out.println(AnalysisUtils.getSootClassPath());
+        System.out.println("[BasicOptions:applicationPath]"+AnalysisUtils.getSootClassPath());
         // 将给定的类加载路径作为默认类加载路径
         Options.v().set_prepend_classpath(true);
         // 运行soot创建虚类，如果源码中找不到对应源码，soot 会自动创建一个虚拟的类来代替。
