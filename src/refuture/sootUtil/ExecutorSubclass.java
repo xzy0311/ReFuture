@@ -124,6 +124,9 @@ public class ExecutorSubclass {
 		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
 		List<Value> lv =ivcExp.getArgs();
 		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+		if(lv.size() == 0) {
+			return false;
+		}
 		Local la1 = (Local) lv.get(0);
 		PointsToSet ptset = pa.reachingObjects(la1);
 		Set<Type> typeSet = ptset.possibleTypes();
