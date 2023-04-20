@@ -1,46 +1,39 @@
 package refuture.refactoring;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.FutureTask;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.SimpleType;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.ThrowStatement;
+import org.eclipse.jdt.core.dom.TryStatement;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
-import org.eclipse.jface.text.Document;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.TextFileChange;
 import org.eclipse.text.edits.TextEdit;
 
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.sootUtil.AdaptAst;
-import refuture.sootUtil.ClassHierarchy;
 import refuture.sootUtil.ExecutorSubclass;
-import soot.Local;
-import soot.PointsToAnalysis;
-import soot.PointsToSet;
-import soot.Scene;
 import soot.jimple.Stmt;
-import soot.jimple.internal.JimpleLocalBox;
-import soot.jimple.toolkits.base.ExceptionCheckerError;
 
 /**
  * 这个类保存着重构future到completableFuture的方法。
@@ -134,6 +127,16 @@ public class Future2Completable {
 	 * Future f = es.submit(Callable);
 	 * 直接转换为 Future f = (Future)CompletableFuture.supplyAsync(Callable,es);
 	 * 
+	 * 第二版，完善Callable转换到Supplier的情况。
+	 * 需要改变AST ast = methodbody.ast。
+	 * 构建一个BiFunction 和一个 Function的匿名类对象。
+	 * 使用 Supplier 将 在submit中的callable对象进行包裹。
+	 * 重构
+	 * Future f = es.submit(call);
+	 * ——>
+	 * Future f = CompletableFuture.supplyAsync(call$Rf$,es).handle(bfun).thenCompose(fun3);
+	 * 
+	 * 
 	 */
 	private static boolean refactorffSubmitCallable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
 		
@@ -148,15 +151,82 @@ public class Future2Completable {
             	AST ast = invocationNode.getAST();
             	ASTRewrite rewriter = ASTRewrite.create(ast);
             	//重构逻辑
-//            	MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+//CompletableFuture.supplyAsync(Supplier,Executor)
+            	MethodInvocation invocationFirst = ast.newMethodInvocation();
+            	rewriter.set(invocationFirst, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
+            	rewriter.set(invocationFirst, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("supplyAsync"), null);
+/*
+ * 	()->{
+		                try {
+		                    return call.call();
+		                } catch (Exception e) {
+		                    throw new RuntimeException(e);
+		                }
+		            }
+ */
+            	Object callableObject = invocationNode.arguments().get(0);
+            	// callable.call()；
+            	MethodInvocation invocCall = ast.newMethodInvocation();
+            	rewriter.set(invocCall, MethodInvocation.EXPRESSION_PROPERTY, callableObject, null);
+            	rewriter.set(invocCall, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("call"), null);
+            	//return callable.call();
+            	ReturnStatement reFirst = ast.newReturnStatement();
+            	rewriter.set(reFirst, ReturnStatement.EXPRESSION_PROPERTY, invocCall, null);
+            	//{return callable.call();}
+            	Block tryBlockFirst = ast.newBlock();
+            	rewriter.set(tryBlockFirst, Block.STATEMENTS_PROPERTY, reFirst, null);
+            	//try {return callable.call();}
+            	TryStatement tryFirst = ast.newTryStatement();
+            	rewriter.set(tryFirst, TryStatement.BODY_PROPERTY, tryBlockFirst, null);
+            	//catch (Exception e){ throw new RuntimeException(e)};}
+            	//Exception e
+            	SingleVariableDeclaration exceptionE = ast.newSingleVariableDeclaration();
+            	rewriter.set(exceptionE, SingleVariableDeclaration.TYPE_PROPERTY, ast.newSimpleType(ast.newSimpleName("Exception")), null);
+            	rewriter.set(exceptionE, SingleVariableDeclaration.NAME_PROPERTY, ast.newSimpleName("e"), null);
+            	//new RuntimeException(e)
+            	ClassInstanceCreation exceptionInstance = ast.newClassInstanceCreation();
+            	rewriter.set(exceptionInstance, ClassInstanceCreation.TYPE_PROPERTY, ast.newSimpleType(ast.newSimpleName("RuntimeException")), null);
+            	ListRewrite listRewriterRe = rewriter.getListRewrite(exceptionInstance, ClassInstanceCreation.ARGUMENTS_PROPERTY);
+            	listRewriterRe.insertLast(ast.newSimpleName("e"), null);
+            	//throw new RuntimeException(e)
+            	ThrowStatement throwStatement = ast.newThrowStatement();
+            	rewriter.set(throwStatement, ThrowStatement.EXPRESSION_PROPERTY, exceptionInstance, null);
+            	//{throw new RuntimeException(e)};
+            	Block tryBlockSecond = ast.newBlock();
+            	rewriter.set(tryBlockSecond, Block.STATEMENTS_PROPERTY, throwStatement, null);
+            	//catch (Exception e){ throw new RuntimeException(e)};}
+            	CatchClause catchClause = ast.newCatchClause();
+            	rewriter.set(catchClause, CatchClause.EXCEPTION_PROPERTY, exceptionE, null);
+            	rewriter.set(catchClause, CatchClause.BODY_PROPERTY, tryBlockSecond, null);
+            	/*
+            	 * 	try {
+		                    return call.call();
+		                } catch (Exception e) {
+		                    throw new RuntimeException(e);
+		                }
+            	 */
+            	ListRewrite listRewriterTry = rewriter.getListRewrite(tryFirst, TryStatement.CATCH_CLAUSES_PROPERTY);
+            	listRewriterTry.insertLast(catchClause, null);
+            	//{ try... catch..}
+            	Block lambdaBlockFirst = ast.newBlock();
+            	rewriter.set(lambdaBlockFirst, Block.STATEMENTS_PROPERTY, tryFirst, null);
+            	//()->{}
+            	LambdaExpression lambdaExpFirst = ast.newLambdaExpression();
+            	rewriter.set(lambdaExpFirst, LambdaExpression.BODY_PROPERTY, lambdaBlockFirst, null);
+            	//CompletableFuture.supplyAsync(Supplier,Executor)
+            	ListRewrite listRewriteIvocFirst = rewriter.getListRewrite(invocationFirst, MethodInvocation.ARGUMENTS_PROPERTY);
+            	listRewriteIvocFirst.insertLast(lambdaExpFirst, null);
+            	listRewriteIvocFirst.insertLast(invocationNode.getExpression(), null);
+            	//CompletableFuture.supplyAsync(Supplier,Executor).handle(LambdaExpression)
+            	//CompletableFuture.supplyAsync(Supplier,Executor).handle(LambdaExpression).thenCompose(LambdaExpression）
             	
-            	rewriter.set(invocationNode, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
-            	rewriter.set(invocationNode, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("supplyAsync"), null);
+            	
+            	
+            	
+            	
+
             	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
-//            	ASTNode firstArgu = rewriter.createCopyTarget((ASTNode) invocationNode.arguments().get(0));
-//            	listRewriter.insertLast(ast.newSimpleName(invocationNode.arguments().get(0).toString()), null);
             	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
-//            	rewriter.replace(invocationNode, newMethodInvocation, null);
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
             	return true;
