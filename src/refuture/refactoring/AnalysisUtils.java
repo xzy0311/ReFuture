@@ -212,7 +212,7 @@ public class AnalysisUtils {
 				 String typefullName;
 				 if(typeBinding.isTypeVariable()) {
 					 typefullName = "java.lang.Object";
-				 }else if(typeBinding.isPrimitive()){
+				 }else if(typeBinding.isPrimitive()||typeBinding.isArray()){
 					 typefullName = typeBinding.getQualifiedName();
 				 }else {
 					 typefullName = typeBinding.getBinaryName();
