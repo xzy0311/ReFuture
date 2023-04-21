@@ -162,7 +162,7 @@ public class AnalysisUtils {
 				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
 			}
 		}
-		System.out.println("[xzy处理前]"+methodSootName);
+		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
 		//最后对methodsubsignature进行处理，将形式参数去除,将多余的空格去除，使用正则表达式。
 //		String patternY = "<(\\w+)>"; // 匹配形如<asdf>的命令y
 //		String patternX = "(?<=<)\\w+(?=>)"; // 匹配形如<asdf>中的命令x
@@ -187,7 +187,7 @@ public class AnalysisUtils {
 	    }while(!result.equals(methodSootName));
 
 		methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
-		System.out.println("[xzy处理后]"+methodSootName);
+		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
 		return methodSootName;
 		
 	}
