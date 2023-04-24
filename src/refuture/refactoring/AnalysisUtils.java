@@ -116,8 +116,6 @@ public class AnalysisUtils {
 		return allJavaFiles;
 	}
 
-
-	
 	/**
 	 * 得到 node所属的方法的Soot中名称，在方法体外和构造函数，则返回“void {@code<init>}()”,否则返回方法签名.
 	 *方法的返回值若是引用类型，需要写全名。
@@ -156,7 +154,7 @@ public class AnalysisUtils {
 				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
 			}
 		}
-		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+//		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
 		//去除额外的<>和因此产生的空格。
 	    String result = methodSootName.replaceAll("<[^<>]*>", "");
 	    do {
@@ -165,11 +163,10 @@ public class AnalysisUtils {
 	    }while(!result.equals(methodSootName));
 
 		methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
-		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+//		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
 		return methodSootName;
 		
 	}
-	
 	
 	/**
 	 * 通过MethodDeclaration,得到参数的类型全名。
@@ -226,16 +223,11 @@ public class AnalysisUtils {
 		return (MethodDeclaration) node;
 	}
 	
-	
-
 	public static String getProjectPath() {
 		return PROJECTPATH;
 	}
 
-
-	
 	public static String getSootClassPath() {
 		return PROJECTOUTPATH;
 	}
-
 }
