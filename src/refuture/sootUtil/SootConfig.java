@@ -52,7 +52,7 @@ public class SootConfig {
         // 将给定的类加载路径作为默认类加载路径
         Options.v().set_prepend_classpath(true);
         // 运行soot创建虚类，如果源码中找不到对应源码，soot 会自动创建一个虚拟的类来代替。
-        Options.v().set_allow_phantom_refs(false);
+        Options.v().set_allow_phantom_refs(true);
         // 加入全局处理阶段
         Options.v().set_whole_program(true);
         // 行数表
