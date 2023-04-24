@@ -71,7 +71,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 	
 	/**
-	 * Collect from select.
+	 * Collect from select,并得到项目的路径。
 	 *
 	 * @param project the project
 	 * @return 传入的对象中包含的java文件列表。
@@ -79,14 +79,10 @@ public class AnalysisUtils {
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
 
-//得到输出的class在的文件夹，方便后继使用soot分析。
+		//得到输出的class在的文件夹，方便后继使用soot分析。
 		try {
-			
-			
 			PROJECTOUTPATH = project.getOutputLocation().toOSString();
-			
 			PROJECTPATH = project.getProject().getLocation().toOSString();
-			
 			int lastIndex = PROJECTPATH.lastIndexOf("/");
 			String RUNTIMEPATH = PROJECTPATH.substring(0, lastIndex);
 			PROJECTOUTPATH = RUNTIMEPATH+PROJECTOUTPATH;
@@ -117,8 +113,6 @@ public class AnalysisUtils {
 		}catch(JavaModelException e) {
 			e.printStackTrace();
 		}
-		
-
 		return allJavaFiles;
 	}
 
@@ -163,22 +157,6 @@ public class AnalysisUtils {
 			}
 		}
 		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
-		//最后对methodsubsignature进行处理，将形式参数去除,将多余的空格去除，使用正则表达式。
-//		String patternY = "<(\\w+)>"; // 匹配形如<asdf>的命令y
-//		String patternX = "(?<=<)\\w+(?=>)"; // 匹配形如<asdf>中的命令x
-//		String replacement = "java.lang.Object"; // 替换为java.lang.Object
-//		Pattern patternYObj = Pattern.compile(patternY);
-//		Matcher matcherY = patternYObj.matcher(methodSootName);
-//		while (matcherY.find()) {
-//		    String commandY = matcherY.group();
-//		    Pattern patternXObj = Pattern.compile(patternX);
-//		    Matcher matcherX = patternXObj.matcher(commandY);
-//		    if (matcherX.find()) {
-//		        String commandX = matcherX.group();
-//		        methodSootName = methodSootName.replaceAll(commandY, "").replaceAll("(?<!\\S)" + commandX + "(?!\\S)", replacement);
-//		    }
-//		}
-//		methodSootName = methodSootName.replaceAll("\\s+", " ").trim();
 		//去除额外的<>和因此产生的空格。
 	    String result = methodSootName.replaceAll("<[^<>]*>", "");
 	    do {
