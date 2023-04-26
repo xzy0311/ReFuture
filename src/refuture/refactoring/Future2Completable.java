@@ -19,6 +19,7 @@ import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.InfixExpression;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
 import org.eclipse.jdt.core.dom.LambdaExpression;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.ReturnStatement;
@@ -27,6 +28,7 @@ import org.eclipse.jdt.core.dom.SimpleType;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.ThrowStatement;
 import org.eclipse.jdt.core.dom.TryStatement;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
@@ -63,6 +65,7 @@ public class Future2Completable {
 		return true;
 	}
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
+		int i = 1;
 		for(ICompilationUnit cu : allJavaFiles) {
 			IFile source = (IFile) cu.getResource();
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
@@ -75,6 +78,9 @@ public class Future2Completable {
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();
 			for(MethodInvocation invocationNode:invocationNodes) {
+				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
+					continue;
+				}
 				TextFileChange change = new TextFileChange("Future2Completable",source);
 				boolean flag1 = refactorExecuteRunnable(invocationNode,change);
 				boolean flag2 = refactorffSubmitCallable(invocationNode,change);
@@ -84,11 +90,13 @@ public class Future2Completable {
 				boolean flag6 = refactorExecuteFutureTask(invocationNode,change);
 				if(flag1||flag2||flag3||flag4||flag5||flag6) {
 					allChanges.add(change);
+					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
+					TypeDeclaration outTD = (TypeDeclaration) outMD.getParent();
+					System.out.printf("Task->CF:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,outTD.resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+					i = i+1;
 				}
+				
 			}
-			
-			
-
 		}
 	}
 	

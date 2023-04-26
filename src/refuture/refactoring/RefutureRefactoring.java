@@ -63,6 +63,8 @@ public class RefutureRefactoring extends Refactoring {
 //		return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		List<String> additionalExecutorClass = ClassHierarchy.initialCheckForClassHierarchy();
 		if(!additionalExecutorClass.isEmpty()) {
+			int i = 1;
+			additionalExecutorClass.forEach((e)->{System.out.printf("initialConditions|额外的子类:%s%n",e);});
 			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+additionalExecutorClass);
 		}
 		if (allJavaFiles.isEmpty()) {
