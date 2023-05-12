@@ -39,14 +39,16 @@ public class ExecutorSubclass {
 		setExecutorSubClass.add("java.util.concurrent.AbstractExecutorService");
 		return setExecutorSubClass;
 	}
-	public static List<String> getAdditionalExecutorClass(){
+
+	/** 得到附加的ExecutorSerivce子类。 */
+	public static List<SootClass> getAdditionalExecutorClass(){
 		//检查Executor的继承关系。
-		List<String> executorSubClassesName = ClassHierarchy.getSubClassesNameInProject("java.util.concurrent.ExecutorService");
+		List<SootClass> executorSubClasses = ClassHierarchy.getSubClassesfor("java.util.concurrent.ExecutorService");
 		List<String> setExecutorSubClass = new ArrayList<String>(getJDKExecutorSubClass());
-		List<String> additionalExecutorClass = new ArrayList<String>();
-		for(String executorSubClassName:executorSubClassesName) {
-			if(!setExecutorSubClass.contains(executorSubClassName)) {
-				additionalExecutorClass.add(executorSubClassName);
+		List<SootClass> additionalExecutorClass = new ArrayList<SootClass>();
+		for(SootClass executorSubClass:executorSubClasses) {
+			if(!setExecutorSubClass.contains(executorSubClass.getName())) {
+				additionalExecutorClass.add(executorSubClass);
 			}
 		}
 //		System.out.println("[executorSubClassesName]"+executorSubClassesName);
@@ -59,6 +61,8 @@ public class ExecutorSubclass {
 	 * 目前不具备分析额外的Executor子类的能力，只能先手动筛选能够返回FutureTask类型，且不具备ForkJoin
 	 * 和Schedule特性的执行器。.
 	 *
+	 *5.12尝试完善。
+	 *
 	 * @return the complete executor
 	 */
 	public static Set<String> getCompleteExecutor() {
@@ -66,7 +70,31 @@ public class ExecutorSubclass {
 		completeExecutorSubClass.add("java.util.concurrent.ThreadPoolExecutor");
 		completeExecutorSubClass.add("java.util.concurrent.Executors$FinalizableDelegatedExecutorService");
 		completeExecutorSubClass.add("java.util.concurrent.Executors$DelegatedExecutorService");
+		completeExecutorSubClass.add("java.util.concurrent.AbstractExecutorService");
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		return completeExecutorSubClass;
+		
+		
+		
+		
+		
+		
+		
 	}
 
 	

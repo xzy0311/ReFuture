@@ -16,6 +16,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
 import refuture.sootUtil.ClassHierarchy;
 import refuture.sootUtil.SootConfig;
+import soot.SootClass;
 
 
 // TODO: Auto-generated Javadoc
@@ -61,10 +62,10 @@ public class RefutureRefactoring extends Refactoring {
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
 //		return RefactoringStatus.createFatalErrorStatus("Find zero java file");
-		List<String> additionalExecutorClass = ClassHierarchy.initialCheckForClassHierarchy();
+		List<SootClass> additionalExecutorClass = ClassHierarchy.initialCheckForClassHierarchy();
 		if(!additionalExecutorClass.isEmpty()) {
 			int i = 1;
-			additionalExecutorClass.forEach((e)->{System.out.printf("initialConditions|额外的子类:%s%n",e);});
+			additionalExecutorClass.forEach((e)->{System.out.printf("initialConditions|额外的子类:%s%n",e.getName());});
 			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+additionalExecutorClass);
 		}
 		if (allJavaFiles.isEmpty()) {

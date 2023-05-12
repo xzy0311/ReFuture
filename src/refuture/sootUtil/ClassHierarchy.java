@@ -34,20 +34,18 @@ public class ClassHierarchy {
 	     }
 
 	}
+	
 	//得到输入的Executor和Future的所有的子类，作为初始条件检查的一部分。
-	public static List<String> getSubClassesNameInProject(String name) {
-		List<SootClass> subClassInJDK = getSubClassesfor(name);
-		List<String> classesName = new ArrayList<String>();
-		for(SootClass sc:subClassInJDK) {
-			classesName.add(sc.getName());
-//			System.out.println("[ClassHierarchy debug]"+sc.getName());
-		}
-		return classesName;
-	}
+	/*
+	 * public static List<String> getSubClassesNameInProject(String name) {
+	 * List<SootClass> subClassInJDK = getSubClassesfor(name); List<String>
+	 * classesName = new ArrayList<String>(); for(SootClass sc:subClassInJDK) {
+	 * classesName.add(sc.getName()); } return classesName; }
+	 */
 	
-	public static List<String> initialCheckForClassHierarchy() {
+	public static List<SootClass> initialCheckForClassHierarchy() {
 	
-		List<String> additionalExecutorClass =ExecutorSubclass.getAdditionalExecutorClass();
+		List<SootClass> additionalExecutorClass =ExecutorSubclass.getAdditionalExecutorClass();
 		return additionalExecutorClass;
 	}
 
