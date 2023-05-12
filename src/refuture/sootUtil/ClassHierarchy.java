@@ -35,7 +35,7 @@ public class ClassHierarchy {
 
 	}
 	//得到输入的Executor和Future的所有的子类，作为初始条件检查的一部分。
-	public static List<String> getSubClassInJDK(String name) {
+	public static List<String> getSubClassesNameInProject(String name) {
 		List<SootClass> subClassInJDK = getSubClassesfor(name);
 		List<String> classesName = new ArrayList<String>();
 		for(SootClass sc:subClassInJDK) {

@@ -44,7 +44,12 @@ public class AdaptAst {
 //		System.out.println("[getJimpleInvocStmt:]"+methodSootName);
 		TypeDeclaration td =(TypeDeclaration)AnalysisUtils.getMethodDeclaration4node(miv).getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
 		ITypeBinding itb = td.resolveBinding();//得到FullName,必须是用绑定。
-		String typeFullName = itb.getQualifiedName();
+		String typeFullName;
+		if(itb.isNested()) {
+			typeFullName = itb.getBinaryName();
+		}else {
+			typeFullName = itb.getQualifiedName();
+		}
 //		System.out.println("[getJimpleInvocStmt:]"+typeFullName);
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		SootMethod sm = sc.getMethod(methodSootName);

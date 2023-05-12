@@ -4,6 +4,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -18,6 +20,7 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
@@ -68,7 +71,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 	
 	/**
-	 * Collect from select.
+	 * Collect from select,并得到项目的路径。
 	 *
 	 * @param project the project
 	 * @return 传入的对象中包含的java文件列表。
@@ -76,14 +79,10 @@ public class AnalysisUtils {
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
 
-//得到输出的class在的文件夹，方便后继使用soot分析。
+		//得到输出的class在的文件夹，方便后继使用soot分析。
 		try {
-			
-			
 			PROJECTOUTPATH = project.getOutputLocation().toOSString();
-			
 			PROJECTPATH = project.getProject().getLocation().toOSString();
-			
 			int lastIndex = PROJECTPATH.lastIndexOf("/");
 			String RUNTIMEPATH = PROJECTPATH.substring(0, lastIndex);
 			PROJECTOUTPATH = RUNTIMEPATH+PROJECTOUTPATH;
@@ -114,16 +113,12 @@ public class AnalysisUtils {
 		}catch(JavaModelException e) {
 			e.printStackTrace();
 		}
-		
-
 		return allJavaFiles;
 	}
 
-
-	
 	/**
 	 * 得到 node所属的方法的Soot中名称，在方法体外和构造函数，则返回“void {@code<init>}()”,否则返回方法签名.
-	 *
+	 *方法的返回值若是引用类型，需要写全名。
 	 * @param node node必须保证，是类里面的语句节点，否则陷入无限循环。
 	 * @return the method name
 	 */
@@ -133,7 +128,9 @@ public class AnalysisUtils {
 		while(!(node instanceof TypeDeclaration) ) {
 			if(node instanceof MethodDeclaration) {
 				MethodDeclaration mdNode = (MethodDeclaration)node;
+				IMethodBinding imb =mdNode.resolveBinding();
 				Type type = mdNode.getReturnType2();
+				String methodReturnTypeName;
 				if(type == null) {//构造函数为null,但是需要判断是否有参数
 					if(getmethodParameters(mdNode).isEmpty())
 						{break;}else {
@@ -141,10 +138,11 @@ public class AnalysisUtils {
 							break;
 						}
 				}
-				String methodReturnTypeName = type.toString();
-//				if(methodReturnTypeName.equals("null")) {
-//					break;
-//				}
+				if(type.resolveBinding().isTypeVariable()) {
+					methodReturnTypeName = "java.lang.Object";
+				}else {
+					methodReturnTypeName = imb.getReturnType().getQualifiedName().toString();
+				}
 				String methodSimpleName = mdNode.getName().toString();
 				String methodParameters = getmethodParameters(mdNode);
 				methodSootName = methodReturnTypeName+" "+methodSimpleName+"("+methodParameters+")";
@@ -156,10 +154,19 @@ public class AnalysisUtils {
 				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
 			}
 		}
+//		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+		//去除额外的<>和因此产生的空格。
+	    String result = methodSootName.replaceAll("<[^<>]*>", "");
+	    do {
+	    	methodSootName = result;
+		    result = methodSootName.replaceAll("<[^<>]*>", "");
+	    }while(!result.equals(methodSootName));
+
+		methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
+//		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
 		return methodSootName;
 		
 	}
-	
 	
 	/**
 	 * 通过MethodDeclaration,得到参数的类型全名。
@@ -172,17 +179,24 @@ public class AnalysisUtils {
 		List<ASTNode> parameterList = mdNode.parameters();
 		String parameterString = new String();
 		if(parameterList.isEmpty()) {
-			return null;
+			return "";
 		}else {
 			for(ASTNode astnode:parameterList) {
 				SingleVariableDeclaration param = (SingleVariableDeclaration) astnode;
 				 ITypeBinding typeBinding = param.getType().resolveBinding();
-                    String typefullName = typeBinding.getQualifiedName();
-                    if(parameterString.isEmpty()) {
-                    	parameterString = typefullName;
-                    }else {
-                    	parameterString = parameterString+","+typefullName;
-                    }
+				 String typefullName;
+				 if(typeBinding.isTypeVariable()) {
+					 typefullName = "java.lang.Object";
+				 }else if(typeBinding.isPrimitive()||typeBinding.isArray()){
+					 typefullName = typeBinding.getQualifiedName();
+				 }else {
+					 typefullName = typeBinding.getBinaryName();
+				 }
+                if(parameterString.isEmpty()) {
+                	parameterString = typefullName;
+                }else {
+                	parameterString = parameterString+","+typefullName;
+                }
 			}
 			return parameterString;
 		}
@@ -209,16 +223,11 @@ public class AnalysisUtils {
 		return (MethodDeclaration) node;
 	}
 	
-	
-
 	public static String getProjectPath() {
 		return PROJECTPATH;
 	}
 
-
-	
 	public static String getSootClassPath() {
 		return PROJECTOUTPATH;
 	}
-
 }

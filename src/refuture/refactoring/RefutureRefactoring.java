@@ -3,37 +3,19 @@ package refuture.refactoring;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.IPackageFragment;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.MarkerAnnotation;
-import org.eclipse.jdt.core.dom.MemberValuePair;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.NormalAnnotation;
-import org.eclipse.jface.text.Document;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.CompositeChange;
 import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
-import org.eclipse.ltk.core.refactoring.TextFileChange;
-import org.eclipse.text.edits.TextEdit;
 
 import refuture.sootUtil.ClassHierarchy;
 import refuture.sootUtil.SootConfig;
-import soot.Scene;
 
 
 // TODO: Auto-generated Javadoc
@@ -64,7 +46,7 @@ public class RefutureRefactoring extends Refactoring {
 		allChanges = new ArrayList<Change>();
 		potentialJavaFiles = new ArrayList<IJavaElement>();
 		InitAllStaticfield.init();//初始化所有的静态字段。
-		SootConfig.setupSoot(AnalysisUtils.getSootClassPath());//配置初始化soot,用来分析类层次结构
+		SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
 		
 	}
 
@@ -78,8 +60,11 @@ public class RefutureRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
+//		return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		List<String> additionalExecutorClass = ClassHierarchy.initialCheckForClassHierarchy();
 		if(!additionalExecutorClass.isEmpty()) {
+			int i = 1;
+			additionalExecutorClass.forEach((e)->{System.out.printf("initialConditions|额外的子类:%s%n",e);});
 			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+additionalExecutorClass);
 		}
 		if (allJavaFiles.isEmpty()) {
@@ -96,7 +81,7 @@ public class RefutureRefactoring extends Refactoring {
 			throws CoreException, OperationCanceledException {
 		Future2Completable.refactor(allJavaFiles);
 		if(!Future2Completable.getStatus()) {
-			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+Future2Completable.getErrorCause());
+			return RefactoringStatus.createErrorStatus(Future2Completable.getErrorCause());
 		}
 		return null;
 	}

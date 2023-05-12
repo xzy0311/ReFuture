@@ -16,6 +16,7 @@ import soot.SootClass;
 import soot.SootMethod;
 import soot.Type;
 import soot.Value;
+import soot.ValueBox;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.JimpleLocalBox;
@@ -26,7 +27,7 @@ import soot.jimple.internal.JimpleLocalBox;
 //负责从所有的Executor子类中，筛选出能够重构的子类。
 public class ExecutorSubclass {
 
-	//jdk1.8 内置的Executor的子类。
+	/** jdk1.8 内置的Executor的子类。 */
 	private static Set<String> getJDKExecutorSubClass(){
 		Set<String>setExecutorSubClass = new HashSet<String>();
 		setExecutorSubClass.add("java.util.concurrent.Executors$DelegatedScheduledExecutorService");
@@ -36,8 +37,22 @@ public class ExecutorSubclass {
 		setExecutorSubClass.add("java.util.concurrent.Executors$FinalizableDelegatedExecutorService");
 		setExecutorSubClass.add("java.util.concurrent.Executors$DelegatedExecutorService");
 		setExecutorSubClass.add("java.util.concurrent.AbstractExecutorService");
-		setExecutorSubClass.add("sun.nio.ch.AsynchronousChannelGroupImpl");
 		return setExecutorSubClass;
+	}
+	public static List<String> getAdditionalExecutorClass(){
+		//检查Executor的继承关系。
+		List<String> executorSubClassesName = ClassHierarchy.getSubClassesNameInProject("java.util.concurrent.ExecutorService");
+		List<String> setExecutorSubClass = new ArrayList<String>(getJDKExecutorSubClass());
+		List<String> additionalExecutorClass = new ArrayList<String>();
+		for(String executorSubClassName:executorSubClassesName) {
+			if(!setExecutorSubClass.contains(executorSubClassName)) {
+				additionalExecutorClass.add(executorSubClassName);
+			}
+		}
+//		System.out.println("[executorSubClassesName]"+executorSubClassesName);
+//		System.out.println("[setExecutorSubClass]"+setExecutorSubClass);
+//		System.out.println("[additionalExecutorClass]"+additionalExecutorClass);
+		return additionalExecutorClass;
 	}
 	
 	/**
@@ -55,23 +70,6 @@ public class ExecutorSubclass {
 	}
 
 	
-	
-	public static List<String> getAdditionalExecutorClass(){
-		//检查Executor的继承关系。
-		List<String> executorSubClassesName = ClassHierarchy.getSubClassInJDK("java.util.concurrent.Executor");
-		List<String> setExecutorSubClass = new ArrayList<String>(getJDKExecutorSubClass());
-		List<String> additionalExecutorClass = new ArrayList<String>();
-		for(String executorSubClassName:executorSubClassesName) {
-			if(!setExecutorSubClass.contains(executorSubClassName)) {
-				additionalExecutorClass.add(executorSubClassName);
-			}
-		}
-//		System.out.println("[executorSubClassesName]"+executorSubClassesName);
-//		System.out.println("[setExecutorSubClass]"+setExecutorSubClass);
-//		System.out.println("[additionalExecutorClass]"+additionalExecutorClass);
-		return additionalExecutorClass;
-	}
-	
 	/**
 	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。
 	 *
@@ -79,7 +77,8 @@ public class ExecutorSubclass {
 	 * @return true, 如果可以进行重构
 	 */
 	public static boolean canRefactor(Stmt invocStmt) {
-			Iterator it =invocStmt.getUseBoxes().iterator();
+		List<ValueBox> lvbs = invocStmt.getUseBoxes();
+			Iterator it =lvbs.iterator();
         	while(it.hasNext()) {
         		Object o = it.next();
         		if (o instanceof JimpleLocalBox) {
@@ -101,7 +100,6 @@ public class ExecutorSubclass {
         				return true;
         			}
         		}	
-        		
         	}
         	return false;
 	}
@@ -122,6 +120,9 @@ public class ExecutorSubclass {
 		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
 		List<Value> lv =ivcExp.getArgs();
 		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+		if(lv.size() == 0) {
+			return false;
+		}
 		Local la1 = (Local) lv.get(0);
 		PointsToSet ptset = pa.reachingObjects(la1);
 		Set<Type> typeSet = ptset.possibleTypes();
@@ -134,13 +135,20 @@ public class ExecutorSubclass {
 				if(sc.isPhantom()||callable.isPhantom()) {
 					return false;
 				}
-				return hierarchy.isClassSuperclassOf(callable, sc);
+				List<SootClass> implementers =hierarchy.getImplementersOf(callable);
+				return implementers.contains(sc);
 			}
+			break;
+		case 4:		
+			if(lv.size()==2) {
+			return true;
+		}
 			break;
 		default://判断是否是FutureTask类型，若是则判断是3则返回true，其他情况返回false；若不是则2返回true,其他情况返回false;
 			for(Type type:typeSet) {
 				SootClass sc = Scene.v().getSootClass(type.getEscapedName());
 				SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
+				SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
 				if(sc.isPhantom()||futureTask.isPhantom()) {
 					return false;
 				}
@@ -149,14 +157,15 @@ public class ExecutorSubclass {
 						return true;
 					}
 				}else {
-					if(argType ==2) {
-						return true;
+					if(argType ==2&&lv.size()==1) {
+						List<SootClass> implementers =hierarchy.getImplementersOf(runnable);
+						return implementers.contains(sc);
+
 					}
 				}
 			}
 			return false;
 		}
-		System.out.println("over");
 		return false;
 	}
 }
