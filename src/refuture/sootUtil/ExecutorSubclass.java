@@ -27,7 +27,7 @@ import soot.jimple.internal.JimpleLocalBox;
 //负责从所有的Executor子类中，筛选出能够重构的子类。
 public class ExecutorSubclass {
 
-	//jdk1.8 内置的Executor的子类。
+	/** jdk1.8 内置的Executor的子类。 */
 	private static Set<String> getJDKExecutorSubClass(){
 		Set<String>setExecutorSubClass = new HashSet<String>();
 		setExecutorSubClass.add("java.util.concurrent.Executors$DelegatedScheduledExecutorService");
@@ -37,8 +37,22 @@ public class ExecutorSubclass {
 		setExecutorSubClass.add("java.util.concurrent.Executors$FinalizableDelegatedExecutorService");
 		setExecutorSubClass.add("java.util.concurrent.Executors$DelegatedExecutorService");
 		setExecutorSubClass.add("java.util.concurrent.AbstractExecutorService");
-		setExecutorSubClass.add("sun.nio.ch.AsynchronousChannelGroupImpl");
 		return setExecutorSubClass;
+	}
+	public static List<String> getAdditionalExecutorClass(){
+		//检查Executor的继承关系。
+		List<String> executorSubClassesName = ClassHierarchy.getSubClassesNameInProject("java.util.concurrent.ExecutorService");
+		List<String> setExecutorSubClass = new ArrayList<String>(getJDKExecutorSubClass());
+		List<String> additionalExecutorClass = new ArrayList<String>();
+		for(String executorSubClassName:executorSubClassesName) {
+			if(!setExecutorSubClass.contains(executorSubClassName)) {
+				additionalExecutorClass.add(executorSubClassName);
+			}
+		}
+//		System.out.println("[executorSubClassesName]"+executorSubClassesName);
+//		System.out.println("[setExecutorSubClass]"+setExecutorSubClass);
+//		System.out.println("[additionalExecutorClass]"+additionalExecutorClass);
+		return additionalExecutorClass;
 	}
 	
 	/**
@@ -55,23 +69,6 @@ public class ExecutorSubclass {
 		return completeExecutorSubClass;
 	}
 
-	
-	
-	public static List<String> getAdditionalExecutorClass(){
-		//检查Executor的继承关系。
-		List<String> executorSubClassesName = ClassHierarchy.getSubClassesNameInProject("java.util.concurrent.Executor");
-		List<String> setExecutorSubClass = new ArrayList<String>(getJDKExecutorSubClass());
-		List<String> additionalExecutorClass = new ArrayList<String>();
-		for(String executorSubClassName:executorSubClassesName) {
-			if(!setExecutorSubClass.contains(executorSubClassName)) {
-				additionalExecutorClass.add(executorSubClassName);
-			}
-		}
-//		System.out.println("[executorSubClassesName]"+executorSubClassesName);
-//		System.out.println("[setExecutorSubClass]"+setExecutorSubClass);
-//		System.out.println("[additionalExecutorClass]"+additionalExecutorClass);
-		return additionalExecutorClass;
-	}
 	
 	/**
 	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。
@@ -103,7 +100,6 @@ public class ExecutorSubclass {
         				return true;
         			}
         		}	
-        		
         	}
         	return false;
 	}
