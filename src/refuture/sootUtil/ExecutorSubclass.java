@@ -33,7 +33,6 @@ public class ExecutorSubclass {
 	public static boolean initStaticField() {
 		completeExecutorSubClass = new HashSet<SootClass>();
 		allDirtyClasses = new HashSet<SootClass>();
-		ThreadPoolExecutorSubClassAnalysis();
 		return true;
 	}
 	
