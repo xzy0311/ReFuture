@@ -3,58 +3,38 @@ package refuture.sootUtil;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 
-import soot.ArrayType;
+import org.eclipse.ltk.core.refactoring.Change;
+
 import soot.Hierarchy;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
-import soot.SootMethod;
 import soot.Type;
 import soot.Value;
 import soot.ValueBox;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.JimpleLocalBox;
-
 /**
  * The Class ExecutorSubclass.
  */
 //负责从所有的Executor子类中，筛选出能够重构的子类。
 public class ExecutorSubclass {
-
-	/** jdk1.8 内置的Executor的子类。 */
-	private static Set<String> getJDKExecutorSubClass(){
-		Set<String>setExecutorSubClass = new HashSet<String>();
-		setExecutorSubClass.add("java.util.concurrent.Executors$DelegatedScheduledExecutorService");
-		setExecutorSubClass.add("java.util.concurrent.ScheduledThreadPoolExecutor");
-		setExecutorSubClass.add("java.util.concurrent.ForkJoinPool");
-		setExecutorSubClass.add("java.util.concurrent.ThreadPoolExecutor");
-		setExecutorSubClass.add("java.util.concurrent.Executors$FinalizableDelegatedExecutorService");
-		setExecutorSubClass.add("java.util.concurrent.Executors$DelegatedExecutorService");
-		setExecutorSubClass.add("java.util.concurrent.AbstractExecutorService");
-		return setExecutorSubClass;
-	}
-
-	/** 得到附加的ExecutorSerivce子类。 */
-	public static List<SootClass> getAdditionalExecutorClass(){
-		//检查Executor的继承关系。
-		List<SootClass> executorSubClasses = ClassHierarchy.getSubClassesfor("java.util.concurrent.ExecutorService");
-		List<String> setExecutorSubClass = new ArrayList<String>(getJDKExecutorSubClass());
-		List<SootClass> additionalExecutorClass = new ArrayList<SootClass>();
-		for(SootClass executorSubClass:executorSubClasses) {
-			if(!setExecutorSubClass.contains(executorSubClass.getName())) {
-				additionalExecutorClass.add(executorSubClass);
-			}
-		}
-//		System.out.println("[executorSubClassesName]"+executorSubClassesName);
-//		System.out.println("[setExecutorSubClass]"+setExecutorSubClass);
-//		System.out.println("[additionalExecutorClass]"+additionalExecutorClass);
-		return additionalExecutorClass;
+	private static Set<SootClass>completeExecutorSubClass;
+	private static Set<SootClass>allDirtyClasses;
+	
+	public static boolean initStaticField() {
+		completeExecutorSubClass = new HashSet<SootClass>();
+		allDirtyClasses = new HashSet<SootClass>();
+		ThreadPoolExecutorSubClassAnalysis();
+		return true;
 	}
 	
 	/**
@@ -62,41 +42,48 @@ public class ExecutorSubclass {
 	 * 和Schedule特性的执行器。.
 	 *
 	 *5.12尝试完善。
-	 *
+	 *5.15发现新问题，有一些Executor子类，它们是包装器，虽然重新Override了这几个相关的方法，但是它们只是简单的调用了的执行器字段的
 	 * @return the complete executor
 	 */
-	public static Set<String> getCompleteExecutor() {
-		Set<String>completeExecutorSubClass = new HashSet<String>();
-		completeExecutorSubClass.add("java.util.concurrent.ThreadPoolExecutor");
-		completeExecutorSubClass.add("java.util.concurrent.Executors$FinalizableDelegatedExecutorService");
-		completeExecutorSubClass.add("java.util.concurrent.Executors$DelegatedExecutorService");
-		completeExecutorSubClass.add("java.util.concurrent.AbstractExecutorService");
+	public static void ThreadPoolExecutorSubClassAnalysis() {
 		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		return completeExecutorSubClass;
-		
-		
-		
-		
-		
-		
-		
+		SootClass threadPoolExecutorClass = Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor");
+		Set<SootClass>dirtyClasses = new HashSet<SootClass>();
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		Queue<SootClass> workList = new LinkedList<>();
+		workList.addAll(hierarchy.getDirectSubclassesOf(threadPoolExecutorClass));
+		while(!workList.isEmpty()) {
+			SootClass currentClass = workList.poll();
+			//判断是否是dirtyClass
+			boolean flag1 = currentClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
+			boolean flag2 = currentClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)");
+			boolean flag3 = currentClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable)");
+			boolean flag4 = currentClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.util.concurrent.Callable)");
+			boolean flag5 = currentClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.lang.Runnable,java.lang.Object)");
+			boolean flag6 = currentClass.declaresMethod("void execute(java.lang.Runnable)");
+//			System.out.println("当前处理的子类："+currentClass);
+			if(flag1||flag2||flag3||flag4||flag5||flag6) {
+				dirtyClasses.add(currentClass);
+			}else {
+				workList.addAll(hierarchy.getDirectSubclassesOf(currentClass));
+				completeExecutorSubClass.add(currentClass);
+//				System.out.println("这个类是安全的："+currentClass);
+			}
+		}
+		for(SootClass currentDirtyClass:dirtyClasses) {
+			allDirtyClasses.addAll(hierarchy.getSubclassesOfIncluding(currentDirtyClass));
+		}
 	}
 
+	
+	
+	public static Set<SootClass> getCompleteExecutorSubClass(){
+		return completeExecutorSubClass;
+	}
+	public static Set<SootClass> getallDirtyExecutorSubClass(){
+		return allDirtyClasses;
+	}
+	
 	
 	/**
 	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。
@@ -106,7 +93,7 @@ public class ExecutorSubclass {
 	 */
 	public static boolean canRefactor(Stmt invocStmt) {
 		List<ValueBox> lvbs = invocStmt.getUseBoxes();
-			Iterator it =lvbs.iterator();
+			Iterator<ValueBox> it =lvbs.iterator();
         	while(it.hasNext()) {
         		Object o = it.next();
         		if (o instanceof JimpleLocalBox) {
@@ -115,15 +102,19 @@ public class ExecutorSubclass {
         			Local local = (Local)jlb.getValue();
         			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
         			PointsToSet ptset = pa.reachingObjects(local);
-        			Set typeSet = ptset.possibleTypes();
+        			Set<Type> typeSet = ptset.possibleTypes();
 
         			Set<String> typeSetStrings = new HashSet<>();
-        			for (Object obj : typeSet) {
+        			for (Type obj : typeSet) {
         				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
         			}
         			
-        			Set completeSetType = ExecutorSubclass.getCompleteExecutor();
-        			if(completeSetType.containsAll(typeSetStrings)) {
+        			Set<SootClass> completeSetType = getCompleteExecutorSubClass();
+        			Set<String> completeSetTypeStrings = new HashSet<>();
+        			for(SootClass completeSC:completeSetType) {
+        				completeSetTypeStrings.add(completeSC.getName());
+        			}
+        			if(completeSetTypeStrings.containsAll(typeSetStrings)) {
         				//是安全重构的子集，就可以进行重构了。
         				return true;
         			}
@@ -196,5 +187,18 @@ public class ExecutorSubclass {
 		}
 		return false;
 	}
+	
+	public static List<SootClass> initialCheckForClassHierarchy() {
+		
+		Set<SootClass> dirtyExecutorClass =getallDirtyExecutorSubClass();
+		List<SootClass> additionalDirtyExecutorClass = new ArrayList<SootClass>();
+		for(SootClass appDirtyExecutorClass:dirtyExecutorClass) {
+			if(appDirtyExecutorClass.isApplicationClass()) {
+				additionalDirtyExecutorClass.add(appDirtyExecutorClass);
+			}
+		}
+		return additionalDirtyExecutorClass;
+	}
+	
 }
 

@@ -14,7 +14,7 @@ import org.eclipse.ltk.core.refactoring.CompositeChange;
 import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
-import refuture.sootUtil.ClassHierarchy;
+import refuture.sootUtil.ExecutorSubclass;
 import refuture.sootUtil.SootConfig;
 import soot.SootClass;
 
@@ -62,11 +62,11 @@ public class RefutureRefactoring extends Refactoring {
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
 //		return RefactoringStatus.createFatalErrorStatus("Find zero java file");
-		List<SootClass> additionalExecutorClass = ClassHierarchy.initialCheckForClassHierarchy();
+		List<SootClass> additionalExecutorClass = ExecutorSubclass.initialCheckForClassHierarchy();
 		if(!additionalExecutorClass.isEmpty()) {
 			int i = 1;
-			additionalExecutorClass.forEach((e)->{System.out.printf("initialConditions|额外的子类:%s%n",e.getName());});
-			return RefactoringStatus.createErrorStatus("有额外的executor子类需要注意:"+additionalExecutorClass);
+			additionalExecutorClass.forEach((e)->{System.out.printf("initialConditions|额外的不可重构子类:%s%n",e.getName());});
+			return RefactoringStatus.createErrorStatus("有额外的不可重构ThreadPoolExecutor子类需要注意:"+additionalExecutorClass);
 		}
 		if (allJavaFiles.isEmpty()) {
 			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
