@@ -454,7 +454,7 @@ public class Future2Completable {
 	 * FutureTask ft = ...;
 	 * future f = es.submit(ft);
 	 * 转换
-	 * future f = CompletableFuture.runAsync(ft);
+	 * future f = CompletableFuture.runAsync(ft,es);
 	 */
 	private static boolean refactorSubmitFutureTask(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
 		if (invocationNode.getName().toString().equals("submit")) {
@@ -487,7 +487,7 @@ public class Future2Completable {
 	/*
 	 * 		Future f = es.submit(r, value);
 	 * 
-		 FutureTask f = new FutureTask (r,value)；
+		 FutureTask f = new FutureTask (r,value)；6.1改成了Future f = new ...
 		 CompletableFuture.runAsync(f,es);
 	 * 
 	 */
@@ -513,7 +513,7 @@ public class Future2Completable {
             	ListRewrite listRewriter = rewriter.getListRewrite(cic, ClassInstanceCreation.ARGUMENTS_PROPERTY);
             	listRewriter.insertLast((ASTNode) arguList.get(0), null);
             	listRewriter.insertLast((ASTNode) arguList.get(1), null);
-            	rewriter.set(vds, VariableDeclarationStatement.TYPE_PROPERTY, ast.newSimpleName("FutureTask"), null);
+            	rewriter.set(vds, VariableDeclarationStatement.TYPE_PROPERTY, ast.newSimpleName("Future"), null);
             	rewriter.set(vdf, VariableDeclarationFragment.INITIALIZER_PROPERTY, cic, null);
             	
             	MethodInvocation newMiv = ast.newMethodInvocation();
