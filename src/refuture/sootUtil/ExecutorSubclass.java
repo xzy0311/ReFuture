@@ -41,32 +41,36 @@ public class ExecutorSubclass {
 	 * 和Schedule特性的执行器。.
 	 *
 	 *5.12尝试完善。
-	 *5.15发现新问题，有一些Executor子类，它们是包装器，虽然重新Override了这几个相关的方法，但是它们只是简单的调用了的执行器字段的
+	 *5.15发现新问题，有一些Executor子类，它们是包装器，虽然重新Override了这几个相关的方法，但是它们只是简单的调用了的执行器字段的。这种直接判断是安全的吗？
+	 *
 	 * @return the complete executor
 	 */
 	public static void ThreadPoolExecutorSubClassAnalysis() {
 		
 		SootClass threadPoolExecutorClass = Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor");
+		completeExecutorSubClass.add(threadPoolExecutorClass);//是安全的。
 		Set<SootClass>dirtyClasses = new HashSet<SootClass>();
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-		Queue<SootClass> workList = new LinkedList<>();
-		workList.addAll(hierarchy.getDirectSubclassesOf(threadPoolExecutorClass));
-		while(!workList.isEmpty()) {
-			SootClass currentClass = workList.poll();
+		List<SootClass> tPESubClasses = hierarchy.getSubclassesOf(threadPoolExecutorClass);//若子类没有重写execute，newTaskFor，和submit方法，则直接判断为安全
+		if(tPESubClasses.isEmpty()) {
+			System.out.println("子类为空");
+			return;
+		}
+		for(SootClass tPESubClass : tPESubClasses) {
 			//判断是否是dirtyClass
-			boolean flag1 = currentClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
-			boolean flag2 = currentClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)");
-			boolean flag3 = currentClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable)");
-			boolean flag4 = currentClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.util.concurrent.Callable)");
-			boolean flag5 = currentClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.lang.Runnable,java.lang.Object)");
-			boolean flag6 = currentClass.declaresMethod("void execute(java.lang.Runnable)");
-//			System.out.println("当前处理的子类："+currentClass);
+			boolean flag1 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
+			boolean flag2 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)");
+			boolean flag3 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable)");
+			boolean flag4 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.util.concurrent.Callable)");
+			boolean flag5 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.lang.Runnable,java.lang.Object)");
+			boolean flag6 = tPESubClass.declaresMethod("void execute(java.lang.Runnable)");
+			System.out.println("当前处理的子类："+tPESubClass);
 			if(flag1||flag2||flag3||flag4||flag5||flag6) {
-				dirtyClasses.add(currentClass);
+				dirtyClasses.add(tPESubClass);
+				System.out.println("这个类是不安全的："+tPESubClass);
 			}else {
-				workList.addAll(hierarchy.getDirectSubclassesOf(currentClass));
-				completeExecutorSubClass.add(currentClass);
-//				System.out.println("这个类是安全的："+currentClass);
+				completeExecutorSubClass.add(tPESubClass);
+				System.out.println("这个类是安全的："+tPESubClass);
 			}
 		}
 		for(SootClass currentDirtyClass:dirtyClasses) {
@@ -74,7 +78,32 @@ public class ExecutorSubclass {
 		}
 	}
 
-	
+	/** 这个类用来分析额外的ExecutorService子类，这些类不属于JDK，是用户定义的新类，判断这些类是否是包装类。 */
+	public static void additionalExecutorServiceSubClassAnalysis() {
+		Set<SootClass>setExecutorSubClass = new HashSet<SootClass>();
+		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
+		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
+		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
+		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
+		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService"));
+		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
+		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
+		List<SootClass> executorSubClasses = hierarchy.getImplementersOf(executorServiceClass);
+		List<SootClass> additionalExecutorServiceClass = new ArrayList<SootClass>();
+		for(SootClass executorSubClass:executorSubClasses) {
+			if(!setExecutorSubClass.contains(executorSubClass)) {
+				additionalExecutorServiceClass.add(executorSubClass);
+			}
+		}
+		// 待   实现对额外包装类的判断。
+		for(SootClass additionalClass:additionalExecutorServiceClass) {
+			if(!completeExecutorSubClass.contains(additionalClass)) {
+				additionalExecutorServiceClass.add(additionalClass);
+			}
+		}
+	}
 	
 	public static Set<SootClass> getCompleteExecutorSubClass(){
 		return completeExecutorSubClass;

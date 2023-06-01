@@ -23,6 +23,7 @@ public class SootConfig {
         Scene.v().loadNecessaryClasses();
         PackManager.v().runPacks();
         ExecutorSubclass.ThreadPoolExecutorSubClassAnalysis();
+        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
     }
 
     /**
