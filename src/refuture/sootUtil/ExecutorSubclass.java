@@ -100,7 +100,7 @@ public class ExecutorSubclass {
 		// 待   实现对额外包装类的判断。
 		for(SootClass additionalClass:additionalExecutorServiceClass) {
 			if(!completeExecutorSubClass.contains(additionalClass)) {
-				additionalExecutorServiceClass.add(additionalClass);
+				allDirtyClasses.add(additionalClass);
 			}
 		}
 	}
