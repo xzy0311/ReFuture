@@ -9,6 +9,8 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.ArrayAccess;
+import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.CastExpression;
 import org.eclipse.jdt.core.dom.CatchClause;
@@ -68,6 +70,7 @@ public class Future2Completable {
 		int i = 1;
 		for(ICompilationUnit cu : allJavaFiles) {
 			IFile source = (IFile) cu.getResource();
+//			System.out.println(source.getName());//输出所有的类文件名称
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
 			parser.setResolveBindings(true);
 			parser.setStatementsRecovery(true);
@@ -134,8 +137,7 @@ public class Future2Completable {
 		return false;
 		
 	}
-	/*
-	 *  
+	/**
 	 * 第一版，不考虑定义的作用范围。
 	 * Future f = es.submit(Callable);
 	 * 直接转换为 Future f = (Future)CompletableFuture.supplyAsync(Callable,es);
@@ -154,6 +156,12 @@ public class Future2Completable {
 	 */
 	private static boolean refactorffSubmitCallable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
 		
+		int flag = 0; //assignment = 1 ; Fragment = 2; ExpressionStatement = 3; MethodInvocation = 4
+		AST ast = null;
+		Assignment invocAssignment = null;
+		VariableDeclarationFragment invocFragment = null;
+		ExpressionStatement expressionStatement = null;
+		MethodInvocation methodInvocation = null;
 		if (invocationNode.getName().toString().equals("submit")) {
 //			System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
 			Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
@@ -162,8 +170,26 @@ public class Future2Completable {
 				setErrorStatus();
 				setErrorCause("[refactorexecute]获取调用节点对应的Stmt出错");
 			}else if (ExecutorSubclass.canRefactor(invocStmt)&&ExecutorSubclass.canRefactorArgu(invocStmt, 1)) {
-				VariableDeclarationFragment invocFragment = (VariableDeclarationFragment)invocationNode.getParent();
-            	AST ast = invocFragment.getAST();
+				if(invocationNode.getParent() instanceof Assignment) {
+					flag = 1;
+					invocAssignment = (Assignment)invocationNode.getParent();
+					ast = invocAssignment.getAST();
+				}else if(invocationNode.getParent() instanceof VariableDeclarationFragment ) {
+					flag = 2;
+					invocFragment = (VariableDeclarationFragment)invocationNode.getParent();
+	            	ast = invocFragment.getAST();
+				}else if(invocationNode.getParent() instanceof ExpressionStatement ){
+					flag = 3;
+					expressionStatement = (ExpressionStatement)invocationNode.getParent();
+					ast = expressionStatement.getAST();
+				}else if(invocationNode.getParent() instanceof MethodInvocation ) {
+					flag = 4;
+					methodInvocation = (MethodInvocation)invocationNode.getParent();
+					ast = methodInvocation.getAST();
+				}
+				if (ast == null) {
+					throw new NullPointerException();
+				}
             	ASTRewrite rewriter = ASTRewrite.create(ast);
             	//重构逻辑
             	//一、CompletableFuture.supplyAsync(Supplier,Executor)
@@ -405,8 +431,17 @@ public class Future2Completable {
             	ListRewrite invocationComposeRewrite = rewriter.getListRewrite(invocationCompose, MethodInvocation.ARGUMENTS_PROPERTY);
             	invocationComposeRewrite.insertLast(lambdaCompose, null);
             	
-            	rewriter.set(invocFragment, VariableDeclarationFragment.INITIALIZER_PROPERTY, invocationCompose, null);
-            	
+            	if(flag == 1) {
+            		rewriter.set(invocAssignment, Assignment.RIGHT_HAND_SIDE_PROPERTY, invocationCompose, null);
+            	}else if(flag ==2){
+                	rewriter.set(invocFragment, VariableDeclarationFragment.INITIALIZER_PROPERTY, invocationCompose, null);
+            	}else if(flag ==3){
+            		rewriter.set(expressionStatement, ExpressionStatement.EXPRESSION_PROPERTY, invocationCompose, null);
+            	}else if(flag ==4){
+            		rewriter.set(methodInvocation, MethodInvocation.EXPRESSION_PROPERTY, invocationCompose, null);
+            	}else {
+            		throw new IllegalArgumentException(new Integer(flag).toString());
+            	}
             	
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
@@ -440,7 +475,15 @@ public class Future2Completable {
             	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
 //            	ASTNode firstArgu = rewriter.createCopyTarget((ASTNode) invocationNode.arguments().get(0));
 //            	listRewriter.insertLast(ast.newSimpleName(invocationNode.arguments().get(0).toString()), null);
-            	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
+            	if(invocationNode.getExpression() instanceof ArrayAccess) {
+            		ArrayAccess oldArrayAcc = (ArrayAccess)invocationNode.getExpression();
+            		ArrayAccess arrayAcc = ast.newArrayAccess();
+            		rewriter.set(arrayAcc, ArrayAccess.ARRAY_PROPERTY, oldArrayAcc.getArray(), null);
+            		rewriter.set(arrayAcc, ArrayAccess.INDEX_PROPERTY, oldArrayAcc.getIndex(), null);
+            		listRewriter.insertLast(arrayAcc, null);
+            	}else {
+            		listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
+            	}
 //            	rewriter.replace(invocationNode, newMethodInvocation, null);
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
@@ -521,7 +564,7 @@ public class Future2Completable {
             	rewriter.set(newMiv, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"),null);
             	ListRewrite  newListRewriter = rewriter.getListRewrite(newMiv, MethodInvocation.ARGUMENTS_PROPERTY);
             	newListRewriter.insertLast(variableName, null);
-            	
+            	newListRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
             	ExpressionStatement exps = ast.newExpressionStatement(newMiv);
             	ListRewrite lastListRewrite = rewriter.getListRewrite(b, Block.STATEMENTS_PROPERTY);
             	lastListRewrite.insertAfter(exps, vds, null);

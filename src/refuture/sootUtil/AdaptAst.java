@@ -3,6 +3,7 @@ package refuture.sootUtil;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -42,8 +43,14 @@ public class AdaptAst {
 //		System.out.println("[getJimpleInvocStmt:]"+ivcMethodName);
 		String methodSootName = AnalysisUtils.getSootMethodName(miv);//得到soot中用到的subsignature。
 //		System.out.println("[getJimpleInvocStmt:]"+methodSootName);
-		TypeDeclaration td =(TypeDeclaration)AnalysisUtils.getMethodDeclaration4node(miv).getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
-		ITypeBinding itb = td.resolveBinding();//得到FullName,必须是用绑定。
+		ITypeBinding itb;
+		if(AnalysisUtils.getMethodDeclaration4node(miv).getParent() instanceof AnonymousClassDeclaration) {
+			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)AnalysisUtils.getMethodDeclaration4node(miv).getParent();
+			itb = ad.resolveBinding();
+		}else {
+			TypeDeclaration td=(TypeDeclaration)AnalysisUtils.getMethodDeclaration4node(miv).getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
+			itb = td.resolveBinding();//得到FullName,必须是用绑定。
+		}
 		String typeFullName;
 		if(itb.isNested()) {
 			typeFullName = itb.getBinaryName();
@@ -53,6 +60,9 @@ public class AdaptAst {
 //		System.out.println("[getJimpleInvocStmt:]"+typeFullName);
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		SootMethod sm = sc.getMethod(methodSootName);
+		//test
+		System.out.println("[getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getName());
+		
 		Body body =sm.retrieveActiveBody();
 //		System.out.println("[AdaptAST.getJimpleInvocStmt:]"+body);
 		

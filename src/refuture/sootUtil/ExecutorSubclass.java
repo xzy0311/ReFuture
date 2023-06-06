@@ -48,7 +48,11 @@ public class ExecutorSubclass {
 	public static void ThreadPoolExecutorSubClassAnalysis() {
 		
 		SootClass threadPoolExecutorClass = Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor");
+		
 		completeExecutorSubClass.add(threadPoolExecutorClass);//是安全的。
+		completeExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService"));
+		completeExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
+		
 		Set<SootClass>dirtyClasses = new HashSet<SootClass>();
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		List<SootClass> tPESubClasses = hierarchy.getSubclassesOf(threadPoolExecutorClass);//若子类没有重写execute，newTaskFor，和submit方法，则直接判断为安全
@@ -97,6 +101,7 @@ public class ExecutorSubclass {
 				additionalExecutorServiceClass.add(executorSubClass);
 			}
 		}
+		
 		// 待   实现对额外包装类的判断。
 		for(SootClass additionalClass:additionalExecutorServiceClass) {
 			if(!completeExecutorSubClass.contains(additionalClass)) {

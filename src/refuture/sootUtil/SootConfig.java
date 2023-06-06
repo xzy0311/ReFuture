@@ -24,6 +24,7 @@ public class SootConfig {
         PackManager.v().runPacks();
         ExecutorSubclass.ThreadPoolExecutorSubClassAnalysis();
         ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
+        System.out.println("[setupSoot]:Soot配置完毕。");
     }
 
     /**
@@ -43,7 +44,7 @@ public class SootConfig {
         // 添加jar包路径
         Options.v().set_process_jar_dir(getJarFolderPath());
         // 处理目录中所有的类
-        Options.v().set_process_dir(Collections.singletonList(AnalysisUtils.getSootClassPath()));
+        Options.v().set_process_dir(AnalysisUtils.getSootClassPath());
         // 详细地打印处理过程的信息
         Options.v().set_verbose(true);
     }

@@ -3,6 +3,7 @@ package refuture.refactoring;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,38 +38,13 @@ import org.eclipse.ltk.core.refactoring.Change;
  */
 public class AnalysisUtils {
 
-	/** The Constant IMPORT_ExecutorService. */
-	public static final List<String> IMPORT_ExecutorService = Arrays.asList("java.util.concurrent.ExecutorService");
-	
-	/** The Constant IMPORT_Future. */
-	public static final List<String> IMPORT_Future = Arrays.asList("java.util.concurrent.Future");
-	
-	/** The Constant IMPORT_FutureTask. */
-	public static final List<String> IMPORT_FutureTask = Arrays.asList("java.util.concurrent.FutureTask");
-	
-	/** The Constant IMPORT_CompletableFuture. */
-	public static final List<String> IMPORT_CompletableFuture = Arrays.asList("java.util.concurrent.CompletableFuture");
-	
-	/** The Constant IMPORT_Runnable. */
-	public static final List<String> IMPORT_Runnable = Arrays.asList("java.lang.Runnable");
-	
-	/** The Constant IMPORT_Callable. */
-	public static final List<String> IMPORT_Callable = Arrays.asList("java.util.concurrent.Callable");
-	
-	/** The Constant IMPORT_ConCurrent. */
-	public static final List<String> IMPORT_ConCurrent = Arrays.asList(
-			"java.util.concurrent.ExecutorService"
-			,"java.util.concurrent.Future"
-			,"java.util.concurrent.FutureTask"
-			,"java.util.concurrent.CompletableFuture"
-			,"java.lang.Runnable"
-			,"java.util.concurrent.Callable");
-
 	/** The projectpath. */
-	private static String PROJECTOUTPATH;
+	private static List<String> PROJECTOUTPATH;
 	
 	/** The projectpath. */
 	private static String PROJECTPATH;
+	
+	
 	
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -79,13 +55,15 @@ public class AnalysisUtils {
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
 
+		boolean testFlag = false;
 		//得到输出的class在的文件夹，方便后继使用soot分析。
 		try {
-			PROJECTOUTPATH = project.getOutputLocation().toOSString();
+			String projectoutpath = project.getOutputLocation().toOSString();
 			PROJECTPATH = project.getProject().getLocation().toOSString();
 			int lastIndex = PROJECTPATH.lastIndexOf("/");
 			String RUNTIMEPATH = PROJECTPATH.substring(0, lastIndex);
-			PROJECTOUTPATH = RUNTIMEPATH+PROJECTOUTPATH;
+			PROJECTOUTPATH = new ArrayList<String>();
+			PROJECTOUTPATH.add(RUNTIMEPATH+projectoutpath);
 		}catch(JavaModelException ex){
 			System.out.println(ex);
 		}
@@ -93,8 +71,14 @@ public class AnalysisUtils {
 		try {
 			//遍历项目的下一级，找到java源代码文件夹。
 			for (IJavaElement element:project.getChildren()) {
+				if(!testFlag&&element.toString().startsWith("test")) {
+					testFlag = true;
+					String projectOutPath = PROJECTOUTPATH.get(0);
+					String porjectTestOutPath = projectOutPath.replace("classes", "test-classes");
+					PROJECTOUTPATH.add(porjectTestOutPath);
+				}
 				//目前来说，我见过的java项目结构，java源代码都是放入src开头，且最后不是resources结尾的包中。
-				if(element.toString().startsWith("src")&&!element.getElementName().equals("resources")) {
+				if(element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test")) {
 					//找到包
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
@@ -227,7 +211,7 @@ public class AnalysisUtils {
 		return PROJECTPATH;
 	}
 
-	public static String getSootClassPath() {
+	public static List<String> getSootClassPath() {
 		return PROJECTOUTPATH;
 	}
 }
