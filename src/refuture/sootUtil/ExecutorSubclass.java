@@ -8,8 +8,14 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.Assignment;
+import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.ltk.core.refactoring.Change;
 
+import refuture.refactoring.AnalysisUtils;
 import soot.Hierarchy;
 import soot.Local;
 import soot.PointsToAnalysis;
@@ -21,21 +27,33 @@ import soot.Value;
 import soot.ValueBox;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
+import soot.jimple.internal.JAssignStmt.LinkedVariableBox;
 import soot.jimple.internal.JimpleLocalBox;
+// TODO: Auto-generated Javadoc
 /**
  * The Class ExecutorSubclass.
  */
 //负责从所有的Executor子类中，筛选出能够重构的子类。
 public class ExecutorSubclass {
+	
+	/** The complete executor sub class. */
 	private static Set<SootClass>completeExecutorSubClass;
+	
+	/** The all dirty classes. */
 	private static Set<SootClass>allDirtyClasses;
 	
+	/**
+	 * Inits the static field.
+	 *
+	 * @return true, if successful
+	 */
 	public static boolean initStaticField() {
 		completeExecutorSubClass = new HashSet<SootClass>();
 		allDirtyClasses = new HashSet<SootClass>();
 		return true;
 	}
 	
+
 	/**
 	 * 目前不具备分析额外的Executor子类的能力，只能先手动筛选能够返回FutureTask类型，且不具备ForkJoin
 	 * 和Schedule特性的执行器。.
@@ -45,7 +63,7 @@ public class ExecutorSubclass {
 	 *
 	 * @return the complete executor
 	 */
-	public static void ThreadPoolExecutorSubClassAnalysis() {
+	public static void threadPoolExecutorSubClassAnalysis() {
 		
 		SootClass threadPoolExecutorClass = Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor");
 		
@@ -82,7 +100,9 @@ public class ExecutorSubclass {
 		}
 	}
 
-	/** 这个类用来分析额外的ExecutorService子类，这些类不属于JDK，是用户定义的新类，判断这些类是否是包装类。 */
+	/**
+	 * 这个类用来分析额外的ExecutorService子类，这些类不属于JDK，是用户定义的新类，判断这些类是否是包装类。.
+	 */
 	public static void additionalExecutorServiceSubClassAnalysis() {
 		Set<SootClass>setExecutorSubClass = new HashSet<SootClass>();
 		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
@@ -113,15 +133,21 @@ public class ExecutorSubclass {
 	public static Set<SootClass> getCompleteExecutorSubClass(){
 		return completeExecutorSubClass;
 	}
+	
+	/**
+	 * Gets the all dirty executor sub class.
+	 *
+	 * @return the all dirty executor sub class
+	 */
 	public static Set<SootClass> getallDirtyExecutorSubClass(){
 		return allDirtyClasses;
 	}
 	
 	
 	/**
-	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。
+	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。.
 	 *
-	 * @param stmt 必须是提交异步任务方法的调用语句。没有考虑Thread.start()。
+	 * @param invocStmt the invoc stmt
 	 * @return true, 如果可以进行重构
 	 */
 	public static boolean canRefactor(Stmt invocStmt) {
@@ -158,7 +184,7 @@ public class ExecutorSubclass {
 
 
 	/**
-	 * 	判断参数的类型是否复合要求。
+	 * 判断参数的类型是否复合要求。.
 	 *
 	 * @param invocStmt the invoc stmt
 	 * @param argType   为1,代表是callable;为2,代表Runnable;为3,代表FutureTask。
@@ -221,6 +247,39 @@ public class ExecutorSubclass {
 		return false;
 	}
 	
+	/**
+	 * 判断是否有返回值，若没有返回值则直接返回true，否则判断等号左边的变量的类型，是否是Future.
+	 *
+	 * @param invocationNode the invocation node
+	 * @return true, 如果可以重构
+	 */
+	public static boolean objectIsFuture(MethodInvocation invocationNode) {
+		if(AnalysisUtils.isDeclarOrAssign(invocationNode)) {
+			Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
+			List<ValueBox> lvbs = invocStmt.getDefBoxes();
+			Iterator<ValueBox> it =lvbs.iterator();
+        	while(it.hasNext()) {
+        		Object o = it.next();
+        		if (o instanceof LinkedVariableBox) {
+        			LinkedVariableBox jlb = (LinkedVariableBox) o;
+        			Local local = (Local)jlb.getValue();
+        			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+        			PointsToSet ptset = pa.reachingObjects(local);
+        			Set<Type> typeSet = ptset.possibleTypes();
+        			if(typeSet.size()!=1||typeSet.iterator().next().toString()!="java.util.concurrent.FutureTask") {
+        				return false;
+        			}
+        		}
+        	}
+		}
+		return true;
+	}
+	
+	/**
+	 * Initial check for class hierarchy.
+	 *
+	 * @return the list
+	 */
 	public static List<SootClass> initialCheckForClassHierarchy() {
 		
 		Set<SootClass> dirtyExecutorClass =getallDirtyExecutorSubClass();
@@ -232,6 +291,8 @@ public class ExecutorSubclass {
 		}
 		return additionalDirtyExecutorClass;
 	}
+
+
 	
 }
 

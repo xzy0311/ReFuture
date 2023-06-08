@@ -84,6 +84,9 @@ public class Future2Completable {
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;
 				}
+				if(!ExecutorSubclass.objectIsFuture(invocationNode)) {
+					continue;
+				}
 				TextFileChange change = new TextFileChange("Future2Completable",source);
 				boolean flag1 = refactorExecuteRunnable(invocationNode,change);
 				boolean flag2 = refactorffSubmitCallable(invocationNode,change);
@@ -103,6 +106,7 @@ public class Future2Completable {
 		}
 	}
 	
+
 	/*
 	 * es.execute(r);
 	 * CompletableFuture.runAsync(r, es);

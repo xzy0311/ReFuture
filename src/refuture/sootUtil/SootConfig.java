@@ -22,7 +22,7 @@ public class SootConfig {
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
         Scene.v().loadNecessaryClasses();
         PackManager.v().runPacks();
-        ExecutorSubclass.ThreadPoolExecutorSubClassAnalysis();
+        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
         ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
         System.out.println("[setupSoot]:Soot配置完毕。");
     }

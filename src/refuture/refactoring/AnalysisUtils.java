@@ -20,14 +20,17 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jface.text.Document;
 import org.eclipse.ltk.core.refactoring.Change;
 
@@ -205,6 +208,21 @@ public class AnalysisUtils {
 			}
 		}
 		return (MethodDeclaration) node;
+	}
+	
+	/**
+	 * Checks if is declaration or assignment.
+	 *
+	 * @param invocationNode the invocation node
+	 * @return true, if is declar or assign
+	 */
+	public static boolean isDeclarOrAssign(MethodInvocation invocationNode) {
+		ASTNode parentNode= invocationNode.getParent();
+		
+		if(parentNode instanceof Assignment || parentNode instanceof VariableDeclarationStatement) {
+			return true;
+		}
+		return false;
 	}
 	
 	public static String getProjectPath() {
