@@ -81,7 +81,8 @@ public class AnalysisUtils {
 					PROJECTOUTPATH.add(porjectTestOutPath);
 				}
 				//目前来说，我见过的java项目结构，java源代码都是放入src开头，且最后不是resources结尾的包中。
-				if(element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test")) {
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				if(javaFolder) {
 					//找到包
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
