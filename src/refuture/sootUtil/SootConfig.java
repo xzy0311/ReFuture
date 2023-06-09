@@ -21,6 +21,8 @@ public class SootConfig {
 
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
         Scene.v().loadNecessaryClasses();
+        System.out.println("[setupSoot]:加载必要类完毕！");
+        
         PackManager.v().runPacks();
         ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
         ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();

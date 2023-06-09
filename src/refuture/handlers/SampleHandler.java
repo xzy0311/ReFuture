@@ -43,10 +43,8 @@ public class SampleHandler extends AbstractHandler {
 	    				IJavaElement select = (IJavaElement) strut.getFirstElement();
 	    				selectProject = select.getJavaProject();
 	    			}
-	    			
 	    		}
 	    	}
-
 			SampleHandler.this.setBaseEnabled(selectProject != null);
 		}
 	};
