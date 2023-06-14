@@ -201,47 +201,49 @@ public class ExecutorSubclass {
 		if(lv.size() == 0) {
 			return false;
 		}
-		Local la1 = (Local) lv.get(0);
-		PointsToSet ptset = pa.reachingObjects(la1);
-		Set<Type> typeSet = ptset.possibleTypes();
-		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-		switch (argType) {
-		case 1://是否是Callable的子类.
-			for(Type type:typeSet) {
-				SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-				SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
-				if(sc.isPhantom()||callable.isPhantom()) {
-					return false;
-				}
-				List<SootClass> implementers =hierarchy.getImplementersOf(callable);
-				return implementers.contains(sc);
-			}
-			break;
-		case 4:		
-			if(lv.size()==2) {
-			return true;
-		}
-			break;
-		default://判断是否是FutureTask类型，若是则判断是3则返回true，其他情况返回false；若不是则2返回true,其他情况返回false;
-			for(Type type:typeSet) {
-				SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-				SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
-				SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
-				if(sc.isPhantom()||futureTask.isPhantom()) {
-					return false;
-				}
-				if(hierarchy.isClassSuperclassOfIncluding(futureTask, sc)) {
-					if(argType == 3) {
-						return true;
+		if(lv.get(0)instanceof Local) {
+			Local la1 = (Local) lv.get(0);
+			PointsToSet ptset = pa.reachingObjects(la1);
+			Set<Type> typeSet = ptset.possibleTypes();
+			Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+			switch (argType) {
+			case 1://是否是Callable的子类.
+				for(Type type:typeSet) {
+					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+					SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
+					if(sc.isPhantom()||callable.isPhantom()) {
+						return false;
 					}
-				}else {
-					if(argType ==2&&lv.size()==1) {
-						List<SootClass> implementers =hierarchy.getImplementersOf(runnable);
-						return implementers.contains(sc);
+					List<SootClass> implementers =hierarchy.getImplementersOf(callable);
+					return implementers.contains(sc);
+				}
+				break;
+			case 4:		
+				if(lv.size()==2) {
+				return true;
+			}
+				break;
+			default://判断是否是FutureTask类型，若是则判断是3则返回true，其他情况返回false；若不是则2返回true,其他情况返回false;
+				for(Type type:typeSet) {
+					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+					SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
+					SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
+					if(sc.isPhantom()||futureTask.isPhantom()) {
+						return false;
+					}
+					if(hierarchy.isClassSuperclassOfIncluding(futureTask, sc)) {
+						if(argType == 3) {
+							return true;
+						}
+					}else {
+						if(argType ==2&&lv.size()==1) {
+							List<SootClass> implementers =hierarchy.getImplementersOf(runnable);
+							return implementers.contains(sc);
 
+						}
 					}
 				}
-			}
+		}
 			return false;
 		}
 		return false;

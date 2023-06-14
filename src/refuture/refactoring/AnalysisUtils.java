@@ -64,7 +64,7 @@ public class AnalysisUtils {
 		try {
 			String projectoutpath = project.getOutputLocation().toOSString();
 			PROJECTPATH = project.getProject().getLocation().toOSString();
-			int lastIndex = PROJECTPATH.lastIndexOf("/");
+			int lastIndex = PROJECTPATH.lastIndexOf(File.separator);
 			String RUNTIMEPATH = PROJECTPATH.substring(0, lastIndex);
 			PROJECTOUTPATH = new ArrayList<String>();
 			PROJECTOUTPATH.add(RUNTIMEPATH+projectoutpath);
