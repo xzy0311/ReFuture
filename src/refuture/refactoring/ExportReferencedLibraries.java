@@ -6,8 +6,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.maven.artifact.DependencyResolutionRequiredException;
-import org.apache.maven.project.MavenProject;
+
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
@@ -27,7 +26,6 @@ import org.eclipse.m2e.core.project.IMavenProjectRegistry;
 
 public class ExportReferencedLibraries {
     public static void export(IJavaProject javaProject) {
-
         try {
             // 获取类路径条目（Referenced Libraries）
             IClasspathEntry[] entries = javaProject.getRawClasspath();
@@ -64,16 +62,16 @@ public class ExportReferencedLibraries {
         }
     }
     public static void processM2e(IJavaProject javaProject) {
-    	IMavenProjectRegistry mavenProjectRegistry = MavenPlugin.getMavenProjectRegistry();
-    	IMavenProjectFacade mavenProjectFacade = mavenProjectRegistry.create(javaProject.getProject(), null);
-    	MavenProject mavenProject = mavenProjectFacade.getMavenProject();
-    	try {
-			List<String> dependencies = mavenProject.getCompileClasspathElements();
-			
-		} catch (DependencyResolutionRequiredException e) {
-			e.printStackTrace();
-		}
-    	AnalysisUtils.throwNull();
+//    	IMavenProjectRegistry mavenProjectRegistry = MavenPlugin.getMavenProjectRegistry();
+//    	IMavenProjectFacade mavenProjectFacade = mavenProjectRegistry.create(javaProject.getProject(), null);
+//    	MavenProject mavenProject = mavenProjectFacade.getMavenProject();
+//    	try {
+//			List<String> dependencies = mavenProject.getCompileClasspathElements();
+//			
+//		} catch (DependencyResolutionRequiredException e) {
+//			e.printStackTrace();
+//		}
+//    	AnalysisUtils.throwNull();
     }
     
     

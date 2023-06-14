@@ -58,7 +58,7 @@ public class AnalysisUtils {
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
 //		ExportReferencedLibraries.export(project);//导出依赖的jar到项目下的refuture-lib
-		boolean testFlag = false;//测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合maven 项目。
+		boolean testFlag = true;//测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合maven 项目。
 		
 		//得到输出的class在的文件夹，方便后继使用soot分析。
 		try {
@@ -81,8 +81,8 @@ public class AnalysisUtils {
 					PROJECTOUTPATH.add(porjectTestOutPath);
 				}
 				//目前来说，我见过的java项目结构，java源代码都是放入src开头，且最后不是resources结尾的包中。
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-				boolean javaFolder = element.toString().startsWith("java");
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+//				boolean javaFolder = element.toString().startsWith("java");
 				
 				if(javaFolder) {
 					//找到包
