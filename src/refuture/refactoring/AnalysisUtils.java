@@ -58,8 +58,7 @@ public class AnalysisUtils {
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
 //		ExportReferencedLibraries.export(project);//导出依赖的jar到项目下的refuture-lib
-		boolean testFlag = true;//测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合maven 项目。
-		
+
 		//得到输出的class在的文件夹，方便后继使用soot分析。
 		try {
 			String projectoutpath = project.getOutputLocation().toOSString();
@@ -73,19 +72,20 @@ public class AnalysisUtils {
 		}
 		//得到选中的元素中的JAVA项目。
 		try {
-			//遍历项目的下一级，找到java源代码文件夹。
+			//遍历项目的下一级，找到java源代码文件夹。给soot使用
+			boolean testFlag = true;//测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合maven 项目。
+			if(testFlag) {
+				String projectOutPath = PROJECTOUTPATH.get(0);
+				String porjectTestOutPath = projectOutPath.replace("classes", "test-classes");
+				PROJECTOUTPATH.add(porjectTestOutPath);
+				testFlag = false;
+			}
+			//找到包，给AST使用
 			for (IJavaElement element:project.getChildren()) {
-				if(testFlag&&element.toString().startsWith("test")) {
-					String projectOutPath = PROJECTOUTPATH.get(0);
-					String porjectTestOutPath = projectOutPath.replace("classes", "test-classes");
-					PROJECTOUTPATH.add(porjectTestOutPath);
-				}
-				//目前来说，我见过的java项目结构，java源代码都是放入src开头，且最后不是resources结尾的包中。
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-//				boolean javaFolder = element.toString().startsWith("java");
-				
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");//jGroups
+//				boolean javaFolder = element.toString().startsWith("java");//其他
+				boolean javaFolder = element.getElementName().equals("java");// signalserver使用
 				if(javaFolder) {
-					//找到包
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
 						if (ele instanceof IPackageFragment) {

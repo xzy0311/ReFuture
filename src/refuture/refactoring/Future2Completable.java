@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
@@ -26,7 +27,6 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.SimpleType;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.ThrowStatement;
 import org.eclipse.jdt.core.dom.TryStatement;
@@ -34,6 +34,7 @@ import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
+import org.eclipse.jdt.core.dom.rewrite.ImportRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.TextFileChange;
@@ -88,12 +89,13 @@ public class Future2Completable {
 					continue;
 				}
 				TextFileChange change = new TextFileChange("Future2Completable",source);
-				boolean flag1 = refactorExecuteRunnable(invocationNode,change);
-				boolean flag2 = refactorffSubmitCallable(invocationNode,change);
-				boolean flag3 = refactorSubmitRunnable(invocationNode,change);
-				boolean flag4 = refactorSubmitFutureTask(invocationNode,change);
-				boolean flag5 = refactorSubmitRunnableNValue(invocationNode,change);
-				boolean flag6 = refactorExecuteFutureTask(invocationNode,change);
+				
+				boolean flag1 = refactorExecuteRunnable(invocationNode,change,cu);
+				boolean flag2 = refactorffSubmitCallable(invocationNode,change,cu);
+				boolean flag3 = refactorSubmitRunnable(invocationNode,change,cu);
+				boolean flag4 = refactorSubmitFutureTask(invocationNode,change,cu);
+				boolean flag5 = refactorSubmitRunnableNValue(invocationNode,change,cu);
+				boolean flag6 = refactorExecuteFutureTask(invocationNode,change,cu);
 				if(flag1||flag2||flag3||flag4||flag5||flag6) {
 					allChanges.add(change);
 					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
@@ -111,7 +113,7 @@ public class Future2Completable {
 	 * es.execute(r);
 	 * CompletableFuture.runAsync(r, es);
 	 */
-	private static boolean refactorExecuteRunnable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
+	private static boolean refactorExecuteRunnable(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 			//得到execute方法的调用Node。
 			if (invocationNode.getName().toString().equals("execute")) {
 //				System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
@@ -133,14 +135,26 @@ public class Future2Completable {
 //                	listRewriter.insertLast(ast.newSimpleName(invocationNode.arguments().get(0).toString()), null);
                 	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
 //                	rewriter.replace(invocationNode, newMethodInvocation, null);
+                	reImportCF(invocationNode);
+                	
                 	TextEdit edits = rewriter.rewriteAST();
                 	change.setEdit(edits);
+               	 ImportRewrite ir = ImportRewrite.create(cu, true);
+       			 ir.addImport("java.util.concurrent.CompletableFuture");
+       			try {
+       				TextEdit editsImport = ir.rewriteImports(null);
+       				change.addEdit(editsImport);
+       			} catch (CoreException e) {
+       				// TODO Auto-generated catch block
+       				e.printStackTrace();
+       			}
                 	return true;
                 }
 			}
 		return false;
 		
 	}
+
 	/**
 	 * 第一版，不考虑定义的作用范围。
 	 * Future f = es.submit(Callable);
@@ -157,8 +171,9 @@ public class Future2Completable {
 	 * 
 	 * 第三版，直接使用lambda表达式，不搞那么多本地变量了。
 	 * lambda形参需要改变，有一个错误需要修改。
+	 * @param cu 
 	 */
-	private static boolean refactorffSubmitCallable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
+	private static boolean refactorffSubmitCallable(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 		
 		int flag = 0; //assignment = 1 ; Fragment = 2; ExpressionStatement = 3; MethodInvocation = 4
 		AST ast = null;
@@ -449,6 +464,14 @@ public class Future2Completable {
             	
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
+           	 ImportRewrite ir = ImportRewrite.create(cu, true);
+   			 ir.addImport("java.util.concurrent.CompletableFuture");
+   			try {
+   				TextEdit editsImport = ir.rewriteImports(null);
+   				change.addEdit(editsImport);
+   			} catch (CoreException e) {
+   				e.printStackTrace();
+   			}
             	return true;
             }
 		}
@@ -459,7 +482,7 @@ public class Future2Completable {
 	 * Future f = es.submit(()->{});
 	 * Future f = CompletableFuture.runAsync(()->{},es);
 	 */
-	private static boolean refactorSubmitRunnable(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
+	private static boolean refactorSubmitRunnable(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 
 		if (invocationNode.getName().toString().equals("submit")) {
 //			System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
@@ -491,6 +514,15 @@ public class Future2Completable {
 //            	rewriter.replace(invocationNode, newMethodInvocation, null);
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
+            	
+           	 ImportRewrite ir = ImportRewrite.create(cu, true);
+   			 ir.addImport("java.util.concurrent.CompletableFuture");
+   			try {
+   				TextEdit editsImport = ir.rewriteImports(null);
+   				change.addEdit(editsImport);
+   			} catch (CoreException e) {
+   				e.printStackTrace();
+   			}
             	return true;
             }
 		}
@@ -503,7 +535,7 @@ public class Future2Completable {
 	 * 转换
 	 * future f = CompletableFuture.runAsync(ft,es);
 	 */
-	private static boolean refactorSubmitFutureTask(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
+	private static boolean refactorSubmitFutureTask(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 		if (invocationNode.getName().toString().equals("submit")) {
 //			System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
 			Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
@@ -526,6 +558,15 @@ public class Future2Completable {
 //            	rewriter.replace(invocationNode, newMethodInvocation, null);
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
+            	
+           	 ImportRewrite ir = ImportRewrite.create(cu, true);
+   			 ir.addImport("java.util.concurrent.CompletableFuture");
+   			try {
+   				TextEdit editsImport = ir.rewriteImports(null);
+   				change.addEdit(editsImport);
+   			} catch (CoreException e) {
+   				e.printStackTrace();
+   			}
             	return true;
             }
 		}
@@ -538,7 +579,7 @@ public class Future2Completable {
 		 CompletableFuture.runAsync(f,es);
 	 * 
 	 */
-	private static boolean refactorSubmitRunnableNValue(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
+	private static boolean refactorSubmitRunnableNValue(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 		if (invocationNode.getName().toString().equals("submit")) {
 //			System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
 			Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
@@ -572,11 +613,18 @@ public class Future2Completable {
             	ExpressionStatement exps = ast.newExpressionStatement(newMiv);
             	ListRewrite lastListRewrite = rewriter.getListRewrite(b, Block.STATEMENTS_PROPERTY);
             	lastListRewrite.insertAfter(exps, vds, null);
-            	
-            	
-            	
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
+
+           	 ImportRewrite ir = ImportRewrite.create(cu, true);
+   			 ir.addImport("java.util.concurrent.CompletableFuture");
+   			try {
+   				TextEdit editsImport = ir.rewriteImports(null);
+   				change.addEdit(editsImport);
+   			} catch (CoreException e) {
+   				e.printStackTrace();
+   			}
+            	
             	return true;
             }
 		}
@@ -589,7 +637,7 @@ public class Future2Completable {
 	 * es.excute(f);
 	 * CompletableFuture.runAsync(f,es);
 	 */
-	private static boolean refactorExecuteFutureTask(MethodInvocation invocationNode, TextFileChange change) throws JavaModelException, IllegalArgumentException {
+	private static boolean refactorExecuteFutureTask(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 		if (invocationNode.getName().toString().equals("execute")) {
 //			System.out.println("[refactorexecute:]"+invocationNode.resolveMethodBinding());
 			Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
@@ -612,13 +660,29 @@ public class Future2Completable {
 //            	rewriter.replace(invocationNode, newMethodInvocation, null);
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
+            	 ImportRewrite ir = ImportRewrite.create(cu, true);
+    			 ir.addImport("java.util.concurrent.CompletableFuture");
+    			try {
+    				TextEdit editsImport = ir.rewriteImports(null);
+    				change.addEdit(editsImport);
+    			} catch (CoreException e) {
+    				e.printStackTrace();
+    			}
             	return true;
             }
 		}
 		return false;
 	}
 	
-	
+	/**
+	 * 重构成功后，在import中添加"import java.util.concurrent.CompletableFuture;"
+	 * @param invocationNode
+	 */
+	private static void reImportCF(MethodInvocation invocationNode) {
+		MethodDeclaration md =AnalysisUtils.getMethodDeclaration4node(invocationNode);
+		TypeDeclaration td = (TypeDeclaration)md.getParent();
+		
+	}
 	
 	public static List<Change>  getallChanges() {
 		return allChanges;

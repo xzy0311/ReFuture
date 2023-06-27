@@ -57,15 +57,12 @@ public class AdaptAst {
 		}else {
 			typeFullName = itb.getQualifiedName();
 		}
-//		System.out.println("[getJimpleInvocStmt:]"+typeFullName);
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		SootMethod sm = sc.getMethod(methodSootName);
 		//test
-		System.out.println("[getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getName());
+		System.out.println("[AdaptAST.getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getName());
 		
 		Body body =sm.retrieveActiveBody();
-//		System.out.println("[AdaptAST.getJimpleInvocStmt:]"+body);
-		
 		
         Iterator<Unit> i=body.getUnits().snapshotIterator();
         while(i.hasNext())
