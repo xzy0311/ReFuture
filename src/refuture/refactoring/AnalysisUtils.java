@@ -73,7 +73,7 @@ public class AnalysisUtils {
 		//得到选中的元素中的JAVA项目。
 		try {
 			//遍历项目的下一级，找到java源代码文件夹。给soot使用
-			boolean testFlag = true;//测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合maven 项目。
+			boolean testFlag = false;//测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合maven 项目。
 			if(testFlag) {
 				String projectOutPath = PROJECTOUTPATH.get(0);
 				String porjectTestOutPath = projectOutPath.replace("classes", "test-classes");
@@ -82,9 +82,9 @@ public class AnalysisUtils {
 			}
 			//找到包，给AST使用
 			for (IJavaElement element:project.getChildren()) {
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");//jGroups
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");//jGroups
 //				boolean javaFolder = element.toString().startsWith("java");//其他
-				boolean javaFolder = element.getElementName().equals("java");// signalserver使用
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver使用
 				if(javaFolder) {
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
@@ -143,16 +143,18 @@ public class AnalysisUtils {
 				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
 			}
 		}
-//		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
-		//去除额外的<>和因此产生的空格。
-	    String result = methodSootName.replaceAll("<[^<>]*>", "");
-	    do {
-	    	methodSootName = result;
-		    result = methodSootName.replaceAll("<[^<>]*>", "");
-	    }while(!result.equals(methodSootName));
 
-		methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
-//		System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+		if(methodSootName != "void <init>()") {
+//			System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+			//去除额外的<>和因此产生的空格。
+		    String result = methodSootName.replaceAll("<[^<>]*>", "");
+		    do {
+		    	methodSootName = result;
+			    result = methodSootName.replaceAll("<[^<>]*>", "");
+		    }while(!result.equals(methodSootName));
+			methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
+//			System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+		}
 		return methodSootName;
 		
 	}
