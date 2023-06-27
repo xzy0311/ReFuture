@@ -1,6 +1,5 @@
 package refuture.refactoringwizard;
 
-import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.ui.refactoring.RefactoringWizard;
 import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
