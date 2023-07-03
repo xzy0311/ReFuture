@@ -34,7 +34,8 @@ public class AnalysisUtils {
 	/** The projectpath. */
 	private static String PROJECTPATH;
 	
-	
+	/** 输出调试信息标志*/
+	public static boolean debugFlag;
 	
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -69,9 +70,13 @@ public class AnalysisUtils {
 			}
 			//找到包，给AST使用
 			for (IJavaElement element:project.getChildren()) {
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");//jGroups
+				/*
+				 * boolean javaFolder = element.toString().startsWith("src")&&
+				 * !element.getElementName().equals("resources")||
+				 * element.toString().startsWith("test");//jGroups使用
+				 */				
 //				boolean javaFolder = element.toString().startsWith("java");//其他
-//				boolean javaFolder = element.getElementName().equals("java");// signalserver使用
+				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat使用。
 				if(javaFolder) {
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
