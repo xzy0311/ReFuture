@@ -173,8 +173,12 @@ public class ExecutorSubclass {
         			for(SootClass completeSC:completeSetType) {
         				completeSetTypeStrings.add(completeSC.getName());
         			}
-        			if(completeSetTypeStrings.containsAll(typeSetStrings)) {
+        			if(typeSetStrings.isEmpty()) {
+        				//说明没有被访问到，可以进行排除
+        				return false;
+        			}else if(completeSetTypeStrings.containsAll(typeSetStrings)) {
         				//是安全重构的子集，就可以进行重构了。
+//        				System.out.println("[ExecutorSubclass:canRefactor:typeSetStrings]"+typeSetStrings);
         				return true;
         			}
         		}	

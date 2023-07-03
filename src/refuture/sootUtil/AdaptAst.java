@@ -58,6 +58,8 @@ public class AdaptAst {
 			typeFullName = itb.getQualifiedName();
 		}
 		SootClass sc = Scene.v().getSootClass(typeFullName);
+		
+		System.out.println("[AdaptAST.getJimpleInvocStmt:]当前处理的是否是虚拟类："+sc.isPhantom()+"当前方法名称为:"+methodSootName+"所有的方法有："+sc.getMethods());
 		SootMethod sm = sc.getMethod(methodSootName);
 		//test
 		System.out.println("[AdaptAST.getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getName());
@@ -68,7 +70,6 @@ public class AdaptAst {
         while(i.hasNext())
         {
             Stmt stmt=(Stmt) i.next();
-            boolean containFlag = false;
             if(stmt.toString().contains(ivcMethodName)) {
             	if(stmt.getJavaSourceStartLineNumber()==lineNumber) {
             		return stmt;
