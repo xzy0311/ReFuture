@@ -17,15 +17,15 @@ public class SootConfig {
         soot.G.reset();
         BasicOptions();
         JBPhaseOptions();
-        CGPhaseOptions();//启用Spark
+//        CGPhaseOptions();//启用Spark
 
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
         Scene.v().loadNecessaryClasses();
         System.out.println("[setupSoot]:加载必要类完毕！");
         
         PackManager.v().runPacks();
-        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
-        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
+//        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
+//        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
         System.out.println("[setupSoot]:Soot配置完毕。");
     }
 
