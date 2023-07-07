@@ -58,6 +58,9 @@ public class AdaptAst {
 			typeFullName = itb.getQualifiedName();
 		}
 		SootClass sc = Scene.v().getSootClass(typeFullName);
+		if(sc.isPhantom()) {
+			throw new IllegalStateException("虚拟类错误");
+		}
 		if(AnalysisUtils.debugFlag) {
 			System.out.println("[AdaptAST.getJimpleInvocStmt:]当前处理的是否是虚拟类："+sc.isPhantom()+"当前方法名称为:"+methodSootName+"所有的方法有："+sc.getMethods());
 		}
