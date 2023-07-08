@@ -81,10 +81,14 @@ public class Future2Completable {
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();
+			// 2023.0706 
+			ForTask.FindGet(invocationNodes);
+			/*
 			for(MethodInvocation invocationNode:invocationNodes) {
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;
 				}
+				//判断等号左边是否是FutureTask 类型的对象，若不是，则不需要继续。
 				if(!ExecutorSubclass.objectIsFuture(invocationNode)) {
 					continue;
 				}
@@ -105,6 +109,8 @@ public class Future2Completable {
 				}
 				
 			}
+			
+			*/
 		}
 	}
 	
@@ -135,7 +141,6 @@ public class Future2Completable {
 //                	listRewriter.insertLast(ast.newSimpleName(invocationNode.arguments().get(0).toString()), null);
                 	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
 //                	rewriter.replace(invocationNode, newMethodInvocation, null);
-                	reImportCF(invocationNode);
                 	
                 	TextEdit edits = rewriter.rewriteAST();
                 	change.setEdit(edits);
@@ -674,15 +679,6 @@ public class Future2Completable {
 		return false;
 	}
 	
-	/**
-	 * 重构成功后，在import中添加"import java.util.concurrent.CompletableFuture;"
-	 * @param invocationNode
-	 */
-	private static void reImportCF(MethodInvocation invocationNode) {
-		MethodDeclaration md =AnalysisUtils.getMethodDeclaration4node(invocationNode);
-		TypeDeclaration td = (TypeDeclaration)md.getParent();
-		
-	}
 	
 	public static List<Change>  getallChanges() {
 		return allChanges;
