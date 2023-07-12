@@ -35,6 +35,10 @@ import soot.jimple.internal.JimpleLocalBox;
  */
 //负责从所有的Executor子类中，筛选出能够重构的子类。
 public class ExecutorSubclass {
+	//7.8记录，目前的实现是，将ThreadPoolExecutor 的子类中没有修改过s相关类的加入到completesubclass，然后判断
+	// 将ExecutorService的子类进行判断，将不是jdk存在的加入到附加的类集合中，然后若不是上一行判断过的complete的，就直接
+	//加入到污染类集合中。对包装类的判断还未实现。
+	
 	
 	/** The complete executor sub class. */
 	private static Set<SootClass>completeExecutorSubClass;
@@ -55,8 +59,6 @@ public class ExecutorSubclass {
 	
 
 	/**
-	 * 目前不具备分析额外的Executor子类的能力，只能先手动筛选能够返回FutureTask类型，且不具备ForkJoin
-	 * 和Schedule特性的执行器。.
 	 *
 	 *5.12尝试完善。
 	 *5.15发现新问题，有一些Executor子类，它们是包装器，虽然重新Override了这几个相关的方法，但是它们只是简单的调用了的执行器字段的。这种直接判断是安全的吗？
@@ -75,9 +77,10 @@ public class ExecutorSubclass {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		List<SootClass> tPESubClasses = hierarchy.getSubclassesOf(threadPoolExecutorClass);//若子类没有重写execute，newTaskFor，和submit方法，则直接判断为安全
 		if(tPESubClasses.isEmpty()) {
-			System.out.println("子类为空");
+			System.out.println("[threadPoolExecutorSubClassAnalysis]：子类为空");
 			return;
 		}
+		System.out.println("[threadPoolExecutorSubClassAnalysis]：所有的子类："+tPESubClasses);
 		for(SootClass tPESubClass : tPESubClasses) {
 			//判断是否是dirtyClass
 			boolean flag1 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
@@ -86,13 +89,12 @@ public class ExecutorSubclass {
 			boolean flag4 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.util.concurrent.Callable)");
 			boolean flag5 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.lang.Runnable,java.lang.Object)");
 			boolean flag6 = tPESubClass.declaresMethod("void execute(java.lang.Runnable)");
-			System.out.println("当前处理的子类："+tPESubClass);
 			if(flag1||flag2||flag3||flag4||flag5||flag6) {
 				dirtyClasses.add(tPESubClass);
-				System.out.println("这个类是不安全的："+tPESubClass);
+				System.out.println("[threadPoolExecutorSubClassAnalysis]：这个类是不安全的："+tPESubClass);
 			}else {
 				completeExecutorSubClass.add(tPESubClass);
-				System.out.println("这个类是安全的："+tPESubClass);
+				System.out.println("[threadPoolExecutorSubClassAnalysis]：这个类是安全的："+tPESubClass);
 			}
 		}
 		for(SootClass currentDirtyClass:dirtyClasses) {

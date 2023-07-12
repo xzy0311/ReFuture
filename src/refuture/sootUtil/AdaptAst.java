@@ -81,6 +81,8 @@ public class AdaptAst {
             	}
             }
         }
-		return null;
+		throw new NullPointerException("[getJimpleInvocStmt]获取调用节点对应的Stmt出错");
+		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
+		//也就是说正常情况下不应该出错。
 	}
 }
