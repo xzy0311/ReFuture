@@ -59,22 +59,30 @@ public class AnalysisUtils {
 		}
 		// 得到选中的元素中的JAVA项目。
 		try {
-			// 遍历项目的下一级，找到java源代码文件夹。给soot使用
-			boolean testFlag = true;// 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合maven 项目。
+			/*
+			 * ********这里有一些配置，需要手动更改。************
+			 */
+			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合JGroups 项目。
+			boolean testFlag = false;
 			if (testFlag) {
 				String projectOutPath = PROJECTOUTPATH.get(0);
-				String porjectTestOutPath = projectOutPath.replace("classes", "test-classes");
-				PROJECTOUTPATH.add(porjectTestOutPath);
+				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
+				PROJECTOUTPATH.add(projectTestOutPath);
 				testFlag = false;
 			}
-			// 找到包，给AST使用
+			
+			//1.2 手动添加测试类class文件路径
+			// cassandra使用
+			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
+			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
-				//jGroups使用
+				//2 对源码包的过滤选项。
+				//jGroups，cassandra使用
 				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 				 
 //				boolean javaFolder = element.toString().startsWith("java");//其他
 //				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat使用。
-				if (javaFolder) {
+				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
 						if (ele instanceof IPackageFragment) {
