@@ -12,6 +12,7 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Assignment;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
@@ -205,13 +206,37 @@ public class AnalysisUtils {
 			}
 			node = node.getParent();
 			if (node == node.getParent()) {
-				System.out.println("[getMethodName]：传入的ASTNode有问题");
-				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
+				System.out.println("[AnalysisUtils.getMethodDeclaration4node]：有问题"+node);
+				throw new ExceptionInInitializerError("[AnalysisUtils.getMethodDeclaration4node]：有问题"+node);
 			}
 		}
-		return (MethodDeclaration) node;
+		if(node instanceof MethodDeclaration) {
+			return (MethodDeclaration) node;
+		}else {
+			CompilationUnit cu = (CompilationUnit)node.getRoot();
+			throw new NullPointerException("[AnalysisUtils.getMethodDeclaration4node]空方法定义,属于类："
+			+getTypeDeclaration4node(node).resolveBinding().getQualifiedName()+"行号："+cu.getLineNumber(node.getStartPosition()));
+		}
 	}
 
+	/**
+	 * 得到节点所属的类定义节点
+	 *
+	 * @param node the node
+	 * @return the Type declaration 4 node
+	 */
+	public static TypeDeclaration getTypeDeclaration4node(ASTNode node) {
+
+		while (!(node instanceof TypeDeclaration)) {
+			node = node.getParent();
+			if (node == node.getParent()) {
+				System.out.println("[AnalysisUtils.getTypeDeclaration4node]：有问题"+node);
+				throw new ExceptionInInitializerError("[AnalysisUtils.getTypeDeclaration4node]：有问题"+node);
+			}
+		}
+		return (TypeDeclaration) node;
+	}
+	
 	/**
 	 * Checks if is declaration or assignment.
 	 *
