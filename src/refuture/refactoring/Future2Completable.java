@@ -88,15 +88,14 @@ public class Future2Completable {
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;
 				}
-				//修改成先利用ast的类型绑定进行初次判断，排除一些非法的。待修改20230708
-//				if(!ExecutorSubclass.objectIsFuture(invocationNode)) {
-//					continue;
-//				}
+				//修改成先利用ast的类型绑定进行初次判断执行器变量的类型，排除一些非法的。已添加0712
+				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
+					continue;
+				}
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
 				if(!ExecutorSubclass.canRefactor(invocStmt)) {
 					continue;
 				}
-//0708 我应该判断为什么那个没有判断出来类型。应该能判断出来的，是否可以加上一些额外的判断，来帮助我容易调试程序，找到那个位置，比如528这个行号？
 				TextFileChange change = new TextFileChange("Future2Completable",source);
 				
 				boolean flag1 = refactorExecuteRunnable(invocStmt,invocationNode,change,cu);

@@ -39,7 +39,6 @@ public class ExecutorSubclass {
 	// 将ExecutorService的子类进行判断，将不是jdk存在的加入到附加的类集合中，然后若不是上一行判断过的complete的，就直接
 	//加入到污染类集合中。对包装类的判断还未实现。
 	
-	
 	/** The complete executor sub class. */
 	private static Set<SootClass>completeExecutorSubClass;
 	

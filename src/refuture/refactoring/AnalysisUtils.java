@@ -13,6 +13,7 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
@@ -262,5 +263,20 @@ public class AnalysisUtils {
 
 	public static void throwNull() {
 		throw new NullPointerException();
+	}
+
+	/**
+	 * 进行一个判断，使用AST相关特性：
+	 * 1.判断去除this，super等特殊变量作为receiverObject的情况。我不会找到super,因为是superMethodInvocation
+	 * 2.不是污染的执行器子类。
+	 */
+	public static boolean receiverObjectIsComplete(MethodInvocation invocationNode) {
+		Expression exp = invocationNode.getExpression();
+		if(exp==null){
+			return false;
+		}
+		ITypeBinding typeBinding = exp.resolveTypeBinding();
+		System.out.println(typeBinding);
+		return true;
 	}
 }
