@@ -61,14 +61,10 @@ public class AdaptAst {
 		if(sc.isPhantom()) {
 			throw new IllegalStateException("虚拟类错误");
 		}
-		if(AnalysisUtils.debugFlag) {
-			System.out.println("[AdaptAST.getJimpleInvocStmt:]当前处理的是否是虚拟类："+sc.isPhantom()+"当前方法名称为:"+methodSootName+"所有的方法有："+sc.getMethods());
-		}
+		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt:]当前处理的是否是虚拟类："+sc.isPhantom()+"当前方法名称为:"+methodSootName+"所有的方法有："+sc.getMethods());
 		SootMethod sm = sc.getMethod(methodSootName);
 		//test
-		if(AnalysisUtils.debugFlag) {
-			System.out.println("[AdaptAST.getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getName());
-		}
+		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getName());
 		Body body =sm.retrieveActiveBody();
 		
         Iterator<Unit> i=body.getUnits().snapshotIterator();

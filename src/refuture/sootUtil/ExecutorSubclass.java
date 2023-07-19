@@ -176,6 +176,7 @@ public class ExecutorSubclass {
         			}
         			if(typeSetStrings.isEmpty()) {
         				//说明没有被访问到，可以进行排除
+        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到，进行排除");
         				return false;
         			}else if(completeSetTypeStrings.containsAll(typeSetStrings)) {
         				//是安全重构的子集，就可以进行重构了。
@@ -184,6 +185,7 @@ public class ExecutorSubclass {
         			}
         		}	
         	}
+        	AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]不是安全重构的子集，进行排除");
         	return false;
 	}
 

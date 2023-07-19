@@ -3,6 +3,7 @@ package refuture.refactoring;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -23,6 +24,10 @@ import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
+import refuture.sootUtil.ExecutorSubclass;
+import soot.Scene;
+import soot.SootClass;
+
 // TODO: Auto-generated Javadoc
 /**
  * The Class AnalysisUtils. 提供分析方法的工具包类，它的方法都是静态的。
@@ -36,7 +41,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	public static boolean debugFlag = false;
+	private static boolean debugFlag = false;
 
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -65,21 +70,21 @@ public class AnalysisUtils {
 			 * ********这里有一些配置，需要手动更改。************
 			 */
 			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合JGroups 项目。
-			boolean testFlag = false;
-			if (testFlag) {
-				String projectOutPath = PROJECTOUTPATH.get(0);
-				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
-				PROJECTOUTPATH.add(projectTestOutPath);
-				testFlag = false;
-			}
+//			boolean testFlag = true;
+//			if (testFlag) {
+//				String projectOutPath = PROJECTOUTPATH.get(0);
+//				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
+//				PROJECTOUTPATH.add(projectTestOutPath);
+//				testFlag = false;
+//			}
 			
 			//1.2 手动添加测试类class文件路径
-			// cassandra使用
+			// 1.2.1cassandra使用
 			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
-				//2 对源码包的过滤选项。
-				//jGroups，cassandra使用
+			//2 对源码包的过滤选项。
+				//2.1jGroups，cassandra使用
 				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 				 
 //				boolean javaFolder = element.toString().startsWith("java");//其他
@@ -273,10 +278,26 @@ public class AnalysisUtils {
 	public static boolean receiverObjectIsComplete(MethodInvocation invocationNode) {
 		Expression exp = invocationNode.getExpression();
 		if(exp==null){
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，无法重构。");
 			return false;
 		}
 		ITypeBinding typeBinding = exp.resolveTypeBinding();
-		System.out.println(typeBinding);
+		String typeName = typeBinding.getQualifiedName();
+		if(typeBinding.isNested()) {
+			typeName = typeBinding.getBinaryName();
+		}
+		SootClass sc = Scene.v().getSootClass(typeName);
+		Set<SootClass> dirtyclasses = ExecutorSubclass.getallDirtyExecutorSubClass();
+		if(dirtyclasses.contains(sc)) {
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]根据ASTtypeBinding 属于污染类，无法重构");
+			return false;
+		}
 		return true;
 	}
+	public static void debugPrint(String message) {
+		if(debugFlag == true) {
+			System.out.println(message);
+		}
+	}
+	
 }
