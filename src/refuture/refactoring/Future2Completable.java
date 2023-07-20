@@ -43,6 +43,7 @@ import org.eclipse.text.edits.TextEdit;
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.sootUtil.AdaptAst;
 import refuture.sootUtil.ExecutorSubclass;
+import soot.SootClass;
 import soot.jimple.Stmt;
 
 /**
@@ -90,12 +91,17 @@ public class Future2Completable {
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;
 				}
+				
+				
 				if(!printClassFlag) {
-					System.out.printf("--第%d个包含可能调用的类：s%分析开始------------------------------%n",j,cu.getElementName());
+					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
+					System.out.printf("--第%d个包含可能调用的类：s%分析开始------------------------------%n",j,sc.getName());
 					printClassFlag =true;
-					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+AdaptAst.getSootClass4InvocNode(invocationNode).getMethods());
+					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
 				}
 				System.out.printf("**第%d个{execute或submit}调用分析开始**********************************************************%n",invocNum);
+				
+				
 				//修改成先利用ast的类型绑定进行初次判断执行器变量的类型，排除一些非法的。已添加0712
 				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
 					continue;
