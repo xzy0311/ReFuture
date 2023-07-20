@@ -95,7 +95,7 @@ public class Future2Completable {
 				
 				if(!printClassFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
-					System.out.printf("--第%d个包含可能调用的类：s%分析开始------------------------------%n",j,sc.getName());
+					System.out.printf("--第%d个包含可能调用的类：%s分析开始------------------------------%n",j,sc.getName());
 					printClassFlag =true;
 					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
 				}
