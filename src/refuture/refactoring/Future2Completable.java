@@ -69,7 +69,9 @@ public class Future2Completable {
 	}
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
 		int i = 1;
+		int j = 1;
 		for(ICompilationUnit cu : allJavaFiles) {
+			boolean printClassFlag = false;
 			IFile source = (IFile) cu.getResource();
 //			System.out.println(source.getName());//输出所有的类文件名称
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
@@ -83,11 +85,17 @@ public class Future2Completable {
 			List<MethodInvocation> invocationNodes = miv.getResult();
 			// 2023.0706 
 //			ForTask.FindGet(invocationNodes);
-			
 			for(MethodInvocation invocationNode:invocationNodes) {
+				int invocNum = 1;
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;
 				}
+				if(!printClassFlag) {
+					System.out.printf("--第%d个包含可能调用的类：s%分析开始------------------------------%n",j,cu.getElementName());
+					printClassFlag =true;
+					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+AdaptAst.getSootClass4InvocNode(invocationNode).getMethods());
+				}
+				System.out.printf("**第%d个{execute或submit}调用分析开始**********************************************************%n",invocNum);
 				//修改成先利用ast的类型绑定进行初次判断执行器变量的类型，排除一些非法的。已添加0712
 				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
 					continue;
@@ -108,13 +116,14 @@ public class Future2Completable {
 					allChanges.add(change);
 					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
 					TypeDeclaration outTD = (TypeDeclaration) outMD.getParent();
-					System.out.printf("Task->CF:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,outTD.resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+					System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,outTD.resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
 					i = i+1;
 				}
-				
+				System.out.printf("**第%d个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n",invocNum++);
 			}
-			
-			
+			if(printClassFlag) {
+				System.out.printf("--第%d个可能包含调用的类分析完毕-----------------------------%n",j++);
+			}
 		}
 	}
 	

@@ -28,9 +28,8 @@ import soot.util.Chain;
  */
 public class AdaptAst {
 
-
 	/**
-	 * 从方法调用的ASTNode得到对应的Soot的Jimple Stmt,若没有可能返回null。
+	 * 从方法调用的ASTNode得到对应的Soot的Jimple Stmt.
 	 *
 	 * @param miv the miv
 	 * @return the jimple invoc stmt
@@ -40,34 +39,12 @@ public class AdaptAst {
 		CompilationUnit cu = (CompilationUnit)miv.getRoot();
 		int lineNumber = cu.getLineNumber(miv.getStartPosition());//行号
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
-//		System.out.println("[getJimpleInvocStmt:]"+ivcMethodName);
 		String methodSootName = AnalysisUtils.getSootMethodName(miv);//得到soot中用到的subsignature。
-//		System.out.println("[getJimpleInvocStmt:]"+methodSootName);
-		ITypeBinding itb;
-		if(AnalysisUtils.getMethodDeclaration4node(miv).getParent() instanceof AnonymousClassDeclaration) {
-			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)AnalysisUtils.getMethodDeclaration4node(miv).getParent();
-			itb = ad.resolveBinding();
-		}else {
-			TypeDeclaration td=(TypeDeclaration)AnalysisUtils.getMethodDeclaration4node(miv).getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
-			itb = td.resolveBinding();//得到FullName,必须是用绑定。
-		}
-		String typeFullName;
-		if(itb.isNested()) {
-			typeFullName = itb.getBinaryName();
-		}else {
-			typeFullName = itb.getQualifiedName();
-		}
-		SootClass sc = Scene.v().getSootClass(typeFullName);
-		if(sc.isPhantom()) {
-			throw new IllegalStateException("虚拟类错误");
-		}
-		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt:]当前处理的是否是虚拟类："+sc.isPhantom()+"当前方法名称为:"+methodSootName+"所有的方法有："+sc.getMethods());
+		SootClass sc = getSootClass4InvocNode(miv);
+		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+methodSootName);
 		SootMethod sm = sc.getMethod(methodSootName);
-		//test
-		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getName());
 		Body body =sm.retrieveActiveBody();
-		
-        Iterator<Unit> i=body.getUnits().snapshotIterator();
+        Iterator<Unit> i=body.getUnits().snapshotIterator(); 
         while(i.hasNext())
         {
             Stmt stmt=(Stmt) i.next();
@@ -77,8 +54,32 @@ public class AdaptAst {
             	}
             }
         }
-		throw new NullPointerException("[getJimpleInvocStmt]获取调用节点对应的Stmt出错");
+		throw new IllegalStateException("[getJimpleInvocStmt]获取调用节点对应的Stmt出错");
 		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
 		//也就是说正常情况下不应该出错。
 	}
+
+	public static SootClass getSootClass4InvocNode(MethodInvocation incovNode) {
+		ITypeBinding itb;
+		String typeFullName;
+		if(AnalysisUtils.getMethodDeclaration4node(incovNode).getParent() instanceof AnonymousClassDeclaration) {
+			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)AnalysisUtils.getMethodDeclaration4node(incovNode).getParent();
+			itb = ad.resolveBinding();
+		}else {
+			TypeDeclaration td=(TypeDeclaration)AnalysisUtils.getMethodDeclaration4node(incovNode).getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
+			itb = td.resolveBinding();//得到FullName,必须是用绑定。
+		}
+		if(itb.isNested()) {
+			typeFullName = itb.getBinaryName();
+		}else {
+			typeFullName = itb.getQualifiedName();
+		}
+		SootClass sc = Scene.v().getSootClass(typeFullName);
+		if(sc.isPhantom()) {
+			System.out.println("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath");
+			throw new NullPointerException("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath");
+		}
+		return sc;
+	}
+	
 }

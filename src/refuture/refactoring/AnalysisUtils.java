@@ -41,7 +41,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = false;
+	private static boolean debugFlag = true;
 
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -51,7 +51,6 @@ public class AnalysisUtils {
 	 */
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
-//		ExportReferencedLibraries.export(project);//导出依赖的jar到项目下的refuture-lib
 
 		// 得到输出的class在的文件夹，方便后继使用soot分析。
 		try {
@@ -145,8 +144,8 @@ public class AnalysisUtils {
 			}
 			node = node.getParent();
 			if (node == node.getParent()) {
-				System.out.println("[getMethodName]：传入的ASTNode有问题");
-				throw new ExceptionInInitializerError("[getMethodName]：传入的ASTNode有问题");
+				System.out.println("@error[AnalysisUtils.getMethodName]：传入的ASTNode有问题");
+				throw new ExceptionInInitializerError("[AnalysisUtils.getMethodName]：传入的ASTNode有问题");
 			}
 		}
 
@@ -212,7 +211,7 @@ public class AnalysisUtils {
 			}
 			node = node.getParent();
 			if (node == node.getParent()) {
-				System.out.println("[AnalysisUtils.getMethodDeclaration4node]：有问题"+node);
+				System.out.println("@error[AnalysisUtils.getMethodDeclaration4node]：有问题"+node);
 				throw new ExceptionInInitializerError("[AnalysisUtils.getMethodDeclaration4node]：有问题"+node);
 			}
 		}
@@ -236,7 +235,7 @@ public class AnalysisUtils {
 		while (!(node instanceof TypeDeclaration)) {
 			node = node.getParent();
 			if (node == node.getParent()) {
-				System.out.println("[AnalysisUtils.getTypeDeclaration4node]：有问题"+node);
+				System.out.println("@error[AnalysisUtils.getTypeDeclaration4node]：有问题"+node);
 				throw new ExceptionInInitializerError("[AnalysisUtils.getTypeDeclaration4node]：有问题"+node);
 			}
 		}
@@ -278,10 +277,14 @@ public class AnalysisUtils {
 	public static boolean receiverObjectIsComplete(MethodInvocation invocationNode) {
 		Expression exp = invocationNode.getExpression();
 		if(exp==null){
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，无法重构。");
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，进行排除。");
 			return false;
 		}
 		ITypeBinding typeBinding = exp.resolveTypeBinding();
+		if(typeBinding==null){
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，这里不卡");
+			return true;
+		}
 		String typeName = typeBinding.getQualifiedName();
 		if(typeBinding.isNested()) {
 			typeName = typeBinding.getBinaryName();
@@ -289,7 +292,7 @@ public class AnalysisUtils {
 		SootClass sc = Scene.v().getSootClass(typeName);
 		Set<SootClass> dirtyclasses = ExecutorSubclass.getallDirtyExecutorSubClass();
 		if(dirtyclasses.contains(sc)) {
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]根据ASTtypeBinding 属于污染类，无法重构");
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]根据ASTtypeBinding 属于污染类，进行排除");
 			return false;
 		}
 		return true;
@@ -298,6 +301,10 @@ public class AnalysisUtils {
 		if(debugFlag == true) {
 			System.out.println(message);
 		}
+	}
+	public static int lineNumberPrint(MethodInvocation invocationNode) {
+		CompilationUnit astUnit = (CompilationUnit)invocationNode.getRoot();
+		return astUnit.getColumnNumber(invocationNode.getStartPosition());
 	}
 	
 }
