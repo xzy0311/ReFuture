@@ -3,6 +3,7 @@ package refuture.sootUtil;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -41,7 +42,7 @@ public class AdaptAst {
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
 		String methodSootName = AnalysisUtils.getSootMethodName(miv);//得到soot中用到的subsignature。
 		SootClass sc = getSootClass4InvocNode(miv);
-		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt:]包含submit/execute方法调用的类："+sc.getName()+"方法名"+methodSootName);
+		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:包含submit/execute方法调用的类："+sc.getName()+"方法名"+methodSootName);
 		SootMethod sm = sc.getMethod(methodSootName);
 		Body body =sm.retrieveActiveBody();
         Iterator<Unit> i=body.getUnits().snapshotIterator(); 
@@ -54,7 +55,9 @@ public class AdaptAst {
             	}
             }
         }
-		throw new IllegalStateException("[getJimpleInvocStmt]获取调用节点对应的Stmt出错");
+//		throw new IllegalStateException("[getJimpleInvocStmt]获取调用节点对应的Stmt出错");
+        System.out.println("@error[AdaptAST.getJimpleInvocStmt]:获取调用节点对应的Stmt出错");
+        return null;
 		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
 		//也就是说正常情况下不应该出错。
 	}
@@ -62,11 +65,16 @@ public class AdaptAst {
 	public static SootClass getSootClass4InvocNode(MethodInvocation incovNode) {
 		ITypeBinding itb;
 		String typeFullName;
-		if(AnalysisUtils.getMethodDeclaration4node(incovNode).getParent() instanceof AnonymousClassDeclaration) {
-			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)AnalysisUtils.getMethodDeclaration4node(incovNode).getParent();
+		ASTNode astNode = AnalysisUtils.getMethodDeclaration4node(incovNode);
+		if(astNode == null) {
+			TypeDeclaration td = AnalysisUtils.getTypeDeclaration4node(incovNode);
+			itb = td.resolveBinding();
+		}else if(astNode.getParent() instanceof AnonymousClassDeclaration) {
+			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)astNode.getParent();
 			itb = ad.resolveBinding();
 		}else {
-			TypeDeclaration td=(TypeDeclaration)AnalysisUtils.getMethodDeclaration4node(incovNode).getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
+			TypeDeclaration td=(TypeDeclaration)astNode
+					.getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
 			itb = td.resolveBinding();//得到FullName,必须是用绑定。
 		}
 		if(itb.isNested()) {

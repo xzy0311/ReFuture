@@ -1,6 +1,7 @@
 package refuture.refactoring;
 
 import java.io.File;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -15,8 +16,10 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
@@ -27,6 +30,7 @@ import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import refuture.sootUtil.ExecutorSubclass;
 import soot.Scene;
 import soot.SootClass;
+import soot.JastAddJ.Modifiers;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -117,7 +121,6 @@ public class AnalysisUtils {
 	 */
 	public static String getSootMethodName(ASTNode node) {
 		String methodSootName = "void <init>()";
-
 		while (!(node instanceof TypeDeclaration)) {
 			if (node instanceof MethodDeclaration) {
 				MethodDeclaration mdNode = (MethodDeclaration) node;
@@ -141,25 +144,47 @@ public class AnalysisUtils {
 				String methodParameters = getmethodParameters(mdNode);
 				methodSootName = methodReturnTypeName + " " + methodSimpleName + "(" + methodParameters + ")";
 				break;
+			}else if(node instanceof Initializer){
+				if(Modifier.isStatic(((Initializer) node).getModifiers())) {
+					methodSootName = "void <clinit>()";
+				}
+				break;
+			}else if(node instanceof FieldDeclaration) {
+				if(Modifier.isStatic(((FieldDeclaration) node).getModifiers())) {
+					methodSootName = "void <clinit>()";
+				}
+				break;
 			}
 			node = node.getParent();
-			if (node == node.getParent()) {
-				System.out.println("@error[AnalysisUtils.getMethodName]：传入的ASTNode有问题");
-				throw new ExceptionInInitializerError("[AnalysisUtils.getMethodName]：传入的ASTNode有问题");
+		}
+		if(node instanceof MethodDeclaration) {
+			if (methodSootName != "void <init>()") {
+//				System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+				// 去除额外的<>和因此产生的空格。
+				String result = methodSootName.replaceAll("<[^<>]*>", "");
+				do {
+					methodSootName = result;
+					result = methodSootName.replaceAll("<[^<>]*>", "");
+				} while (!result.equals(methodSootName));
+				methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
+//				System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+			}else {
+				TypeDeclaration td = getTypeDeclaration4node(node);
+				ITypeBinding typeBinding = td.resolveBinding();
+				if(typeBinding.isNested()&&!Modifier.isStatic(td.getModifiers())) {//innerClass & not static,it jimple class contructor method's parameters not empty
+					String bn = typeBinding.getBinaryName();
+					int lastIndex = bn.lastIndexOf('$');
+					if(lastIndex != -1) {
+						bn = bn.substring(0,lastIndex);
+					}else {
+						throw new IllegalStateException("error");
+					}
+					methodSootName = "void <init>("+bn+")";
+				}
 			}
 		}
 
-		if (methodSootName != "void <init>()") {
-//			System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
-			// 去除额外的<>和因此产生的空格。
-			String result = methodSootName.replaceAll("<[^<>]*>", "");
-			do {
-				methodSootName = result;
-				result = methodSootName.replaceAll("<[^<>]*>", "");
-			} while (!result.equals(methodSootName));
-			methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
-//			System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
-		}
+
 		return methodSootName;
 
 	}
@@ -179,6 +204,7 @@ public class AnalysisUtils {
 			for (ASTNode astnode : parameterList) {
 				SingleVariableDeclaration param = (SingleVariableDeclaration) astnode;
 				ITypeBinding typeBinding = param.getType().resolveBinding();
+				
 				String typefullName;
 				if (typeBinding.isTypeVariable()) {
 					typefullName = "java.lang.Object";
@@ -186,6 +212,9 @@ public class AnalysisUtils {
 					typefullName = typeBinding.getQualifiedName();
 				} else {
 					typefullName = typeBinding.getBinaryName();
+				}
+				if(param.isVarargs()) {
+					typefullName = typefullName+"[]";
 				}
 				if (parameterString.isEmpty()) {
 					parameterString = typefullName;
@@ -198,13 +227,13 @@ public class AnalysisUtils {
 	}
 
 	/**
-	 * 得到节点所属的方法块的方法定义节点
+	 * 得到节点所属的方法块的方法定义节点, 
 	 *
 	 * @param node the node
 	 * @return the method declaration 4 node
 	 */
 	public static MethodDeclaration getMethodDeclaration4node(ASTNode node) {
-
+		int lineNumberPosition = node.getStartPosition();
 		while (!(node instanceof TypeDeclaration)) {
 			if (node instanceof MethodDeclaration) {
 				break;
@@ -218,9 +247,14 @@ public class AnalysisUtils {
 		if(node instanceof MethodDeclaration) {
 			return (MethodDeclaration) node;
 		}else {
-			CompilationUnit cu = (CompilationUnit)node.getRoot();
-			throw new NullPointerException("[AnalysisUtils.getMethodDeclaration4node]空方法定义,属于类："
-			+getTypeDeclaration4node(node).resolveBinding().getQualifiedName()+"行号："+cu.getLineNumber(node.getStartPosition()));
+//			CompilationUnit cu = (CompilationUnit)node.getRoot();
+//			throw new NullPointerException("[AnalysisUtils.getMethodDeclaration4node]空方法定义,属于类："
+//			+getTypeDeclaration4node(node).resolveBinding().getQualifiedName()+"行号："+cu.getLineNumber(lineNumberPosition));
+			//if InvocationNode not in MethodDeclaration,it may in Initial Block (static or not) .if in static block it will in staic void <clinit>() in soot ,if in block ,it will in public void <init>().
+			//so ,i just return null;
+			return null;
+			
+			
 		}
 	}
 
