@@ -125,11 +125,11 @@ public class Future2Completable {
 				boolean flag3 = refactorSubmitRunnable(invocStmt,invocationNode,change,cu);
 				boolean flag4 = refactorSubmitRunnableNValue(invocStmt,invocationNode,change,cu);//suspend
 				boolean flag5 = false;
-				if(flag4 != false) {
+				if(flag3 != false) {
 					flag5 = refactorSubmitFutureTask(invocStmt,invocationNode,change,cu);
 				}
 				boolean flag6 = false;
-				if(flag1!=false) {
+				if(flag1 !=false) {
 					flag6 = refactorExecuteFutureTask(invocStmt,invocationNode,change,cu);
 				}
 				if(flag1||flag2||flag3||flag4||flag5||flag6) {
