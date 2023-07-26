@@ -194,7 +194,7 @@ public class ExecutorSubclass {
 	 * 判断参数的类型是否复合要求。.
 	 *
 	 * @param invocStmt the invoc stmt
-	 * @param argType   为1,代表是callable;为2,代表Runnable;为3,代表FutureTask。
+	 * @param argType   为1,代表是callable;为2,代表Runnable;为3,代表FutureTask;为4,代表两个参数。
 	 * @return true, if successful
 	 */
 	public static boolean canRefactorArgu(Stmt invocStmt,int argType) {
@@ -206,6 +206,7 @@ public class ExecutorSubclass {
 		List<Value> lv =ivcExp.getArgs();
 		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
 		if(lv.size() == 0) {
+			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:未传入实参，排除");
 			return false;
 		}
 		if(lv.get(0)instanceof Local) {
@@ -213,16 +214,46 @@ public class ExecutorSubclass {
 			PointsToSet ptset = pa.reachingObjects(la1);
 			Set<Type> typeSet = ptset.possibleTypes();
 			Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+			SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
+			List<SootClass> callableImplementers =hierarchy.getImplementersOf(callable);
+			SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
+			SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
+			List<SootClass> runnableImplementers =hierarchy.getImplementersOf(runnable);
 			switch (argType) {
 			case 1://是否是Callable的子类.
 				for(Type type:typeSet) {
 					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-					SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
-					if(sc.isPhantom()||callable.isPhantom()) {
+					if(sc.isPhantom()) {
+						AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
 						return false;
 					}
-					List<SootClass> implementers =hierarchy.getImplementersOf(callable);
-					return implementers.contains(sc);
+					if(callableImplementers.contains(sc)) {
+						return true;
+					}
+				}
+				break;
+			case 2:		
+				for(Type type:typeSet) {
+					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+					if(sc.isPhantom()) {
+						AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
+						return false;
+					}
+					if(runnableImplementers.contains(sc)) {
+						return true;
+					}
+				}
+				break;
+			case 3:		
+				for(Type type:typeSet) {
+					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+					if(sc.isPhantom()) {
+						AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
+						return false;
+					}
+					if(hierarchy.isClassSuperclassOfIncluding(futureTask, sc)) {
+						return true;
+					}
 				}
 				break;
 			case 4:		
@@ -230,26 +261,8 @@ public class ExecutorSubclass {
 				return true;
 			}
 				break;
-			default://判断是否是FutureTask类型，若是则判断是3则返回true，其他情况返回false；若不是则2返回true,其他情况返回false;
-				for(Type type:typeSet) {
-					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-					SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
-					SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
-					if(sc.isPhantom()||futureTask.isPhantom()) {
-						return false;
-					}
-					if(hierarchy.isClassSuperclassOfIncluding(futureTask, sc)) {
-						if(argType == 3) {
-							return true;
-						}
-					}else {
-						if(argType ==2&&lv.size()==1) {
-							List<SootClass> implementers =hierarchy.getImplementersOf(runnable);
-							return implementers.contains(sc);
-
-						}
-					}
-				}
+			default:
+				throw new IllegalArgumentException("Invalid number");
 		}
 			return false;
 		}
