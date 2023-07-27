@@ -49,7 +49,6 @@ public class AnalysisUtils {
 
 	/**
 	 * Collect from select,并得到项目的路径。
-	 *
 	 * @param project the project
 	 * @return 传入的对象中包含的java文件列表。
 	 */

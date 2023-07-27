@@ -97,25 +97,25 @@ public class Future2Completable {
 				
 				if(!printClassFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
-					System.out.printf("--第%d个包含可能调用的类：%s分析开始------------------------------%n",j,sc.getName());
+					AnalysisUtils.debugPrint("--第"+j+"个包含可能调用的类："+sc.getName()+"分析开始------------------------------%n");
 					printClassFlag =true;
 					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
 				}
-				System.out.printf("**第%d个{execute或submit}调用分析开始**********************************************************%n",invocNum);
+				AnalysisUtils.debugPrint("**第"+invocNum+"个{execute或submit}调用分析开始**********************************************************%n");
 				
 				
 				//修改成先利用ast的类型绑定进行初次判断执行器变量的类型，排除一些非法的。已添加0712
 				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
-					System.out.printf("**第%d个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n",invocNum++);
+					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
 				if(invocStmt ==null) {
-					System.out.printf("**第%d个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n",invocNum++);
+					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
 				if(!ExecutorSubclass.canRefactor(invocStmt)) {
-					System.out.printf("**第%d个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n",invocNum++);
+					AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
 				TextFileChange change = new TextFileChange("Future2Completable",source);
@@ -148,10 +148,10 @@ public class Future2Completable {
 					}
 					i = i+1;
 				}
-				System.out.printf("**第%d个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n",invocNum++);
+				AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n");
 			}
 			if(printClassFlag) {
-				System.out.printf("--第%d个可能包含调用的类分析完毕-----------------------------%n",j++);
+				AnalysisUtils.debugPrint("--第"+j+++"个可能包含调用的类分析完毕-----------------------------%n");
 			}
 		}
 	}
@@ -485,7 +485,15 @@ public class Future2Completable {
         	}else if(flag ==3){
         		rewriter.set(expressionStatement, ExpressionStatement.EXPRESSION_PROPERTY, invocationCompose, null);
         	}else if(flag ==4){
-        		rewriter.set(methodInvocation, MethodInvocation.EXPRESSION_PROPERTY, invocationCompose, null);
+        		if(methodInvocation.getExpression() == invocationNode) {
+        			rewriter.set(methodInvocation, MethodInvocation.EXPRESSION_PROPERTY, invocationCompose, null);
+        		}else if(methodInvocation.arguments().contains(invocationNode)) {
+        			ListRewrite invocationArguRewrite = rewriter.getListRewrite(methodInvocation, MethodInvocation.ARGUMENTS_PROPERTY);
+        			invocationArguRewrite.replace(invocationNode, invocationCompose, null);
+        		}else {
+        			throw new ExceptionInInitializerError("parent:"+methodInvocation+"currentInvocation:"+invocationNode);
+        		}
+        		
         	}else {
         		throw new IllegalArgumentException(new Integer(flag).toString());
         	}
@@ -494,6 +502,7 @@ public class Future2Completable {
         	change.setEdit(edits);
        	 ImportRewrite ir = ImportRewrite.create(cu, true);
 		 ir.addImport("java.util.concurrent.CompletableFuture");
+		 ir.addImport("java.util.concurrent.CompletionException");
 		try {
 			TextEdit editsImport = ir.rewriteImports(null);
 			change.addEdit(editsImport);

@@ -85,7 +85,7 @@ public class AdaptAst {
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		if(sc.isPhantom()) {
 			System.out.println("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath");
-			throw new NullPointerException("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath");
+			throw new NullPointerException("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类:"+typeFullName+"，请检查soot ClassPath:");
 		}
 		return sc;
 	}
