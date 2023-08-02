@@ -82,8 +82,8 @@ public class AnalysisUtils {
 			
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用
-			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
-			PROJECTOUTPATH.add(projectTestOutPath);
+//			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
+//			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra使用
@@ -137,7 +137,7 @@ public class AnalysisUtils {
 				if (type.resolveBinding().isTypeVariable()) {
 					methodReturnTypeName = "java.lang.Object";
 				} else {
-					methodReturnTypeName = imb.getReturnType().getQualifiedName().toString();
+					methodReturnTypeName = imb.getReturnType().getBinaryName().toString();
 				}
 				String methodSimpleName = mdNode.getName().toString();
 				String methodParameters = getmethodParameters(mdNode);
