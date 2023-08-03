@@ -19,6 +19,7 @@ import org.eclipse.jdt.core.dom.CastExpression;
 import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
 import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.InfixExpression;
@@ -170,7 +171,7 @@ public class Future2Completable {
             	rewriter.set(invocationNode, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
             	rewriter.set(invocationNode, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"), null);
             	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
-            	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
+            	listRewriter.insertLast(invocationNode.getExpression(), null);
             	
             	TextEdit edits = rewriter.rewriteAST();
             	change.setEdit(edits);
@@ -535,7 +536,9 @@ public class Future2Completable {
         		rewriter.set(arrayAcc, ArrayAccess.INDEX_PROPERTY, oldArrayAcc.getIndex(), null);
         		listRewriter.insertLast(arrayAcc, null);
         	}else {
-        		listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
+//        		Expression exp = invocationNode.getExpression();
+//        		listRewriter.insertLast((Expression)ASTNode.copySubtree(ast, exp), null);
+        		listRewriter.insertLast(invocationNode.getExpression(), null);
         	}
         	TextEdit edits = rewriter.rewriteAST();
         	change.setEdit(edits);
@@ -569,7 +572,7 @@ public class Future2Completable {
         	rewriter.set(invocationNode, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
         	rewriter.set(invocationNode, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"), null);
         	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
-        	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
+        	listRewriter.insertLast(invocationNode.getExpression(), null);
         	TextEdit edits = rewriter.rewriteAST();
         	change.setEdit(edits);
         	
@@ -621,7 +624,7 @@ public class Future2Completable {
         	rewriter.set(newMiv, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"),null);
         	ListRewrite  newListRewriter = rewriter.getListRewrite(newMiv, MethodInvocation.ARGUMENTS_PROPERTY);
         	newListRewriter.insertLast(variableName, null);
-        	newListRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
+        	listRewriter.insertLast(invocationNode.getExpression(), null);
         	ExpressionStatement exps = ast.newExpressionStatement(newMiv);
         	ListRewrite lastListRewrite = rewriter.getListRewrite(b, Block.STATEMENTS_PROPERTY);
         	lastListRewrite.insertAfter(exps, vds, null);
@@ -656,7 +659,7 @@ public class Future2Completable {
         	rewriter.set(invocationNode, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
         	rewriter.set(invocationNode, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"), null);
         	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
-        	listRewriter.insertLast(ast.newName(invocationNode.getExpression().toString()), null);
+        	listRewriter.insertLast(invocationNode.getExpression(), null);
         	TextEdit edits = rewriter.rewriteAST();
         	change.setEdit(edits);
         	 ImportRewrite ir = ImportRewrite.create(cu, true);

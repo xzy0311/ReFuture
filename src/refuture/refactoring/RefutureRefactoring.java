@@ -48,7 +48,6 @@ public class RefutureRefactoring extends Refactoring {
 		potentialJavaFiles = new ArrayList<IJavaElement>();
 		InitAllStaticfield.init();//初始化所有的静态字段。
 		SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
-		
 	}
 
 

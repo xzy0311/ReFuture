@@ -13,6 +13,7 @@ import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
 
+import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.RefutureRefactoring;
 import refuture.refactoringwizard.FutureTaskRefactoringWizard;
 

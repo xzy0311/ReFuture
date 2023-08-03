@@ -51,10 +51,12 @@ public class AnalysisUtils {
 	 * Collect from select,并得到项目的路径。
 	 * @param project the project
 	 * @return 传入的对象中包含的java文件列表。
+	 *8.3 projectNest need to implement 
+	 *
 	 */
 	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
-
+		
 		// 得到输出的class在的文件夹，方便后继使用soot分析。
 		try {
 			String projectoutpath = project.getOutputLocation().toOSString();
@@ -83,14 +85,16 @@ public class AnalysisUtils {
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用
 //			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
-//			PROJECTOUTPATH.add(projectTestOutPath);
+			// 1.2.2hadoop use
+			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
+			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra使用
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 				 
 //				boolean javaFolder = element.toString().startsWith("java");//其他
-//				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat使用。
+				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
@@ -137,7 +141,10 @@ public class AnalysisUtils {
 				if (type.resolveBinding().isTypeVariable()) {
 					methodReturnTypeName = "java.lang.Object";
 				} else {
-					methodReturnTypeName = imb.getReturnType().getBinaryName().toString();
+					methodReturnTypeName = imb.getReturnType().getQualifiedName().toString();
+					if(methodReturnTypeName.contains(".")) {
+						methodReturnTypeName = imb.getReturnType().getBinaryName().toString();
+					}
 				}
 				String methodSimpleName = mdNode.getName().toString();
 				String methodParameters = getmethodParameters(mdNode);
@@ -340,4 +347,13 @@ public class AnalysisUtils {
 		return astUnit.getColumnNumber(invocationNode.getStartPosition());
 	}
 	
+	private static List<IJavaProject> FindAllProjects(IJavaProject ijp) throws JavaModelException{
+		List<IJavaProject> javaList = new ArrayList();
+		for(IJavaElement ije :ijp.getChildren()) {
+			if(ije instanceof IJavaProject) {
+				javaList.add((IJavaProject)ije);
+			}
+		}
+		return javaList;
+	}
 }
