@@ -45,7 +45,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = true;
+	private static boolean debugFlag = false;
 
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -85,16 +85,16 @@ public class AnalysisUtils {
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用
 //			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
-			// 1.2.2hadoop use
-			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
-			PROJECTOUTPATH.add(projectTestOutPath);
+			// 1.2.2hadoop zookeeper use
+//			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
+//			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
-				//2.1jGroups，cassandra使用
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				//2.1jGroups，cassandra, lucene-solr使用
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 				 
 //				boolean javaFolder = element.toString().startsWith("java");//其他
-				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop使用。
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
