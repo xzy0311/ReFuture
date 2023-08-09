@@ -209,6 +209,12 @@ public class ExecutorSubclass {
 			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:未传入实参，排除");
 			return false;
 		}
+		if(lv.size() == 2) {
+			if(argType == 4) {
+				return true;
+			}
+			return false;
+		}
 		if(lv.get(0)instanceof Local) {
 			Local la1 = (Local) lv.get(0);
 			PointsToSet ptset = pa.reachingObjects(la1);
