@@ -30,7 +30,6 @@ import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import refuture.sootUtil.ExecutorSubclass;
 import soot.Scene;
 import soot.SootClass;
-import soot.JastAddJ.Modifiers;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -45,7 +44,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = false;
+	private static boolean debugFlag = true;
 
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -73,26 +72,27 @@ public class AnalysisUtils {
 			/*
 			 * ********这里有一些配置，需要手动更改。************
 			 */
-			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合JGroups 项目。
-//			boolean testFlag = true;
-//			if (testFlag) {
-//				String projectOutPath = PROJECTOUTPATH.get(0);
-//				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
-//				PROJECTOUTPATH.add(projectTestOutPath);
-//				testFlag = false;
-//			}
+			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合JGroups flume 项目。
+			boolean testFlag = true;
+			if (testFlag) {
+				System.out.println("PROJECTOUTPATH IS :"+PROJECTOUTPATH);
+				String projectOutPath = PROJECTOUTPATH.get(0);
+				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
+				PROJECTOUTPATH.add(projectTestOutPath);
+				testFlag = false;
+			}
 			
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用
 //			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
-			// 1.2.2hadoop zookeeper use
+			// 1.2.2hadoop zookeeper  use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
 //			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
-				//2.1jGroups，cassandra, lucene-solr使用
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-				 
+				//2.1jGroups，cassandra, lucene-solr 使用
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("target");//flume
 //				boolean javaFolder = element.toString().startsWith("java");//其他
 //				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper使用。
 				if (javaFolder) {// 找到包，给AST使用
@@ -165,6 +165,7 @@ public class AnalysisUtils {
 		}
 		if(node instanceof MethodDeclaration) {
 			if (methodSootName != "void <init>()") {
+				
 //				System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
 				// 去除额外的<>和因此产生的空格。
 				String result = methodSootName.replaceAll("<[^<>]*>", "");
