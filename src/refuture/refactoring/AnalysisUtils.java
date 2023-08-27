@@ -72,7 +72,7 @@ public class AnalysisUtils {
 			/*
 			 * ********这里有一些配置，需要手动更改。************
 			 */
-			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。可能只适合JGroups flume 项目。
+			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume 项目。
 			boolean testFlag = true;
 			if (testFlag) {
 				System.out.println("PROJECTOUTPATH IS :"+PROJECTOUTPATH);
@@ -164,8 +164,7 @@ public class AnalysisUtils {
 			node = node.getParent();
 		}
 		if(node instanceof MethodDeclaration) {
-			if (methodSootName != "void <init>()") {
-				
+			if (methodSootName != "void <init>()"&&countGreaterThanOneLessThanSign(methodSootName)>1) {
 //				System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
 				// 去除额外的<>和因此产生的空格。
 				String result = methodSootName.replaceAll("<[^<>]*>", "");
@@ -357,4 +356,14 @@ public class AnalysisUtils {
 		}
 		return javaList;
 	}
+	
+    public static int countGreaterThanOneLessThanSign(String text) {
+        int count = 0;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '<') {
+                count++;
+            }
+        }
+        return count;
+    }
 }
