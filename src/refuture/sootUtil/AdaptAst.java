@@ -36,7 +36,6 @@ public class AdaptAst {
 	 * @return the jimple invoc stmt
 	 */
 	public static Stmt getJimpleInvocStmt(MethodInvocation miv) {
-		
 		CompilationUnit cu = (CompilationUnit)miv.getRoot();
 		int lineNumber = cu.getLineNumber(miv.getStartPosition());//行号
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
@@ -45,18 +44,35 @@ public class AdaptAst {
 		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:包含submit/execute方法调用的类："+sc.getName()+"方法名"+methodSootName);
 		SootMethod sm = sc.getMethod(methodSootName);
 		Body body =sm.retrieveActiveBody();
-        Iterator<Unit> i=body.getUnits().snapshotIterator(); 
+        Iterator<Unit> i=body.getUnits().snapshotIterator();
+        boolean notLocalFlag = false;// if method is localmethod,its jimple name is stemp name not execute or submit.
+        int jimpleLineNumber =0;
+        int containTargetNum = 0;
+        Stmt TempStmt = null;
         while(i.hasNext())
         {
             Stmt stmt=(Stmt) i.next();
             if(stmt.toString().contains(ivcMethodName)) {
+            	notLocalFlag =true;
+            	containTargetNum ++;
+            	if(containTargetNum == 1) {
+            		TempStmt = stmt;
+            	}
+            	jimpleLineNumber = stmt.getJavaSourceStartLineNumber();
             	if(stmt.getJavaSourceStartLineNumber()==lineNumber) {
             		return stmt;
             	}
             }
+            
         }
 //		throw new IllegalStateException("[getJimpleInvocStmt]获取调用节点对应的Stmt出错");
-        System.out.println("@error[AdaptAST.getJimpleInvocStmt]:获取调用节点对应的Stmt出错");
+        if(containTargetNum == 1) {
+        	return TempStmt;
+        }
+        if(notLocalFlag) {
+        	System.out.println("@error[AdaptAST.getJimpleInvocStmt]:获取调用节点对应的Stmt出错{MethodSig:"+sm.getSignature()
+        	+"ASTLineNumber:"+lineNumber+"JimLineNumber:"+jimpleLineNumber);
+        }
         return null;
 		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
 		//也就是说正常情况下不应该出错。

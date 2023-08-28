@@ -44,7 +44,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = true;
+	private static boolean debugFlag = false;
 
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -72,10 +72,9 @@ public class AnalysisUtils {
 			/*
 			 * ********这里有一些配置，需要手动更改。************
 			 */
-			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume 项目。
+			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume xml项目。
 			boolean testFlag = true;
 			if (testFlag) {
-				System.out.println("PROJECTOUTPATH IS :"+PROJECTOUTPATH);
 				String projectOutPath = PROJECTOUTPATH.get(0);
 				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
 				PROJECTOUTPATH.add(projectTestOutPath);
@@ -92,7 +91,7 @@ public class AnalysisUtils {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
 //				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("target");//flume
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("target");//xml,flume
 //				boolean javaFolder = element.toString().startsWith("java");//其他
 //				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper使用。
 				if (javaFolder) {// 找到包，给AST使用
