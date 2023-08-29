@@ -2,10 +2,6 @@ package refuture.refactoring;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.ltk.core.refactoring.Change;
@@ -16,7 +12,6 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import soot.Hierarchy;
 import soot.Scene;

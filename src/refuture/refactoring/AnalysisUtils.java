@@ -190,6 +190,9 @@ public class AnalysisUtils {
 		}
 
 
+		// 0829 增加得到名称中的''符号的逻辑.暂时使用,弄完这个项目,就注释掉
+//		methodSootName = methodSootName.replace(".to.",".'to'.");
+		
 		return methodSootName;
 
 	}
