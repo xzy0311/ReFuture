@@ -88,8 +88,6 @@ public class Future2Completable {
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();
-			// 2023.0706 
-//			ForTask.FindGet(invocationNodes);
 			for(MethodInvocation invocationNode:invocationNodes) {
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;

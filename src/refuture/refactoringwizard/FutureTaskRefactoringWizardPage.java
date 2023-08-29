@@ -19,8 +19,6 @@ import refuture.refactoring.RefutureRefactoring;
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	
 	Button btnCheck;
-	Label labName;
-	Text txtTimeOut;
 
 	public FutureTaskRefactoringWizardPage(String name) {
 		super(name);
@@ -34,26 +32,11 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		lay.numColumns = 2;
 		composite.setLayout(lay);
 		btnCheck = new Button(composite, SWT.CHECK);
-		btnCheck.setText("Add timeout parameter");
+		btnCheck.setText("refactoring get");
 		GridData gdBtnCheck = new GridData();
 		gdBtnCheck.horizontalSpan = 2;
 		gdBtnCheck.horizontalAlignment = GridData.FILL;
 		btnCheck.setLayoutData(gdBtnCheck);
-		labName = new Label(composite, SWT.WRAP);
-		labName.setText("TimeOut:");
-		GridData gdLabName = new GridData();
-		gdLabName.horizontalAlignment = GridData.BEGINNING;
-		gdLabName.grabExcessHorizontalSpace = true;
-		labName.setLayoutData(gdLabName);
-		txtTimeOut = new Text(composite, SWT.SINGLE | SWT.BORDER);
-		GridData gdTxtTimeOut = new GridData();
-		gdTxtTimeOut.horizontalAlignment = GridData.END;
-		gdLabName.grabExcessHorizontalSpace = true;
-		txtTimeOut.setLayoutData(gdTxtTimeOut);
-		txtTimeOut.setText("500");
-		// init status
-		labName.setEnabled(false);
-		txtTimeOut.setEnabled(false);
 		// add listener
 		defineListener();
 		// 将 composite 纳入框架的控制
@@ -68,15 +51,6 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		 // 设置页面完成状态
 		 setPageComplete(valid); 
 	 }
-	
-//	private void setRefactoring(boolean selection, String text) { 
-//	    AnnotationRefactoring refactoring = (AnnotationRefactoring) getRefactoring();
-//	    refactoring.setNeedTimeout(true); 
-//	    if(selection) { 
-//	    	refactoring.setTimeout(txtTimeOut.getText());
-////	        refactoring.setTimeout(Integer.valueOf(txtTimeOut.getText()).intValue());
-//	    } 
-//	}
 	
 	/**
 	 * define the action listener
@@ -95,26 +69,15 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 			@Override
 			public void widgetSelected(SelectionEvent se) {
 				if(btnCheck.getEnabled()){
-					System.out.println(btnCheck.getEnabled());
-//					refactoring.needTimeout = true;
-					txtTimeOut.setEnabled(true);
+					refactoring.setRefactorPattern(2);
 				}else{
-//					refactoring.needTimeout = false;
-					txtTimeOut.setEnabled(false);
+					refactoring.setRefactorPattern(1);
 				}
 				
 			}
 			
 		});
 		
-		txtTimeOut.addModifyListener(new ModifyListener(){
-
-			@Override
-			public void modifyText(ModifyEvent arg0) {
-//				refactoring.timeoutValue = txtTimeOut.getText();
-			}
-			
-		});
 	}
 
 }

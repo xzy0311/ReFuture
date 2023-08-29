@@ -1,5 +1,6 @@
 package refuture.refactoring;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -7,6 +8,14 @@ import java.util.regex.Pattern;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.ltk.core.refactoring.Change;
+
+import refuture.astvisitor.MethodInvocationVisiter;
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import soot.Hierarchy;
@@ -14,6 +23,7 @@ import soot.Scene;
 import soot.SootClass;
 
 //第二阶段实验，开始。0706
+// 待添加，增加一个get是否在callable或者Runnable中。
 public class ForTask {
 
 	/**
@@ -50,5 +60,28 @@ public class ForTask {
 				}
 			}
 		}
+	}
+
+	public static void refactor(List<ICompilationUnit> allJavaFiles) {
+		// TODO Auto-generated method stub
+		for(ICompilationUnit cu : allJavaFiles) {
+			IFile source = (IFile) cu.getResource();
+//			System.out.println(source.getName());//输出所有的类文件名称
+			ASTParser parser = ASTParser.newParser(AST.JLS11);
+			parser.setResolveBindings(true);
+			parser.setStatementsRecovery(true);
+			parser.setBindingsRecovery(true);
+			parser.setSource(cu);
+			CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
+			MethodInvocationVisiter miv = new MethodInvocationVisiter();
+			astUnit.accept(miv);
+			List<MethodInvocation> invocationNodes = miv.getResult();
+			ForTask.FindGet(invocationNodes);
+		}
+	}
+
+	public static Collection<? extends Change> getallChanges() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
