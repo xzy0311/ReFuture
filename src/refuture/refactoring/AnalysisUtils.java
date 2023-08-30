@@ -44,7 +44,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = false;
+	private static boolean debugFlag = true;
 
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -90,8 +90,8 @@ public class AnalysisUtils {
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("target");//xml,flume
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("target");//xml,flume
 //				boolean javaFolder = element.toString().startsWith("java");//其他
 //				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper使用。
 				if (javaFolder) {// 找到包，给AST使用
@@ -153,30 +153,20 @@ public class AnalysisUtils {
 				if(Modifier.isStatic(((Initializer) node).getModifiers())) {
 					methodSootName = "void <clinit>()";
 				}
-				break;
+				break;//在初始化块中，不是静态的，直接退出循环就行。
 			}else if(node instanceof FieldDeclaration) {
 				if(Modifier.isStatic(((FieldDeclaration) node).getModifiers())) {
 					methodSootName = "void <clinit>()";
 				}
-				break;
+				break;//在字段中，不是静态的，直接退出循环就行。
 			}
 			node = node.getParent();
 		}
-		if(node instanceof MethodDeclaration) {
-			if (methodSootName != "void <init>()"&&countGreaterThanOneLessThanSign(methodSootName)>1) {
-//				System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
-				// 去除额外的<>和因此产生的空格。
-				String result = methodSootName.replaceAll("<[^<>]*>", "");
-				do {
-					methodSootName = result;
-					result = methodSootName.replaceAll("<[^<>]*>", "");
-				} while (!result.equals(methodSootName));
-				methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
-//				System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
-			}else {
+		if(node instanceof MethodDeclaration) {//节点不在初始化块和字段声明中。肯定在方法定义中。
+			if (methodSootName == "void <init>()") {
 				TypeDeclaration td = getTypeDeclaration4node(node);
 				ITypeBinding typeBinding = td.resolveBinding();
-				if(typeBinding.isNested()&&!Modifier.isStatic(td.getModifiers())) {//innerClass & not static,it jimple class contructor method's parameters not empty
+				if(typeBinding.isNested()&&!Modifier.isStatic(td.getModifiers())) {//innerClass & not static,it jimple class contructor method's parameters not empty,就算它的代码中是空参数的构造函数。
 					String bn = typeBinding.getBinaryName();
 					int lastIndex = bn.lastIndexOf('$');
 					if(lastIndex != -1) {
@@ -187,6 +177,18 @@ public class AnalysisUtils {
 					methodSootName = "void <init>("+bn+")";
 				}
 			}
+			if (methodSootName != "void <init>()"&&countGreaterThanOneLessThanSign(methodSootName)>1) {
+//				System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+				// 去除额外的<>和因此产生的空格。
+				String result = methodSootName.replaceAll("<[^<>]*>", "");
+				do {
+					methodSootName = result;
+					result = methodSootName.replaceAll("<[^<>]*>", "");
+				} while (!result.equals(methodSootName));
+				methodSootName = methodSootName.replaceAll("\\s{2,}", " ");
+//				System.out.println("[AnalysisUtils.getSootMethodName处理前]"+methodSootName);
+			}
+			
 		}
 
 
@@ -267,7 +269,7 @@ public class AnalysisUtils {
 	}
 
 	/**
-	 * 得到节点所属的类定义节点
+	 * 得到节点所属的类定义节点，这个是离节点最近的那个类定义节点。
 	 *
 	 * @param node the node
 	 * @return the Type declaration 4 node

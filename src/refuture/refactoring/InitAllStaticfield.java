@@ -6,7 +6,8 @@ public class InitAllStaticfield {
 	public static boolean init() {
 		boolean status =Future2Completable.initStaticField();
 		ExecutorSubclass.initStaticField();
-		return status;
+		boolean status1 = ForTask.initStaticField();
+		return status&&status1;
 	}
 
 }
