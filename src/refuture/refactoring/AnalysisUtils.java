@@ -90,10 +90,10 @@ public class AnalysisUtils {
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("target");//xml,flume
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
 //				boolean javaFolder = element.toString().startsWith("java");//其他
-//				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper使用。
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper syncope使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
@@ -165,6 +165,7 @@ public class AnalysisUtils {
 		if(node instanceof MethodDeclaration) {//节点不在初始化块和字段声明中。肯定在方法定义中。
 			if (methodSootName == "void <init>()") {
 				TypeDeclaration td = getTypeDeclaration4node(node);
+				if(td == null) {throw new NullPointerException();}
 				ITypeBinding typeBinding = td.resolveBinding();
 				if(typeBinding.isNested()&&!Modifier.isStatic(td.getModifiers())) {//innerClass & not static,it jimple class contructor method's parameters not empty,就算它的代码中是空参数的构造函数。
 					String bn = typeBinding.getBinaryName();
@@ -269,7 +270,7 @@ public class AnalysisUtils {
 	}
 
 	/**
-	 * 得到节点所属的类定义节点，这个是离节点最近的那个类定义节点。
+	 * 得到节点所属的类定义节点，这个是离节点最近的那个类定义节点。可能返回null.
 	 *
 	 * @param node the node
 	 * @return the Type declaration 4 node
@@ -277,10 +278,10 @@ public class AnalysisUtils {
 	public static TypeDeclaration getTypeDeclaration4node(ASTNode node) {
 
 		while (!(node instanceof TypeDeclaration)) {
+
 			node = node.getParent();
-			if (node == node.getParent()) {
-				System.out.println("@error[AnalysisUtils.getTypeDeclaration4node]：有问题"+node);
-				throw new ExceptionInInitializerError("[AnalysisUtils.getTypeDeclaration4node]：有问题"+node);
+			if (node == null) {
+				return null;
 			}
 		}
 		return (TypeDeclaration) node;

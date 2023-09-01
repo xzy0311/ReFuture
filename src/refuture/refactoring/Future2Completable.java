@@ -143,6 +143,7 @@ public class Future2Completable {
 						}
 					}else {
 						TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
+						if(outTD == null) {throw new NullPointerException();}
 						System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：字段或者初始化块,行号：%d%n",i,outTD.resolveBinding().getQualifiedName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
 					}
 					i = i+1;
@@ -215,6 +216,7 @@ public class Future2Completable {
 		VariableDeclarationFragment invocFragment = null;
 		ExpressionStatement expressionStatement = null;
 		MethodInvocation methodInvocation = null;
+		ReturnStatement returnStatement = null;
 		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocStmt, 1)) {
 			if(invocationNode.getParent() instanceof Assignment) {
 				flag = 1;
@@ -232,6 +234,10 @@ public class Future2Completable {
 				flag = 4;
 				methodInvocation = (MethodInvocation)invocationNode.getParent();
 				ast = methodInvocation.getAST();
+			}else if(invocationNode.getParent() instanceof ReturnStatement ) {
+				flag = 5;
+				returnStatement = (ReturnStatement)invocationNode.getParent();
+				ast = returnStatement.getAST();
 			}
 			if (ast == null) {
 				throw new NullPointerException();
@@ -479,11 +485,11 @@ public class Future2Completable {
         	
         	if(flag == 1) {
         		rewriter.set(invocAssignment, Assignment.RIGHT_HAND_SIDE_PROPERTY, invocationCompose, null);
-        	}else if(flag ==2){
+        	}else if(flag == 2){
             	rewriter.set(invocFragment, VariableDeclarationFragment.INITIALIZER_PROPERTY, invocationCompose, null);
-        	}else if(flag ==3){
+        	}else if(flag == 3){
         		rewriter.set(expressionStatement, ExpressionStatement.EXPRESSION_PROPERTY, invocationCompose, null);
-        	}else if(flag ==4){
+        	}else if(flag == 4){
         		if(methodInvocation.getExpression() == invocationNode) {
         			rewriter.set(methodInvocation, MethodInvocation.EXPRESSION_PROPERTY, invocationCompose, null);
         		}else if(methodInvocation.arguments().contains(invocationNode)) {
@@ -492,7 +498,8 @@ public class Future2Completable {
         		}else {
         			throw new ExceptionInInitializerError("parent:"+methodInvocation+"currentInvocation:"+invocationNode);
         		}
-        		
+        	}else if(flag == 5) {
+        		rewriter.set(returnStatement, ReturnStatement.EXPRESSION_PROPERTY, invocationCompose, null);
         	}else {
         		throw new IllegalArgumentException(new Integer(flag).toString());
         	}

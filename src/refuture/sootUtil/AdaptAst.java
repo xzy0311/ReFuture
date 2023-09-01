@@ -84,6 +84,7 @@ public class AdaptAst {
 		ASTNode astNode = AnalysisUtils.getMethodDeclaration4node(incovNode);
 		if(astNode == null) {
 			TypeDeclaration td = AnalysisUtils.getTypeDeclaration4node(incovNode);
+			if(td == null) {throw new NullPointerException();}
 			itb = td.resolveBinding();
 		}else if(astNode.getParent() instanceof AnonymousClassDeclaration) {
 			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)astNode.getParent();

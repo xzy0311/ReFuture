@@ -63,6 +63,7 @@ public class ForTask {
 		for(MethodInvocation invocationNode:invocationNodes) {
 			if(invocationNode.getName().toString().equals("get")) {
 				TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
+				if(outTD == null) {continue;}
 				CompilationUnit astUnit = (CompilationUnit)outTD.getRoot();
 				System.out.printf("[ForTask:FindGet]找到get,它在%s,行号为%d%n",outTD.resolveBinding().getBinaryName(),
 						astUnit.getLineNumber(invocationNode.getStartPosition()));
@@ -78,7 +79,8 @@ public class ForTask {
 		        }
 				System.out.println("	[ForTask:FindGet]:接收器对象类型:"+a);
 				SootClass sootClass = Scene.v().getSootClass(a);
-				if(sootClass.isPhantom()) {throw new NullPointerException(a);}
+//				if(sootClass.isPhantom()) {throw new NullPointerException(a);}
+				if(sootClass.isPhantom()) {continue;}
 				if(allFutureSubClasses.contains(sootClass)) {
 					System.out.println("※[ForTask:FindGet]上面这个get是Future.get(),LOC是："+
 							astUnit.getLineNumber(invocationNode.getStartPosition()));
