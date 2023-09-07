@@ -14,6 +14,7 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Assignment;
+import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
@@ -44,7 +45,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = true;
+	private static boolean debugFlag = false;
 
 	/**
 	 * Collect from select,并得到项目的路径。
@@ -90,9 +91,10 @@ public class AnalysisUtils {
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+//				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
 //				boolean javaFolder = element.toString().startsWith("java");//其他
+//				boolean javaFolder = element.toString().startsWith("src");//Jailer
 //				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper syncope使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
@@ -371,4 +373,22 @@ public class AnalysisUtils {
         }
         return count;
     }
+
+	public static Block getBlockNode(ASTNode getNode) {
+		while(true) {
+			if(getNode instanceof TypeDeclaration) {
+				TypeDeclaration type = (TypeDeclaration)getNode;
+				if(type.resolveBinding().isTopLevel() ) {
+					break;
+				}
+			}
+			if(getNode == null) {return null;}
+			if(getNode instanceof Block) {
+				Block block = (Block)getNode;
+				return block;
+			}
+			getNode = getNode.getParent();
+		}
+		return null;
+	}
 }

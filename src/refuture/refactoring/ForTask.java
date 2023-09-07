@@ -17,9 +17,9 @@ import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.Block;
 
 import soot.Hierarchy;
 import soot.Scene;
@@ -37,6 +37,8 @@ public class ForTask {
 	public static void refactor(List<ICompilationUnit> allJavaFiles) {
 		List<SootClass> allFutureSubClasses = ForTask.getAllFutureAndItsSubClasses();
 		System.out.println("【所有Future实现类及其子类：】"+allFutureSubClasses);
+		int isDoneNumber = 0;
+		int getNumber = 0;
 		for(ICompilationUnit cu : allJavaFiles) {
 			IFile source = (IFile) cu.getResource();
 			TextFileChange change = new TextFileChange("ForTask",source);
@@ -50,25 +52,103 @@ public class ForTask {
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();
-			ForTask.FindGet(invocationNodes,allFutureSubClasses,change);
+			//开始逻辑
+			List<MethodInvocation> futureIsDones = findIsDone(invocationNodes, allFutureSubClasses, change);
+			List<MethodInvocation> futureGets =ForTask.FindGet(invocationNodes,allFutureSubClasses,change);
+			List<MethodInvocation> EsSubmitOExecutes =ForTask.findEsSubmitOExecute(invocationNodes);
+			for(MethodInvocation invocationNode:futureGets) {
+				if(ForTask.inSubmitExecuteArg(invocationNode)) {
+					System.out.printf("❤[ForTask:getInCallable]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
+							astUnit.getLineNumber(invocationNode.getStartPosition()));
+				}
+			}
+			
+			for(MethodInvocation getNode:futureGets) {
+				Block getBlock = AnalysisUtils.getBlockNode(getNode);
+				isDoneNumber++;
+				for(MethodInvocation esNode : EsSubmitOExecutes) {
+					ASTNode astNode = (ASTNode)esNode;
+					Block oldBlock = null;
+					Block esBlock = null;
+					while(true) {
+						if(astNode instanceof TypeDeclaration) {
+							TypeDeclaration type = (TypeDeclaration)astNode;
+							if(type.resolveBinding().isTopLevel() ) {
+								break;
+							}
+						}
+						if(astNode instanceof MethodDeclaration) {
+							break;
+						}
+						oldBlock = esBlock;
+						esBlock = AnalysisUtils.getBlockNode(astNode);
+						if(esBlock == null) {
+							System.out.println("错误错误，获得esBlock为Null");
+							break;
+						}
+						if(getBlock.equals(esBlock)) {
+//							System.out.printf("※[ForTask:get&Submit]这个get可能可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(getNode).resolveBinding().getBinaryName(),astUnit.getLineNumber(getNode.getStartPosition()));
+							if(astUnit.getLineNumber(getNode.getStartPosition()) < astUnit.getLineNumber(esNode.getStartPosition())) {
+								System.out.printf("❤[ForTask:get&Submit]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(getNode).resolveBinding().getBinaryName(),
+										astUnit.getLineNumber(getNode.getStartPosition()));
+							}
+						}
+						astNode = astNode.getParent();
+					}
+				}
+			}//end get()&submit()；
+			
+			for(MethodInvocation IsDonesNode:futureIsDones) {
+				Block isDoneBlock = AnalysisUtils.getBlockNode(IsDonesNode);
+				getNumber++;
+				for(MethodInvocation esNode : EsSubmitOExecutes) {
+					ASTNode astNode = (ASTNode)esNode;
+					Block oldBlock = null;
+					Block esBlock = null;
+					while(true) {
+						if(astNode instanceof TypeDeclaration) {
+							TypeDeclaration type = (TypeDeclaration)astNode;
+							if(type.resolveBinding().isTopLevel() ) {
+								break;
+							}
+						}
+						if(astNode instanceof MethodDeclaration) {
+							break;
+						}
+						oldBlock = esBlock;
+						esBlock = AnalysisUtils.getBlockNode(astNode);
+						if(esBlock == null) {
+							System.out.println("错误错误，获得esBlock为Null");
+							break;
+						}
+						if(isDoneBlock.equals(esBlock)) {
+//							System.out.printf("※[ForTask:get&Submit]这个get可能可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(getNode).resolveBinding().getBinaryName(),astUnit.getLineNumber(getNode.getStartPosition()));
+							if(astUnit.getLineNumber(IsDonesNode.getStartPosition()) < astUnit.getLineNumber(esNode.getStartPosition())) {
+								System.out.printf("❤[ForTask:get&Submit]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(IsDonesNode).resolveBinding().getBinaryName(),
+										astUnit.getLineNumber(IsDonesNode.getStartPosition()));
+							}
+						}
+						astNode = astNode.getParent();
+					}
+				}
+			}//end isdone()&submit()
+			
 		}
+		System.out.println("该项目中所有的isdone()数为："+isDoneNumber);
+		System.out.println("该项目中所有的get()数为："+getNumber);
 	}
-	/**
-	 * //增加一个找异步任务中存在get()的情况。第一步：找到get()，判断调用者对象是否是Future或者它的子类。第二步：输出定义它所在的类以及所有的父类。
-	 * @param allFutureSubClasses 
-	 * @param change 
-	 */
-	public static void FindGet(List<MethodInvocation> invocationNodes, List<SootClass> allFutureSubClasses, TextFileChange change) {
-
+	
+	public static List<MethodInvocation> findIsDone(List<MethodInvocation> invocationNodes, List<SootClass> allFutureSubClasses, TextFileChange change) {
+		List<MethodInvocation> futureIsDone = new ArrayList<MethodInvocation>();
 		for(MethodInvocation invocationNode:invocationNodes) {
-			if(invocationNode.getName().toString().equals("get")) {
+			if(invocationNode.getName().toString().equals("isDone")) {
 				TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
 				if(outTD == null) {continue;}
 				CompilationUnit astUnit = (CompilationUnit)outTD.getRoot();
-				System.out.printf("[ForTask:FindGet]找到get,它在%s,行号为%d%n",outTD.resolveBinding().getBinaryName(),
-						astUnit.getLineNumber(invocationNode.getStartPosition()));
+//				System.out.printf("[ForTask:FindIsDone]找到isDone,它在%s,行号为%d%n",outTD.resolveBinding().getBinaryName(),
+//						astUnit.getLineNumber(invocationNode.getStartPosition()));
 				if(invocationNode.getExpression()==null) {
-					System.out.println("	[ForTask:FindGet]这个没有接收器对象，排除");
+//					System.out.println("	[ForTask:FindIsDone]这个没有接收器对象，排除");
 					continue;
 				}
 				String a =invocationNode.getExpression().resolveTypeBinding().getBinaryName();
@@ -77,30 +157,70 @@ public class ForTask {
 		        if (index != -1) {
 		            a = a.substring(0, index);
 		        }
-				System.out.println("	[ForTask:FindGet]:接收器对象类型:"+a);
+//				System.out.println("	[ForTask:FindIsDone]:接收器对象类型:"+a);
 				SootClass sootClass = Scene.v().getSootClass(a);
 //				if(sootClass.isPhantom()) {throw new NullPointerException(a);}
 				if(sootClass.isPhantom()) {continue;}
 				if(allFutureSubClasses.contains(sootClass)) {
-					System.out.println("※[ForTask:FindGet]上面这个get是Future.get(),LOC是："+
-							astUnit.getLineNumber(invocationNode.getStartPosition()));
-					if(ForTask.inSubmitInvocations(invocationNode)) {
-						System.out.println("❤[ForTask:FindGet]这个get可以进行重构！");
-					}
-					allChanges.add(change);
-				}else {
-					System.out.println("	[ForTask:FindGet]:不是Future的get,排除");
+//					System.out.println("※[ForTask:FindIsDone]上面这个isDone是Future.isDone()");
+					futureIsDone.add(invocationNode);
+//					allChanges.add(change);
 				}
-				
-				
-				
-				
+			}			
+		}
+		return futureIsDone;
+	}
+	
+	/**
+	 * //增加一个找异步任务中存在get()的情况。第一步：找到get()，判断调用者对象是否是Future或者它的子类。第二步：输出定义它所在的类以及所有的父类。
+	 * @param allFutureSubClasses 
+	 * @param change 
+	 */
+	public static List<MethodInvocation> FindGet(List<MethodInvocation> invocationNodes, List<SootClass> allFutureSubClasses, TextFileChange change) {
+		List<MethodInvocation> futureGet = new ArrayList<MethodInvocation>();
+		for(MethodInvocation invocationNode:invocationNodes) {
+			if(invocationNode.getName().toString().equals("get")) {
+				TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
+				if(outTD == null) {continue;}
+//				System.out.printf("[ForTask:FindGet]找到get,它在%s,行号为%d%n",outTD.resolveBinding().getBinaryName(),
+//						astUnit.getLineNumber(invocationNode.getStartPosition()));
+				if(invocationNode.getExpression()==null) {
+					//[ForTask:FindGet]这个没有接收器对象，排除
+					continue;
+				}
+				String a =invocationNode.getExpression().resolveTypeBinding().getBinaryName();
+		        int index = a.indexOf("<");
+		        // 如果找到了"<"符号，则删除该符号及之后的所有字符
+		        if (index != -1) {
+		            a = a.substring(0, index);
+		        }
+				SootClass sootClass = Scene.v().getSootClass(a);
+//				if(sootClass.isPhantom()) {throw new NullPointerException(a);}
+				if(sootClass.isPhantom()) {continue;}
+				if(allFutureSubClasses.contains(sootClass)) {
+					futureGet.add(invocationNode);
+				}
 			}
 		}
+		return futureGet;
+	}
+	
+	public static List<MethodInvocation> findEsSubmitOExecute(List<MethodInvocation> invocationNodes){
+		List<MethodInvocation> futureSOE = new ArrayList<MethodInvocation>();
+		for(MethodInvocation method:invocationNodes) {
+			if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
+				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
+				if(ExecutorSubclass.canRefactor(invocStmt)) {
+					futureSOE.add(method);
+				}
+			}
+		}
+		return futureSOE;
 	}
 
 
-	public static boolean inSubmitInvocations(ASTNode node) {
+
+	public static boolean inSubmitExecuteArg(ASTNode node) {
 		while(true) {
 			if(node instanceof TypeDeclaration) {
 				TypeDeclaration type = (TypeDeclaration)node;
