@@ -152,6 +152,7 @@ public class ExecutorSubclass {
 	 * @return true, 如果可以进行重构
 	 */
 	public static boolean canRefactor(Stmt invocStmt) {
+		if(invocStmt == null) return false;
 		List<ValueBox> lvbs = invocStmt.getUseBoxes();
 			Iterator<ValueBox> it =lvbs.iterator();
         	while(it.hasNext()) {

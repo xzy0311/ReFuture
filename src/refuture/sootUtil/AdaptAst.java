@@ -41,6 +41,7 @@ public class AdaptAst {
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
 		String methodSootName = AnalysisUtils.getSootMethodName(miv);//得到soot中用到的subsignature。
 		SootClass sc = getSootClass4InvocNode(miv);
+		if(sc == null) return null;
 		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:包含submit/execute方法调用的类："+sc.getName()+"方法名"+methodSootName);
 		SootMethod sm = sc.getMethod(methodSootName);
 		Body body =sm.retrieveActiveBody();
@@ -102,7 +103,7 @@ public class AdaptAst {
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		if(sc.isPhantom()) {
 			System.out.println("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath");
-			throw new NullPointerException("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类:"+typeFullName+"，请检查soot ClassPath:");
+			return null;
 		}
 		return sc;
 	}
