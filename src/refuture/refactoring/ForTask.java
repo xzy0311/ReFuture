@@ -218,8 +218,13 @@ public class ForTask {
 		for(MethodInvocation method:invocationNodes) {
 			if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
-				if(ExecutorSubclass.canRefactor(invocStmt)) {
+				int returnValue = ExecutorSubclass.canRefactor(invocStmt);
+				if(returnValue == 1) {
 					futureSOE.add(method);
+				}else if(returnValue == 2) {
+					if(AnalysisUtils.canRefactorAST(method)) {
+						futureSOE.add(method);
+					}
 				}
 			}
 		}
@@ -240,8 +245,13 @@ public class ForTask {
 				MethodInvocation method = (MethodInvocation)node;
 				if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
 					Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
-					if(ExecutorSubclass.canRefactor(invocStmt)) {
+					int returnValue = ExecutorSubclass.canRefactor(invocStmt);
+					if(returnValue == 1) {
 						return true;
+					}else if(returnValue == 2) {
+						if(AnalysisUtils.canRefactorAST(method)) {
+							return true;
+						}
 					}
 				}
 			}

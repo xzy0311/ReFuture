@@ -87,7 +87,8 @@ public class AnalysisUtils {
 			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			// 1.2.2hadoop zookeeper  use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
-//			PROJECTOUTPATH.add(projectTestOutPath);
+			//1.2.0 上面开启,此项必须开启
+			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
@@ -390,5 +391,12 @@ public class AnalysisUtils {
 			getNode = getNode.getParent();
 		}
 		return null;
+	}
+	public static boolean canRefactorAST(MethodInvocation invocNode) {
+		if(ExecutorSubclass.getCompleteExecutorSubClassName().contains(invocNode.resolveMethodBinding().getDeclaringClass().getBinaryName())) {
+			return true;
+		}
+		AnalysisUtils.debugPrint("[AnalysisUtils.canRefactorAST]利用ASTBinding也不符合条件,排除");
+		return false;
 	}
 }

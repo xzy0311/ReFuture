@@ -135,6 +135,14 @@ public class ExecutorSubclass {
 		return completeExecutorSubClass;
 	}
 	
+	public static Set<String> getCompleteExecutorSubClassName(){
+		Set<SootClass> completeSetType = getCompleteExecutorSubClass();
+		Set<String> completeSetTypeStrings = new HashSet<>();
+		for(SootClass completeSC:completeSetType) {
+			completeSetTypeStrings.add(completeSC.getName());
+		}
+		return completeSetTypeStrings;
+	}
 	/**
 	 * Gets the all dirty executor sub class.
 	 *
@@ -149,10 +157,10 @@ public class ExecutorSubclass {
 	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。.
 	 *
 	 * @param invocStmt the invoc stmt
-	 * @return true, 如果可以进行重构
+	 * @return 1, 如果可以进行重构;0,不可重构;2,需要得到绑定并进行判断.
 	 */
-	public static boolean canRefactor(Stmt invocStmt) {
-		if(invocStmt == null) return false;
+	public static int canRefactor(Stmt invocStmt) {
+		if(invocStmt == null) return 0;
 		List<ValueBox> lvbs = invocStmt.getUseBoxes();
 			Iterator<ValueBox> it =lvbs.iterator();
         	while(it.hasNext()) {
@@ -169,25 +177,20 @@ public class ExecutorSubclass {
         			for (Type obj : typeSet) {
         				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
         			}
-        			
-        			Set<SootClass> completeSetType = getCompleteExecutorSubClass();
-        			Set<String> completeSetTypeStrings = new HashSet<>();
-        			for(SootClass completeSC:completeSetType) {
-        				completeSetTypeStrings.add(completeSC.getName());
-        			}
+        			Set<String> completeSetTypeStrings = getCompleteExecutorSubClassName();
         			if(typeSetStrings.isEmpty()) {
         				//说明没有被访问到，可以进行排除
-        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到，进行排除");
-        				return false;
+        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到,进一步判断");
+        				return 2;
         			}else if(completeSetTypeStrings.containsAll(typeSetStrings)) {
         				//是安全重构的子集，就可以进行重构了。
 //        				System.out.println("[ExecutorSubclass:canRefactor:typeSetStrings]"+typeSetStrings);
-        				return true;
+        				return 1;
         			}
         		}	
         	}
         	AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]不是安全重构的子集，进行排除");
-        	return false;
+        	return 0;
 	}
 
 

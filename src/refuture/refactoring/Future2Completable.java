@@ -114,9 +114,14 @@ public class Future2Completable {
 					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
-				if(!ExecutorSubclass.canRefactor(invocStmt)) {
+				int returnValue = ExecutorSubclass.canRefactor(invocStmt);
+				if(returnValue == 0) {
 					AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
+				}else if(returnValue == 2) {
+					if(!AnalysisUtils.canRefactorAST(invocationNode)) {
+						continue;
+					}
 				}
 				TextFileChange change = new TextFileChange("Future2Completable",source);
 				
