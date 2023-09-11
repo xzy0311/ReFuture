@@ -56,13 +56,21 @@ public class ForTask {
 			List<MethodInvocation> futureIsDones = findIsDone(invocationNodes, allFutureSubClasses, change);
 			List<MethodInvocation> futureGets =ForTask.FindGet(invocationNodes,allFutureSubClasses,change);
 			List<MethodInvocation> EsSubmitOExecutes =ForTask.findEsSubmitOExecute(invocationNodes);
+			//start in task.
 			for(MethodInvocation invocationNode:futureGets) {
 				if(ForTask.inSubmitExecuteArg(invocationNode)) {
 					System.out.printf("❤[ForTask:getInCallable]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
 							astUnit.getLineNumber(invocationNode.getStartPosition()));
 				}
 			}
-			
+			for(MethodInvocation invocationNode:futureIsDones) {
+				if(ForTask.inSubmitExecuteArg(invocationNode)) {
+					System.out.printf("❤[ForTask:getInCallable]这个isDone可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
+							astUnit.getLineNumber(invocationNode.getStartPosition()));
+				}
+			}
+			//end in task
+			//start not in task 
 			for(MethodInvocation getNode:futureGets) {
 				Block getBlock = AnalysisUtils.getBlockNode(getNode);
 				isDoneNumber++;
@@ -87,7 +95,7 @@ public class ForTask {
 							break;
 						}
 						if(getBlock.equals(esBlock)) {
-//							System.out.printf("※[ForTask:get&Submit]这个get可能可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(getNode).resolveBinding().getBinaryName(),astUnit.getLineNumber(getNode.getStartPosition()));
+							System.out.printf("※[ForTask:get&Submit]这个get可能可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(getNode).resolveBinding().getBinaryName(),astUnit.getLineNumber(getNode.getStartPosition()));
 							if(astUnit.getLineNumber(getNode.getStartPosition()) < astUnit.getLineNumber(esNode.getStartPosition())) {
 								System.out.printf("❤[ForTask:get&Submit]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(getNode).resolveBinding().getBinaryName(),
 										astUnit.getLineNumber(getNode.getStartPosition()));
@@ -122,9 +130,9 @@ public class ForTask {
 							break;
 						}
 						if(isDoneBlock.equals(esBlock)) {
-//							System.out.printf("※[ForTask:get&Submit]这个get可能可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(getNode).resolveBinding().getBinaryName(),astUnit.getLineNumber(getNode.getStartPosition()));
+							System.out.printf("※[ForTask:get&Submit]这个isDone可能可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(IsDonesNode).resolveBinding().getBinaryName(),astUnit.getLineNumber(IsDonesNode.getStartPosition()));
 							if(astUnit.getLineNumber(IsDonesNode.getStartPosition()) < astUnit.getLineNumber(esNode.getStartPosition())) {
-								System.out.printf("❤[ForTask:get&Submit]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(IsDonesNode).resolveBinding().getBinaryName(),
+								System.out.printf("❤[ForTask:get&Submit]这个isDone可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(IsDonesNode).resolveBinding().getBinaryName(),
 										astUnit.getLineNumber(IsDonesNode.getStartPosition()));
 							}
 						}
