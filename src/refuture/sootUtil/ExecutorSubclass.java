@@ -3,17 +3,10 @@ package refuture.sootUtil;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 import java.util.Set;
 
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.Assignment;
-import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
-import org.eclipse.ltk.core.refactoring.Change;
 
 import refuture.refactoring.AnalysisUtils;
 import soot.Hierarchy;
@@ -45,6 +38,9 @@ public class ExecutorSubclass {
 	/** The all dirty classes. */
 	private static Set<SootClass>allDirtyClasses;
 	
+	/** The all appendent classes. */
+	private static Set<SootClass>allAdditionalClasses;
+	
 	/**
 	 * Inits the static field.
 	 *
@@ -53,6 +49,7 @@ public class ExecutorSubclass {
 	public static boolean initStaticField() {
 		completeExecutorSubClass = new HashSet<SootClass>();
 		allDirtyClasses = new HashSet<SootClass>();
+		allAdditionalClasses = new HashSet<SootClass>();
 		return true;
 	}
 	
@@ -76,10 +73,8 @@ public class ExecutorSubclass {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		List<SootClass> tPESubClasses = hierarchy.getSubclassesOf(threadPoolExecutorClass);//若子类没有重写execute，newTaskFor，和submit方法，则直接判断为安全
 		if(tPESubClasses.isEmpty()) {
-			System.out.println("[threadPoolExecutorSubClassAnalysis]：子类为空");
-			return;
+			throw new NullPointerException("tPESubClasses is empty");
 		}
-		System.out.println("[threadPoolExecutorSubClassAnalysis]：所有的子类："+tPESubClasses);
 		for(SootClass tPESubClass : tPESubClasses) {
 			//判断是否是dirtyClass
 			boolean flag1 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
@@ -99,6 +94,14 @@ public class ExecutorSubclass {
 		for(SootClass currentDirtyClass:dirtyClasses) {
 			allDirtyClasses.addAll(hierarchy.getSubclassesOfIncluding(currentDirtyClass));
 		}
+		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
+		List<SootClass> executorSubClasses = hierarchy.getImplementersOf(executorServiceClass);
+		for(SootClass executorSubClass:executorSubClasses) {
+			if(!completeExecutorSubClass.contains(executorSubClass)) {
+				allDirtyClasses.add(executorSubClass);
+			}
+		}
+		System.out.println("allDirtyClasses: " + allDirtyClasses);
 	}
 
 	/**
@@ -116,19 +119,13 @@ public class ExecutorSubclass {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
 		List<SootClass> executorSubClasses = hierarchy.getImplementersOf(executorServiceClass);
-		List<SootClass> additionalExecutorServiceClass = new ArrayList<SootClass>();
 		for(SootClass executorSubClass:executorSubClasses) {
 			if(!setExecutorSubClass.contains(executorSubClass)) {
-				additionalExecutorServiceClass.add(executorSubClass);
+				allAdditionalClasses.add(executorSubClass);
 			}
 		}
 		
-		// 待   实现对额外包装类的判断。
-		for(SootClass additionalClass:additionalExecutorServiceClass) {
-			if(!completeExecutorSubClass.contains(additionalClass)) {
-				allDirtyClasses.add(additionalClass);
-			}
-		}
+		
 	}
 	
 	public static Set<SootClass> getCompleteExecutorSubClass(){
@@ -314,7 +311,7 @@ public class ExecutorSubclass {
 	 */
 	public static List<SootClass> initialCheckForClassHierarchy() {
 		
-		Set<SootClass> dirtyExecutorClass =getallDirtyExecutorSubClass();
+		Set<SootClass> dirtyExecutorClass =allAdditionalClasses;
 		List<SootClass> additionalDirtyExecutorClass = new ArrayList<SootClass>();
 		for(SootClass appDirtyExecutorClass:dirtyExecutorClass) {
 			if(appDirtyExecutorClass.isApplicationClass()) {

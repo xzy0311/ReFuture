@@ -67,12 +67,6 @@ public class RefutureRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
-//		return RefactoringStatus.createFatalErrorStatus("Find zero java file");
-		List<SootClass> additionalExecutorClass = ExecutorSubclass.initialCheckForClassHierarchy();
-		if(!additionalExecutorClass.isEmpty()) {
-			additionalExecutorClass.forEach((e)->{System.out.printf("[initialConditions]额外的不可重构子类:%s%n",e.getName());});
-			return RefactoringStatus.createErrorStatus("有额外的不可重构ThreadPoolExecutor子类需要注意:"+additionalExecutorClass);
-		}
 		if (allJavaFiles.isEmpty()) {
 			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		}
