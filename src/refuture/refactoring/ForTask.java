@@ -218,19 +218,19 @@ public class ForTask {
 		for(MethodInvocation method:invocationNodes) {
 			if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
-				int returnValue = ExecutorSubclass.canRefactor(invocStmt);
-				if(returnValue == 1) {
+				boolean returnValue;
+				if(method.getName().toString().equals("submit")) {
+					returnValue = ExecutorSubclass.canRefactor(method,invocStmt,true);
+				}else {
+					returnValue = ExecutorSubclass.canRefactor(method,invocStmt,false);
+				}
+				if(returnValue) {
 					futureSOE.add(method);
-				}else if(returnValue == 2) {
-					if(AnalysisUtils.canRefactorAST(method)) {
-						futureSOE.add(method);
-					}
 				}
 			}
 		}
 		return futureSOE;
 	}
-
 
 
 	public static boolean inSubmitExecuteArg(ASTNode node) {
@@ -245,13 +245,14 @@ public class ForTask {
 				MethodInvocation method = (MethodInvocation)node;
 				if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
 					Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
-					int returnValue = ExecutorSubclass.canRefactor(invocStmt);
-					if(returnValue == 1) {
+					boolean returnValue;
+					if(method.getName().toString().equals("submit")) {
+						returnValue = ExecutorSubclass.canRefactor(method,invocStmt,true);
+					}else {
+						returnValue = ExecutorSubclass.canRefactor(method,invocStmt,false);
+					}
+					if(returnValue) {
 						return true;
-					}else if(returnValue == 2) {
-						if(AnalysisUtils.canRefactorAST(method)) {
-							return true;
-						}
 					}
 				}
 			}

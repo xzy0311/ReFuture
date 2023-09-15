@@ -337,9 +337,8 @@ public class AnalysisUtils {
 		if(typeBinding.isNested()) {
 			typeName = typeBinding.getBinaryName();
 		}
-		SootClass sc = Scene.v().getSootClass(typeName);
-		Set<SootClass> dirtyclasses = ExecutorSubclass.getallDirtyExecutorSubClass();
-		if(dirtyclasses.contains(sc)) {
+		Set<String> dirtyclasses = ExecutorSubclass.getAllDirtyExecutorSubClassName();
+		if(dirtyclasses.contains(typeName)) {
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]根据ASTtypeBinding 属于污染类，进行排除");
 			return false;
 		}
@@ -392,11 +391,5 @@ public class AnalysisUtils {
 		}
 		return null;
 	}
-	public static boolean canRefactorAST(MethodInvocation invocNode) {
-		if(ExecutorSubclass.getCompleteExecutorSubClassName().contains(invocNode.resolveMethodBinding().getDeclaringClass().getBinaryName())) {
-			return true;
-		}
-		AnalysisUtils.debugPrint("[AnalysisUtils.canRefactorAST]利用ASTBinding也不符合条件,排除");
-		return false;
-	}
+
 }

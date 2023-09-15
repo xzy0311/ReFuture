@@ -93,7 +93,6 @@ public class Future2Completable {
 					continue;
 				}
 				
-				
 				if(!printClassFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
 					if(sc == null) continue;
@@ -102,7 +101,6 @@ public class Future2Completable {
 					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
 				}
 				AnalysisUtils.debugPrint("**第"+invocNum+"个{execute或submit}调用分析开始**********************************************************%n");
-				
 				
 				//修改成先利用ast的类型绑定进行初次判断执行器变量的类型，排除一些非法的。已添加0712
 				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
@@ -114,15 +112,19 @@ public class Future2Completable {
 					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
-				int returnValue = ExecutorSubclass.canRefactor(invocStmt);
-				if(returnValue == 0) {
+				
+				boolean returnValue;
+				if(invocationNode.getName().toString().equals("execute")) {
+					returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,false);
+				}else {
+					returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
+				}
+				
+				if(returnValue == false) {
 					AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
-				}else if(returnValue == 2) {
-					if(!AnalysisUtils.canRefactorAST(invocationNode)) {
-						continue;
-					}
 				}
+				
 				TextFileChange change = new TextFileChange("Future2Completable",source);
 				
 				boolean flag1 = refactorExecuteRunnable(invocStmt,invocationNode,change,cu);
