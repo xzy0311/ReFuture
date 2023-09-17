@@ -217,6 +217,9 @@ public class ForTask {
 		List<MethodInvocation> futureSOE = new ArrayList<MethodInvocation>();
 		for(MethodInvocation method:invocationNodes) {
 			if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
+				if(!AnalysisUtils.receiverObjectIsComplete(method)) {
+					continue;
+				}
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
 				boolean returnValue;
 				if(method.getName().toString().equals("submit")) {
@@ -244,6 +247,9 @@ public class ForTask {
 			if(node instanceof MethodInvocation) {
 				MethodInvocation method = (MethodInvocation)node;
 				if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
+					if(!AnalysisUtils.receiverObjectIsComplete(method)) {
+						continue;
+					}
 					Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
 					boolean returnValue;
 					if(method.getName().toString().equals("submit")) {
