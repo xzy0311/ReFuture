@@ -45,7 +45,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = true;
+	private static boolean debugFlag = false;
 
 	/**
 	 * Collect from select,并得到项目的路径。

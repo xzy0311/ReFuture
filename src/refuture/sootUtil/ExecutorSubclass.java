@@ -42,7 +42,7 @@ public class ExecutorSubclass {
 	/** The all subclasses. */
 	private static Set<SootClass>allExecutorSubClasses;
 	
-	/** The complete executor sub class. */
+	/** 包含我手动添加的jdk中自带的执行器类型,以及完全没有重写关键方法子类. */
 	private static Set<SootClass>mayCompleteExecutorSubClasses;//存入可能可以重构的类型以及包装类。
 	
 	/** The all dirty classes. */
@@ -73,16 +73,16 @@ public class ExecutorSubclass {
 	 * @return the complete executor
 	 */
 	public static void threadPoolExecutorSubClassAnalysis() {
-		
-		SootClass threadPoolExecutorClass = Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService");
-		mayCompleteExecutorSubClasses.add(threadPoolExecutorClass);//是安全的。
+		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
+		mayCompleteExecutorSubClasses.add(executorServiceClass);//是安全的。
+		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-		allExecutorSubClasses.addAll(hierarchy.getSubclassesOf(threadPoolExecutorClass));
+		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorServiceClass));
 		for(SootClass tPESubClass : allExecutorSubClasses) {
 			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
 				continue;
@@ -154,17 +154,6 @@ public class ExecutorSubclass {
 			}
 		}
 
-		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
-		List<SootClass> executorSubClasses = hierarchy.getImplementersOf(executorServiceClass);
-		for(SootClass executorSubClass:executorSubClasses) {
-			if(mayCompleteExecutorSubClasses.contains(executorSubClass)||allDirtyClasses.contains(executorSubClass)) {
-				continue;
-			}else {
-				System.out.println("ExecutorService的额外子类为: " + executorSubClass.getName());
-				allDirtyClasses.add(executorSubClass);
-			}
-		}
-		
 	}
 
 	/**
@@ -231,14 +220,13 @@ public class ExecutorSubclass {
         				if(typeBinding.isNested()) {
         					typeName = typeBinding.getBinaryName();
         				}
-        				
         				if(completeSetTypeStrings.contains(typeName)) {
         					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
         					return true;
         				}
-        				
         			}else if(completeSetTypeStrings.containsAll(typeSetStrings)) {
         				//是安全重构的子集，就可以进行重构了。
+        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据sootClass 可以重构");
         				return true;
         			}
         		}	
