@@ -21,6 +21,7 @@ import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 
 import soot.Hierarchy;
 import soot.Scene;
@@ -270,6 +271,8 @@ public class ForTask {
 		return allFutureSubclasses;
 	}
 	public static boolean inTasks(ASTNode node) {
+		//添加lambda表达式判断逻辑
+		
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
 		SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
@@ -286,7 +289,7 @@ public class ForTask {
 				}else {
 					typeFullName = binding.getQualifiedName();
 				}
-				System.out.println("[ForTask.inTasks]:类定义的名称为:"+typeFullName);
+//				System.out.println("[ForTask.inTasks]:类定义的名称为:"+typeFullName);
 				SootClass sc = Scene.v().getSootClass(typeFullName);
 				if(sc.isPhantom()) {
 					System.out.println("@error[ForTask.inTasks]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
@@ -296,10 +299,19 @@ public class ForTask {
 					return true;
 				}
 				if(binding.isTopLevel()) {
-					System.out.println("[ForTask.inTasks]:TopLevel类定义的名称为:"+typeFullName);
+//					System.out.println("[ForTask.inTasks]:TopLevel类定义的名称为:"+typeFullName);
 					break;
 				}
+			}else if(node instanceof LambdaExpression) {
+				LambdaExpression lExp = (LambdaExpression)node;
+				ITypeBinding itb = lExp.resolveTypeBinding();
+				String name = itb.getBinaryName();
+				if(name.equals("java.util.concurrent.Callable")||name.equals("java.lang.Runnable")) {
+					return true;
+				}
 			}
+			
+			
 			node = node.getParent();
 		}
 		
