@@ -83,6 +83,7 @@ public class ExecutorSubclass {
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorServiceClass));
+		allExecutorSubClasses.add(executorServiceClass);
 		for(SootClass tPESubClass : allExecutorSubClasses) {
 			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
 				continue;
@@ -213,13 +214,14 @@ public class ExecutorSubclass {
         			}
         			if(typeSetStrings.isEmpty()) {
         				//说明没有被访问到，可以进行AST判断
-        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到,进一步判断");
+        				
         				Expression exp = mInvocation.getExpression();
         				ITypeBinding typeBinding = exp.resolveTypeBinding();
         				String typeName = typeBinding.getQualifiedName();
         				if(typeBinding.isNested()) {
         					typeName = typeBinding.getBinaryName();
         				}
+        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到,进一步判断,类型为："+typeName);
         				if(completeSetTypeStrings.contains(typeName)) {
         					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
         					return true;

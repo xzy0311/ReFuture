@@ -17,8 +17,10 @@ import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 
 import soot.Hierarchy;
 import soot.Scene;
@@ -58,14 +60,16 @@ public class ForTask {
 			//start in task.
 			for(MethodInvocation invocationNode:futureGets) {
 				getNumber++;
-				if(ForTask.inSubmitExecuteArg(invocationNode)) {
+//				if(ForTask.inSubmitExecuteArg(invocationNode)) {
+				if(ForTask.inTasks(invocationNode)) {
 					System.out.printf("❤[ForTask:getInCallable]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
 							astUnit.getLineNumber(invocationNode.getStartPosition()));
 				}
 			}
 			for(MethodInvocation invocationNode:futureIsDones) {
 				isDoneNumber++;
-				if(ForTask.inSubmitExecuteArg(invocationNode)) {
+//				if(ForTask.inSubmitExecuteArg(invocationNode)) {
+				if(ForTask.inTasks(invocationNode)) {
 					System.out.printf("❤[ForTask:getInCallable]这个isDone可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
 							astUnit.getLineNumber(invocationNode.getStartPosition()));
 				}
@@ -183,7 +187,11 @@ public class ForTask {
 				if(invocationNode.getExpression()==null) {
 					continue;
 				}
-				String a =invocationNode.getExpression().resolveTypeBinding().getBinaryName();
+				ITypeBinding binding = invocationNode.getExpression().resolveTypeBinding();
+				if(binding == null) {
+					continue;
+				}
+				String a =binding.getBinaryName();
 		        int index = a.indexOf("<");
 		        // 如果找到了"<"符号，则删除该符号及之后的所有字符
 		        if (index != -1) {
@@ -261,7 +269,42 @@ public class ForTask {
 		allFutureSubclasses.addAll(hierarchy.getSubinterfacesOfIncluding(futureSootClass));
 		return allFutureSubclasses;
 	}
-	
+	public static boolean inTasks(ASTNode node) {
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
+		SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
+		List<SootClass> allTaskList = new java.util.ArrayList<SootClass>();
+		allTaskList.addAll(hierarchy.getImplementersOf(callable));
+		allTaskList.addAll(hierarchy.getImplementersOf(runnable));
+		while(true) {
+			if(node instanceof AbstractTypeDeclaration) {
+				AbstractTypeDeclaration t = (AbstractTypeDeclaration) node;
+				ITypeBinding binding = t.resolveBinding();
+				String typeFullName;
+				if(binding.isNested()) {
+					typeFullName = binding.getBinaryName();
+				}else {
+					typeFullName = binding.getQualifiedName();
+				}
+				System.out.println("[ForTask.inTasks]:类定义的名称为:"+typeFullName);
+				SootClass sc = Scene.v().getSootClass(typeFullName);
+				if(sc.isPhantom()) {
+					System.out.println("@error[ForTask.inTasks]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
+					break;
+				}
+				if(allTaskList.contains(sc)) {
+					return true;
+				}
+				if(binding.isTopLevel()) {
+					System.out.println("[ForTask.inTasks]:TopLevel类定义的名称为:"+typeFullName);
+					break;
+				}
+			}
+			node = node.getParent();
+		}
+		
+		return false;
+	}
 	public static Collection<? extends Change> getallChanges() {
 		return allChanges;
 	}
