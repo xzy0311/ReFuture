@@ -18,6 +18,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -62,16 +63,16 @@ public class ForTask {
 			for(MethodInvocation invocationNode:futureGets) {
 				getNumber++;
 //				if(ForTask.inSubmitExecuteArg(invocationNode)) {
-				if(ForTask.inTasks(invocationNode)) {
-					System.out.printf("❤[ForTask:getInCallable]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
+				if(inTasks(invocationNode)||inCompletableFuture(invocationNode)) {
+					System.out.printf("❤[ForTask:getInTask]这个get可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
 							astUnit.getLineNumber(invocationNode.getStartPosition()));
 				}
 			}
 			for(MethodInvocation invocationNode:futureIsDones) {
 				isDoneNumber++;
 //				if(ForTask.inSubmitExecuteArg(invocationNode)) {
-				if(ForTask.inTasks(invocationNode)) {
-					System.out.printf("❤[ForTask:getInCallable]这个isDone可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
+				if(inTasks(invocationNode)||inCompletableFuture(invocationNode)) {
+					System.out.printf("❤[ForTask:isDonesInTask]这个isDone可以进行重构！它在%s,行号为%d%n", AnalysisUtils.getTypeDeclaration4node(invocationNode).resolveBinding().getBinaryName(),
 							astUnit.getLineNumber(invocationNode.getStartPosition()));
 				}
 			}
@@ -272,7 +273,6 @@ public class ForTask {
 	}
 	public static boolean inTasks(ASTNode node) {
 		//添加lambda表达式判断逻辑
-		
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
 		SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
@@ -311,10 +311,43 @@ public class ForTask {
 				}
 			}
 			
-			
 			node = node.getParent();
 		}
 		
+		return false;
+	}
+	
+	public static boolean inCompletableFuture(ASTNode node) {
+		while(true) {
+			if(node instanceof Block) {
+				node = node.getParent();
+				while(true) {
+					if(node instanceof MethodInvocation) {
+						MethodInvocation method = (MethodInvocation)node;
+						if(method.getExpression() !=null) {
+							String name = method.getExpression().resolveTypeBinding().getBinaryName();
+							if(name.equals("java.util.concurrent.CompletableFuture")) {
+								return true;
+							}
+						}
+					}
+					if(node instanceof TypeDeclaration) {
+						TypeDeclaration type = (TypeDeclaration)node;
+						if(type.resolveBinding().isTopLevel()) {
+							break;
+						}
+					}
+					node = node.getParent();
+				}
+			}
+			if(node instanceof TypeDeclaration) {
+				TypeDeclaration type = (TypeDeclaration)node;
+				if(type.resolveBinding().isTopLevel()) {
+					break;
+				}
+			}
+			node = node.getParent();
+		}
 		return false;
 	}
 	public static Collection<? extends Change> getallChanges() {
