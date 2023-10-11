@@ -49,7 +49,6 @@ public class RefutureRefactoring extends Refactoring {
 		allChanges = new ArrayList<Change>();
 		potentialJavaFiles = new ArrayList<IJavaElement>();
 		InitAllStaticfield.init();//初始化所有的静态字段。
-		SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
 		this.refactorPattern = 1;
 	}
 
@@ -80,12 +79,15 @@ public class RefutureRefactoring extends Refactoring {
 	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
 		if(refactorPattern ==1) {
+			System.out.println("Future重构模式");
+			SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
 			Future2Completable.refactor(allJavaFiles);
 			if(!Future2Completable.getStatus()) {
 				return RefactoringStatus.createErrorStatus(Future2Completable.getErrorCause());
 			}
 		}else if(refactorPattern == 2) {
-			ForTask.refactor(allJavaFiles);
+//			ForTask.refactor(allJavaFiles);   10月11日，暂时取消ForTask尝试。待添加寻找Thread相关代码，以及关闭soot的方法。
+			FindThread.find(allJavaFiles);
 		}
 
 		return null;
@@ -97,7 +99,7 @@ public class RefutureRefactoring extends Refactoring {
 		if(refactorPattern ==1) {
 			allChanges.addAll(Future2Completable.getallChanges());
 		}else if(refactorPattern == 2) {
-			allChanges.addAll(ForTask.getallChanges());
+//			allChanges.addAll(ForTask.getallChanges());
 		}
 		Change[] changes = new Change[allChanges.size()];
 		System.arraycopy(allChanges.toArray(), 0, changes, 0, allChanges.size());
