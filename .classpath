@@ -12,7 +12,6 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry excluding="example/clonepairs/|example/dataset/" including="**" kind="src" output="target/classes" path="ccstokener"/>
 	<classpathentry kind="lib" path="lib/animal-sniffer-annotations-1.17.jar"/>
 	<classpathentry kind="lib" path="lib/asm-9.4.jar"/>
 	<classpathentry kind="lib" path="lib/asm-analysis-9.4.jar"/>
