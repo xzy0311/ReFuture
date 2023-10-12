@@ -24,7 +24,7 @@ import org.eclipse.ltk.ui.refactoring.RefactoringWizardOpenOperation;
 import org.eclipse.swt.widgets.Shell;
 
 public class SampleHandler extends AbstractHandler {
-	IJavaProject selectProject;
+	static IJavaProject selectProject = null;
 	Boolean firststart;
 	{
 		firststart = true;
@@ -33,19 +33,23 @@ public class SampleHandler extends AbstractHandler {
 	    @Override
 	    public void selectionChanged(IWorkbenchPart part, ISelection selection) {
 	        // 处理选择变化事件
-	    	selectProject = null;
+	    	IJavaProject select_Project = null;
 	    	if(!selection.isEmpty()&&selection instanceof IStructuredSelection) {
 	    		IStructuredSelection strut = ((IStructuredSelection) selection);
 	    		if(strut.size() == 1) {
 	    			if(strut.getFirstElement() instanceof IProject) {
 	    				IProject project = (IProject) strut.getFirstElement();
-	    				selectProject = JavaCore.create(project);
+	    				select_Project = JavaCore.create(project);
 	    			}else if(strut.getFirstElement() instanceof IJavaElement) {
 	    				IJavaElement select = (IJavaElement) strut.getFirstElement();
-	    				selectProject = select.getJavaProject();
+	    				select_Project = select.getJavaProject();
 	    			}
 	    		}
 	    	}
+	    	if(selectProject!=null&&(!selectProject.equals(select_Project))&&select_Project!=null) {
+	    		RefutureRefactoring.time = 0;
+	    	}
+	    	selectProject = select_Project;
 			SampleHandler.this.setBaseEnabled(selectProject != null);
 		}
 	};

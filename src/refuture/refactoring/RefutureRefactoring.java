@@ -39,6 +39,7 @@ public class RefutureRefactoring extends Refactoring {
 	
 	int refactorPattern;
 
+	public static int time = 0;
 	/**
 	 * Instantiates a new future task refactoring.
 	 *
@@ -62,25 +63,27 @@ public class RefutureRefactoring extends Refactoring {
 		return "reFutureMain";
 	}
 
-
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
 		if (allJavaFiles.isEmpty()) {
 			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		}
-
 		return RefactoringStatus.createInfoStatus("Ininal condition has been checked");
 		
 	}
-
 
 	@Override
 	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
 		if(refactorPattern ==1) {
 			System.out.println("Future重构模式");
-			SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
+			System.out.println("hello my good boy xzy ,this is "+ time++ +" times");
+			if(time == 1) {
+				SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
+			}
+	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
+	        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
 			Future2Completable.refactor(allJavaFiles);
 			if(!Future2Completable.getStatus()) {
 				return RefactoringStatus.createErrorStatus(Future2Completable.getErrorCause());

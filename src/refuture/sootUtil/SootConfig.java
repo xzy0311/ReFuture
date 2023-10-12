@@ -24,8 +24,6 @@ public class SootConfig {
         System.out.println("[setupSoot]:加载必要类完毕！");
         
         PackManager.v().runPacks();
-        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
-        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
         System.out.println("[setupSoot]:Soot配置完毕。");
     }
 
