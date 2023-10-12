@@ -1,6 +1,7 @@
 package refuture.refactoring;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Executors;
 
@@ -74,6 +75,14 @@ public class Future2Completable {
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
 		int i = 1;
 		int j = 1;
+		int inExecutor = 0;
+		int noStmt = 0;
+		int illExecutor = 0;
+		HashMap<String,Integer> flagMap = new HashMap<String,Integer>();
+		flagMap.put("ExecuteRunnable", 0);
+		flagMap.put("SubmitCallable", 0);
+		flagMap.put("SubmitRunnable", 0);
+		flagMap.put("SubmitRunnableNValue", 0);
 		for(ICompilationUnit cu : allJavaFiles) {
 			int invocNum = 1;
 			boolean printClassFlag = false;
@@ -92,7 +101,6 @@ public class Future2Completable {
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;
 				}
-				
 				if(!printClassFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
 					if(sc == null) continue;
@@ -104,11 +112,15 @@ public class Future2Completable {
 				
 				//修改成先利用ast的类型绑定进行初次判断执行器变量的类型，排除一些非法的。已添加0712
 				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
+					//在执行器类中+1
+					inExecutor++;
 					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
 				if(invocStmt ==null) {
+					//因为stmt缺失，无法判断类型
+					noStmt++;
 					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
@@ -121,6 +133,8 @@ public class Future2Completable {
 				}
 				
 				if(returnValue == false) {
+					//因执行器类型不安全，不能重构。
+					illExecutor++;
 					AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
@@ -132,14 +146,24 @@ public class Future2Completable {
 				boolean flag3 = refactorSubmitRunnable(invocStmt,invocationNode,change,cu);
 				boolean flag4 = refactorSubmitRunnableNValue(invocStmt,invocationNode,change,cu);//suspend
 				boolean flag5 = false;
-				if(flag3 == false) {
-					flag5 = refactorSubmitFutureTask(invocStmt,invocationNode,change,cu);
-				}
+//				if(flag3 == false) {
+//					flag5 = refactorSubmitFutureTask(invocStmt,invocationNode,change,cu);
+//				}
 				boolean flag6 = false;
-				if(flag1 ==false) {
-					flag6 = refactorExecuteFutureTask(invocStmt,invocationNode,change,cu);
-				}
+//				if(flag1 ==false) {
+//					flag6 = refactorExecuteFutureTask(invocStmt,invocationNode,change,cu);
+//				}
+				
 				if(flag1||flag2||flag3||flag4||flag5||flag6) {
+					if(flag1==true) {
+						flagMap.put("ExecuteRunnable",flagMap.get("ExecuteRunnable")+1 );
+					}else if(flag2==true) {
+						flagMap.put("SubmitCallable",flagMap.get("SubmitCallable")+1 );
+					}else if(flag3==true) {
+						flagMap.put("SubmitRunnable",flagMap.get("SubmitRunnable")+1 );
+					}else if(flag4==true) {
+						flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
+					}
 					allChanges.add(change);
 					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
 					if(outMD != null) {
@@ -162,6 +186,9 @@ public class Future2Completable {
 				AnalysisUtils.debugPrint("--第"+j+++"个可能包含调用的类分析完毕-----------------------------%n");
 			}
 		}
+		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个   SubmitCallable:"+flagMap.get("SubmitCallable")+"个   SubmitRunnable:"+
+		flagMap.get("SubmitRunnable")+"个   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue"));
+		System.out.println("其中，重构失败的原因是：执行器类中："+inExecutor+"个   因为stmt缺失，无法判断类型"+noStmt+"个    因执行器类型不安全，不能重构"+illExecutor);
 	}
 	
 
