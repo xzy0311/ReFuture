@@ -644,6 +644,10 @@ public class Future2Completable {
 	private static boolean refactorSubmitRunnableNValue(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocStmt, 4)) {
         	//重构逻辑
+			if(!(invocationNode.getParent() instanceof VariableDeclarationFragment)) {
+				return false;
+				//在return语句中的,这种情况就排除吧
+			}
         	VariableDeclarationFragment vdf = (VariableDeclarationFragment) invocationNode.getParent();
         	VariableDeclarationStatement vds = (VariableDeclarationStatement) vdf.getParent();
         	Block b = (Block)vds.getParent();
