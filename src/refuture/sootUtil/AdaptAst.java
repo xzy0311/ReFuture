@@ -40,6 +40,11 @@ public class AdaptAst {
 		int lineNumber = cu.getLineNumber(miv.getStartPosition());//行号
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
 		String methodSootName = AnalysisUtils.getSootMethodName(miv);//得到soot中用到的subsignature。
+		if(!AnalysisUtils.skipMethodName.isEmpty()) {
+			if (AnalysisUtils.skipMethodName.contains(methodSootName)) {
+				return null;
+			}
+		}
 		SootClass sc = getSootClass4InvocNode(miv);
 		if(sc == null) return null;
 		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:包含submit/execute方法调用的类："+sc.getName()+"方法名"+methodSootName);
