@@ -77,7 +77,7 @@ public class ExecutorSubclass {
 	 */
 	public static void threadPoolExecutorSubClassAnalysis() {
 		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
-		SootClass executorClass = Scene.v().getSootClass("java.utile.concurrent.Executor");
+		SootClass executorClass = Scene.v().getSootClass("java.util.concurrent.Executor");
 		mayCompleteExecutorSubClasses.add(executorServiceClass);//是安全的。
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));

@@ -99,19 +99,19 @@ public class AnalysisUtils {
 			
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用
-//			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
+			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			// 1.2.2hadoop zookeeper  use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
 			//1.2.0 上面开启,此项必须开启
-//			PROJECTOUTPATH.add(projectTestOutPath);
+			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
 //				boolean javaFolder = element.toString().startsWith("src");//Jailer   SPECjbb
-				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper syncope使用。
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper syncope使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
