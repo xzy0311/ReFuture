@@ -29,6 +29,7 @@ import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
+import refuture.sootUtil.AdaptAst;
 import refuture.sootUtil.ExecutorSubclass;
 import soot.Scene;
 import soot.SootClass;
@@ -338,8 +339,21 @@ public class AnalysisUtils {
 	 */
 	public static boolean receiverObjectIsComplete(MethodInvocation invocationNode) {
 		Expression exp = invocationNode.getExpression();
+		Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
+		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
 		if(exp==null){
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，进行排除。");
+			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
+			SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
+			if(sc != null) {
+				if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(sc.getName())) {
+					Future2Completable.canRefactoringNode++;
+				}
+				else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(sc.getName())) {
+					Future2Completable.canRefactoringNode++;
+				}
+			}
+			
 			return false;
 		}
 		ITypeBinding typeBinding = exp.resolveTypeBinding();
@@ -351,6 +365,13 @@ public class AnalysisUtils {
 		if(typeBinding.isNested()) {
 			typeName = typeBinding.getBinaryName();
 		}
+		if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(typeName)) {
+			Future2Completable.canRefactoringNode++;
+		}
+		else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(typeName)) {
+			Future2Completable.canRefactoringNode++;
+		}
+		
 		Set<String> dirtyclasses = ExecutorSubclass.getAllDirtyExecutorSubClassName();
 		if(dirtyclasses.contains(typeName)) {
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]根据ASTtypeBinding 属于污染类，进行排除");
@@ -404,6 +425,9 @@ public class AnalysisUtils {
 			getNode = getNode.getParent();
 		}
 		return null;
+	}
+	public static void countExeAndSubmitofExecutorService(MethodInvocation invocation) {
+		
 	}
 
 }

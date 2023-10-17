@@ -3,7 +3,6 @@ package refuture.refactoring;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.Executors;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
@@ -20,7 +19,6 @@ import org.eclipse.jdt.core.dom.CastExpression;
 import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
 import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.InfixExpression;
@@ -66,10 +64,13 @@ public class Future2Completable {
 	
 	private static List<Change> allChanges;
 	
+	public static int canRefactoringNode;
+	
 	public static boolean initStaticField() {
 		status = true;
 		errorCause = "没有错误";
 		allChanges = new ArrayList<Change>();
+		canRefactoringNode = 0;
 		return true;
 	}
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
@@ -87,7 +88,6 @@ public class Future2Completable {
 			int invocNum = 1;
 			boolean printClassFlag = false;
 			IFile source = (IFile) cu.getResource();
-//			System.out.println(source.getName());//输出所有的类文件名称
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
 			parser.setResolveBindings(true);
 			parser.setStatementsRecovery(true);
@@ -103,7 +103,10 @@ public class Future2Completable {
 				}
 				if(!printClassFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
-					if(sc == null) continue;
+					if(sc == null) {
+						noStmt++;
+						continue;
+					}
 					AnalysisUtils.debugPrint("--第"+j+"个包含可能调用的类："+sc.getName()+"分析开始------------------------------%n");
 					printClassFlag =true;
 					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
@@ -187,7 +190,8 @@ public class Future2Completable {
 			}
 		}
 		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个   SubmitCallable:"+flagMap.get("SubmitCallable")+"个   SubmitRunnable:"+
-		flagMap.get("SubmitRunnable")+"个   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue"));
+		flagMap.get("SubmitRunnable")+"个   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点");
+		
 		System.out.println("其中，重构失败的原因是：执行器类中："+inExecutor+"个   因为stmt缺失，无法判断类型"+noStmt+"个    因执行器类型不安全，不能重构"+illExecutor);
 	}
 	

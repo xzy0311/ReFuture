@@ -40,6 +40,8 @@ public class ExecutorSubclass {
 	
 	//9月14日记录，目前所有记录的安全的，污染的，附加的类都是用于遇到submit()方法时，判断是否符合重构条件。待添加包装类判断
 	/** The all subclasses. */
+	private static Set<SootClass>allExecutorServiceSubClasses;
+	
 	private static Set<SootClass>allExecutorSubClasses;
 	
 	/** 包含我手动添加的jdk中自带的执行器类型,以及完全没有重写关键方法子类. */
@@ -60,7 +62,8 @@ public class ExecutorSubclass {
 		mayCompleteExecutorSubClasses = new HashSet<SootClass>();
 		allDirtyClasses = new HashSet<SootClass>();
 		allAdditionalClasses = new HashSet<SootClass>();
-		allExecutorSubClasses= new HashSet<SootClass>();
+		allExecutorServiceSubClasses= new HashSet<SootClass>();
+		allExecutorSubClasses = new HashSet<SootClass>();
 		return true;
 	}
 	
@@ -74,6 +77,7 @@ public class ExecutorSubclass {
 	 */
 	public static void threadPoolExecutorSubClassAnalysis() {
 		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
+		SootClass executorClass = Scene.v().getSootClass("java.utile.concurrent.Executor");
 		mayCompleteExecutorSubClasses.add(executorServiceClass);//是安全的。
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
@@ -82,9 +86,11 @@ public class ExecutorSubclass {
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorServiceClass));
-		allExecutorSubClasses.add(executorServiceClass);
-		for(SootClass tPESubClass : allExecutorSubClasses) {
+		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
+		allExecutorSubClasses.add(executorClass);
+		allExecutorServiceSubClasses.addAll(hierarchy.getImplementersOf(executorServiceClass));
+		allExecutorServiceSubClasses.add(executorServiceClass);
+		for(SootClass tPESubClass : allExecutorServiceSubClasses) {
 			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
 				continue;
 			}
@@ -340,7 +346,14 @@ public class ExecutorSubclass {
 		return allDirtyClassesStrings;
 	}
 	
-	public static Set<String> getAllExecutorSubClassesName(){
+	public static Set<String> getAllExecutorServiceSubClassesName(){
+		Set<String> allExecutorSubClassesStrings = new HashSet<>();
+		for(SootClass allExecutorSubClass:allExecutorServiceSubClasses) {
+			allExecutorSubClassesStrings.add(allExecutorSubClass.getName());
+		}
+		return allExecutorSubClassesStrings;
+	}
+	public static Set<String> getAllExecutorSubClassesName() {
 		Set<String> allExecutorSubClassesStrings = new HashSet<>();
 		for(SootClass allExecutorSubClass:allExecutorSubClasses) {
 			allExecutorSubClassesStrings.add(allExecutorSubClass.getName());
