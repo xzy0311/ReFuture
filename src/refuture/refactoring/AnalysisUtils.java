@@ -3,7 +3,6 @@ package refuture.refactoring;
 import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -31,10 +30,8 @@ import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
 import refuture.sootUtil.AdaptAst;
 import refuture.sootUtil.ExecutorSubclass;
-import soot.Scene;
 import soot.SootClass;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class AnalysisUtils. 提供分析方法的工具包类，它的方法都是静态的。
  */
@@ -99,19 +96,19 @@ public class AnalysisUtils {
 			
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用
-			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
+//			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			// 1.2.2hadoop zookeeper  use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
 			//1.2.0 上面开启,此项必须开启
-			PROJECTOUTPATH.add(projectTestOutPath);
+//			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
-//				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
+				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
 //				boolean javaFolder = element.toString().startsWith("src");//Jailer   SPECjbb
-//				boolean javaFolder = element.getElementName().equals("java");// signalserver、tomcat、hadoop zookeeper syncope使用。
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
@@ -336,6 +333,7 @@ public class AnalysisUtils {
 	 * 进行一个判断，使用AST相关特性：
 	 * 1.判断去除this，super等特殊变量作为receiverObject的情况。我不会找到super,因为是superMethodInvocation
 	 * 2.不是污染的执行器子类。
+	 * 3.10.17日,为了方便统计相关信息,这里不再卡污染类.只卡this和压根不是ExecutorService子类.
 	 */
 	public static boolean receiverObjectIsComplete(MethodInvocation invocationNode) {
 		Expression exp = invocationNode.getExpression();
@@ -348,9 +346,11 @@ public class AnalysisUtils {
 			if(sc != null) {
 				if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(sc.getName())) {
 					Future2Completable.canRefactoringNode++;
+					Future2Completable.inExecutor++;
 				}
 				else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(sc.getName())) {
 					Future2Completable.canRefactoringNode++;
+					Future2Completable.inExecutor++;
 				}
 			}
 			
@@ -365,19 +365,25 @@ public class AnalysisUtils {
 		if(typeBinding.isNested()) {
 			typeName = typeBinding.getBinaryName();
 		}
-		if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(typeName)) {
-			Future2Completable.canRefactoringNode++;
-		}
-		else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(typeName)) {
-			Future2Completable.canRefactoringNode++;
-		}
 		
-		Set<String> dirtyclasses = ExecutorSubclass.getAllDirtyExecutorSubClassName();
-		if(dirtyclasses.contains(typeName)) {
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]根据ASTtypeBinding 属于污染类，进行排除");
-			return false;
+		
+//		Set<String> dirtyclasses = ExecutorSubclass.getAllDirtyExecutorSubClassName();
+//		if(invocationNode.getName().toString().equals("submit")&&dirtyclasses.contains(typeName)) {
+//			debugPrint("[AnalysisUtils.receiverObjectIsComplete]根据ASTtypeBinding 属于污染类，进行排除");
+//			return false;
+//		}
+		if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName)||typeName == "java.lang.Object")) {
+			Future2Completable.canRefactoringNode++;
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]初步ast判定可以,这里不卡");
+			return true;
 		}
-		return true;
+		else if(invocationNode.getName().toString().equals("submit")&&(allSubServiceNames.contains(typeName)||typeName == "java.lang.Object")) {
+			Future2Completable.canRefactoringNode++;
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定可以,这里不卡");
+			return true;
+		}
+		debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
+		return false;
 	}
 	public static void debugPrint(String message) {
 		if(debugFlag == true) {

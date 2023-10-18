@@ -66,17 +66,19 @@ public class Future2Completable {
 	
 	public static int canRefactoringNode;
 	
+	public static int inExecutor;
+	
 	public static boolean initStaticField() {
 		status = true;
 		errorCause = "没有错误";
 		allChanges = new ArrayList<Change>();
 		canRefactoringNode = 0;
+		inExecutor = 0;
 		return true;
 	}
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
 		int i = 1;
 		int j = 1;
-		int inExecutor = 0;
 		int noStmt = 0;
 		int illExecutor = 0;
 		HashMap<String,Integer> flagMap = new HashMap<String,Integer>();
@@ -116,7 +118,6 @@ public class Future2Completable {
 				//修改成先利用ast的类型绑定进行初次判断执行器变量的类型，排除一些非法的。已添加0712
 				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
 					//在执行器类中+1
-					inExecutor++;
 					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}
@@ -182,6 +183,20 @@ public class Future2Completable {
 						System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：字段或者初始化块,行号：%d%n",i,outTD.resolveBinding().getQualifiedName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
 					}
 					i = i+1;
+				}else {
+					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
+					if(outMD != null) {
+						ASTNode outTD = outMD.getParent();
+						if(outTD instanceof AnonymousClassDeclaration) {
+							System.out.printf("[Task->CF]:重构失败类名：%s，方法名：%s,行号：%d%n",((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+						}else {
+							System.out.printf("[Task->CF]:重构失败类名：%s，方法名：%s,行号：%d%n",((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+						}
+					}else {
+						TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
+						if(outTD == null) {throw new NullPointerException();}
+						System.out.printf("[Task->CF]:重构失败类名：%s，方法名：字段或者初始化块,行号：%d%n",outTD.resolveBinding().getQualifiedName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+					}
 				}
 				AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n");
 			}
@@ -202,7 +217,7 @@ public class Future2Completable {
 	 */
 	private static boolean refactorExecuteRunnable(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 			//得到execute方法的调用Node。
-			if (invocationNode.getName().toString().equals("execute")&&ExecutorSubclass.canRefactorArgu(invocStmt, 2)) {
+			if (invocationNode.getName().toString().equals("execute")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 2)) {
             	AST ast = invocationNode.getAST();
             	ASTRewrite rewriter = ASTRewrite.create(ast);
             	//重构逻辑
@@ -256,7 +271,7 @@ public class Future2Completable {
 		ExpressionStatement expressionStatement = null;
 		MethodInvocation methodInvocation = null;
 		ReturnStatement returnStatement = null;
-		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocStmt, 1)) {
+		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocationNode,invocStmt, 1)) {
 			if(invocationNode.getParent() instanceof Assignment) {
 				flag = 1;
 				invocAssignment = (Assignment)invocationNode.getParent();
@@ -566,7 +581,7 @@ public class Future2Completable {
 	 */
 	private static boolean refactorSubmitRunnable(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 
-		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocStmt, 2)) {
+		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 2)) {
         	AST ast = invocationNode.getAST();
         	ASTRewrite rewriter = ASTRewrite.create(ast);
         	//重构逻辑
@@ -608,7 +623,7 @@ public class Future2Completable {
 	 * future f = CompletableFuture.runAsync(ft,es);
 	 */
 	private static boolean refactorSubmitFutureTask(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
-		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocStmt, 3)) {
+		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 3)) {
         	AST ast = invocationNode.getAST();
         	//hello
         	ASTRewrite rewriter = ASTRewrite.create(ast);
@@ -646,7 +661,7 @@ public class Future2Completable {
 	 * 
 	 */
 	private static boolean refactorSubmitRunnableNValue(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
-		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocStmt, 4)) {
+		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 4)) {
         	//重构逻辑
 			if(!(invocationNode.getParent() instanceof VariableDeclarationFragment)) {
 				return false;
@@ -700,7 +715,7 @@ public class Future2Completable {
 	 * CompletableFuture.runAsync(f,es);
 	 */
 	private static boolean refactorExecuteFutureTask(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
-		if (invocationNode.getName().toString().equals("execute")&&ExecutorSubclass.canRefactorArgu(invocStmt, 3)) {
+		if (invocationNode.getName().toString().equals("execute")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 3)) {
         	AST ast = invocationNode.getAST();
         	ASTRewrite rewriter = ASTRewrite.create(ast);
         	//重构逻辑
