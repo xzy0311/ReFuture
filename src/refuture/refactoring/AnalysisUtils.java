@@ -44,7 +44,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = false;
+	private static boolean debugFlag = true;
 
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();
@@ -86,7 +86,7 @@ public class AnalysisUtils {
 			 * ********这里有一些配置，需要手动更改。************
 			 */
 			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume xml项目。
-			boolean testFlag = false;
+			boolean testFlag = true;
 			if (testFlag) {
 				String projectOutPath = PROJECTOUTPATH.get(0);
 				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
@@ -106,9 +106,9 @@ public class AnalysisUtils {
 				//2.1jGroups，cassandra, lucene-solr 使用
 //				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
-				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
+//				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
 //				boolean javaFolder = element.toString().startsWith("src");//Jailer   SPECjbb
-//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika使用。
+				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {

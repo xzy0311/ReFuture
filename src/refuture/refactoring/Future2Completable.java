@@ -664,6 +664,7 @@ public class Future2Completable {
 		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 4)) {
         	//重构逻辑
 			if(!(invocationNode.getParent() instanceof VariableDeclarationFragment)) {
+				System.out.println("第四种模式,因为归于严苛无法重构");
 				return false;
 				//在return语句中的,这种情况就排除吧
 			}
