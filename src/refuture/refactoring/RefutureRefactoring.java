@@ -14,9 +14,9 @@ import org.eclipse.ltk.core.refactoring.CompositeChange;
 import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
+import refuture.sootUtil.Cancel;
 import refuture.sootUtil.ExecutorSubclass;
 import refuture.sootUtil.SootConfig;
-import soot.SootClass;
 
 
 // TODO: Auto-generated Javadoc
@@ -39,6 +39,7 @@ public class RefutureRefactoring extends Refactoring {
 	
 	int refactorPattern;
 
+	boolean cancelPattern;
 	public static int time = 0;
 	/**
 	 * Instantiates a new future task refactoring.
@@ -51,10 +52,16 @@ public class RefutureRefactoring extends Refactoring {
 		potentialJavaFiles = new ArrayList<IJavaElement>();
 		InitAllStaticfield.init();//初始化所有的静态字段。
 		this.refactorPattern = 1;
+		this.cancelPattern = false;
 	}
 
 	public boolean setRefactorPattern(int pattern) {
 		this.refactorPattern = pattern;
+		return true;
+	}
+	
+	public boolean setCancelPattern(boolean pattern) {
+		this.cancelPattern = pattern;
 		return true;
 	}
 
@@ -84,6 +91,9 @@ public class RefutureRefactoring extends Refactoring {
 			}
 	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
 	        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
+	        if(this.cancelPattern) {
+		        Cancel.initCancel(allJavaFiles);
+	        }
 			Future2Completable.refactor(allJavaFiles);
 			if(!Future2Completable.getStatus()) {
 				return RefactoringStatus.createErrorStatus(Future2Completable.getErrorCause());

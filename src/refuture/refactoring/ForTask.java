@@ -260,7 +260,7 @@ public class ForTask {
 		return false;
 	}
 	
-	private static List<SootClass> getAllFutureAndItsSubClasses(){
+	public static List<SootClass> getAllFutureAndItsSubClasses(){
 		SootClass futureSootClass = Scene.v().getSootClass("java.util.concurrent.Future");
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		List<SootClass> futureImpClasses =hierarchy.getImplementersOf(futureSootClass);

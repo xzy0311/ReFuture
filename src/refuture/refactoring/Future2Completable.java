@@ -44,6 +44,7 @@ import org.eclipse.text.edits.TextEdit;
 
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.sootUtil.AdaptAst;
+import refuture.sootUtil.Cancel;
 import refuture.sootUtil.ExecutorSubclass;
 import soot.SootClass;
 import soot.jimple.Stmt;
@@ -81,6 +82,7 @@ public class Future2Completable {
 		int j = 1;
 		int noStmt = 0;
 		int illExecutor = 0;
+		int useCancelTrue = 0;	
 		HashMap<String,Integer> flagMap = new HashMap<String,Integer>();
 		flagMap.put("ExecuteRunnable", 0);
 		flagMap.put("SubmitCallable", 0);
@@ -146,6 +148,11 @@ public class Future2Completable {
 				TextFileChange change = new TextFileChange("Future2Completable",source);
 				
 				boolean flag1 = refactorExecuteRunnable(invocStmt,invocationNode,change,cu);
+				if(Cancel.futureUseCancelTure(invocationNode,invocStmt)) {
+					useCancelTrue ++;
+					continue;
+				}
+				
 				boolean flag2 = refactorffSubmitCallable(invocStmt,invocationNode,change,cu);
 				boolean flag3 = refactorSubmitRunnable(invocStmt,invocationNode,change,cu);
 				boolean flag4 = refactorSubmitRunnableNValue(invocStmt,invocationNode,change,cu);//suspend
@@ -207,7 +214,8 @@ public class Future2Completable {
 		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个   SubmitCallable:"+flagMap.get("SubmitCallable")+"个   SubmitRunnable:"+
 		flagMap.get("SubmitRunnable")+"个   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点");
 		
-		System.out.println("其中，重构失败的原因是：执行器类中："+inExecutor+"个   因为stmt缺失，无法判断类型"+noStmt+"个    因执行器类型不安全，不能重构"+illExecutor);
+		System.out.println("其中，重构失败的原因是：执行器类中："+inExecutor+"个   因为stmt缺失，无法判断类型"+noStmt+"个    因执行器类型不安全，不能重构"+illExecutor
+				+"个     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个");
 	}
 	
 

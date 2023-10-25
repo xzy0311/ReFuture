@@ -3,23 +3,19 @@ package refuture.refactoringwizard;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Text;
 
 import refuture.refactoring.RefutureRefactoring;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	
-	Button btnCheck;
-
+	Button btnCheck1;
+	Button btnCheck2;
 	public FutureTaskRefactoringWizardPage(String name) {
 		super(name);
 	}
@@ -31,12 +27,18 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		GridLayout lay = new GridLayout();
 		lay.numColumns = 2;
 		composite.setLayout(lay);
-		btnCheck = new Button(composite, SWT.CHECK);
-		btnCheck.setText("refactoring get");
+		btnCheck1 = new Button(composite, SWT.CHECK);
+		btnCheck1.setText("Find Thread model");
 		GridData gdBtnCheck = new GridData();
 		gdBtnCheck.horizontalSpan = 2;
 		gdBtnCheck.horizontalAlignment = GridData.FILL;
-		btnCheck.setLayoutData(gdBtnCheck);
+		btnCheck1.setLayoutData(gdBtnCheck);
+		btnCheck2 = new Button(composite, SWT.CHECK);
+		btnCheck2.setText("cancel detect");
+		GridData gdBtnCheck2 = new GridData();
+		gdBtnCheck2.horizontalAlignment = GridData.FILL;
+		btnCheck2.setLayoutData(gdBtnCheck2);
+		
 		// add listener
 		defineListener();
 		// 将 composite 纳入框架的控制
@@ -57,25 +59,36 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	 */
 	private void defineListener(){
 		RefutureRefactoring refactoring = (RefutureRefactoring) getRefactoring();
-		
-		
-		btnCheck.addSelectionListener(new SelectionListener(){
+		btnCheck1.addSelectionListener(new SelectionListener(){
 
 			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
-				btnCheck.setEnabled(false);
+				btnCheck1.setEnabled(false);
 			}
 
 			@Override
 			public void widgetSelected(SelectionEvent se) {
-				if(btnCheck.getEnabled()){
+				if(btnCheck1.getEnabled()){
 					refactoring.setRefactorPattern(2);
 				}else{
 					refactoring.setRefactorPattern(1);
 				}
-				
 			}
-			
+		});
+		btnCheck2.addSelectionListener(new SelectionListener(){
+			@Override
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+				btnCheck2.setEnabled(false);
+			}
+
+			@Override
+			public void widgetSelected(SelectionEvent se) {
+				if(btnCheck2.getEnabled()){
+					refactoring.setCancelPattern(true);
+				}else{
+					refactoring.setCancelPattern(false);
+				}
+			}
 		});
 		
 	}

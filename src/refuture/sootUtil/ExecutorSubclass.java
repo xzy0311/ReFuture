@@ -1,6 +1,5 @@
 package refuture.sootUtil;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -11,22 +10,17 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 
 import refuture.refactoring.AnalysisUtils;
-import soot.Body;
 import soot.Hierarchy;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
-import soot.SootMethod;
 import soot.Type;
-import soot.Unit;
-import soot.UnitPatchingChain;
 import soot.Value;
 import soot.ValueBox;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
-import soot.jimple.internal.JAssignStmt.LinkedVariableBox;
 import soot.jimple.internal.JimpleLocalBox;
 // TODO: Auto-generated Javadoc
 /**

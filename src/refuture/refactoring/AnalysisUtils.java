@@ -1,6 +1,5 @@
 package refuture.refactoring;
 
-import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -104,11 +103,11 @@ public class AnalysisUtils {
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
 //				boolean javaFolder = element.toString().startsWith("src");//Jailer   SPECjbb
-				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika使用。
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
@@ -259,7 +258,6 @@ public class AnalysisUtils {
 	 * @return the method declaration 4 node
 	 */
 	public static MethodDeclaration getMethodDeclaration4node(ASTNode node) {
-		int lineNumberPosition = node.getStartPosition();
 		while (!(node instanceof TypeDeclaration)) {
 			if (node instanceof MethodDeclaration) {
 				break;
@@ -293,7 +291,6 @@ public class AnalysisUtils {
 	public static TypeDeclaration getTypeDeclaration4node(ASTNode node) {
 
 		while (!(node instanceof TypeDeclaration)) {
-
 			node = node.getParent();
 			if (node == null) {
 				return null;
@@ -395,15 +392,6 @@ public class AnalysisUtils {
 		return astUnit.getColumnNumber(invocationNode.getStartPosition());
 	}
 	
-	private static List<IJavaProject> FindAllProjects(IJavaProject ijp) throws JavaModelException{
-		List<IJavaProject> javaList = new ArrayList();
-		for(IJavaElement ije :ijp.getChildren()) {
-			if(ije instanceof IJavaProject) {
-				javaList.add((IJavaProject)ije);
-			}
-		}
-		return javaList;
-	}
 	
     public static int countGreaterThanOneLessThanSign(String text) {
         int count = 0;
@@ -431,9 +419,6 @@ public class AnalysisUtils {
 			getNode = getNode.getParent();
 		}
 		return null;
-	}
-	public static void countExeAndSubmitofExecutorService(MethodInvocation invocation) {
-		
 	}
 
 }

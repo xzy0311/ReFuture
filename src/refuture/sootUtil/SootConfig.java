@@ -1,15 +1,11 @@
 package refuture.sootUtil;
 
 import java.io.File;
-import java.io.FilenameFilter;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import refuture.refactoring.AnalysisUtils;
-import soot.PackManager;
 import soot.Scene;
-import soot.SootClass;
 import soot.options.Options;
 
 public class SootConfig {
@@ -23,7 +19,7 @@ public class SootConfig {
         Scene.v().loadNecessaryClasses();
         System.out.println("[setupSoot]:加载必要类完毕！");
         
-        PackManager.v().runPacks();
+//        PackManager.v().runPacks();
         System.out.println("[setupSoot]:Soot配置完毕。");
     }
 
