@@ -11,11 +11,13 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
 import refuture.refactoring.RefutureRefactoring;
+import refuture.sootUtil.SootConfig;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	
 	Button btnCheck1;
 	Button btnCheck2;
+	Button btnCheck3;
 	public FutureTaskRefactoringWizardPage(String name) {
 		super(name);
 	}
@@ -28,16 +30,22 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		lay.numColumns = 2;
 		composite.setLayout(lay);
 		btnCheck1 = new Button(composite, SWT.CHECK);
-		btnCheck1.setText("Find Thread model");
+		btnCheck1.setText("Find Thread Mode");
 		GridData gdBtnCheck = new GridData();
 		gdBtnCheck.horizontalSpan = 2;
 		gdBtnCheck.horizontalAlignment = GridData.FILL;
 		btnCheck1.setLayoutData(gdBtnCheck);
 		btnCheck2 = new Button(composite, SWT.CHECK);
-		btnCheck2.setText("cancel detect");
+		btnCheck2.setText("Cancel Detect Mode");
 		GridData gdBtnCheck2 = new GridData();
 		gdBtnCheck2.horizontalAlignment = GridData.FILL;
 		btnCheck2.setLayoutData(gdBtnCheck2);
+		
+		btnCheck3 = new Button(composite, SWT.CHECK);
+		btnCheck3.setText("Extreme Speed Mode");
+		GridData gdBtnCheck3 = new GridData();
+		gdBtnCheck3.horizontalAlignment = GridData.FILL;
+		btnCheck3.setLayoutData(gdBtnCheck3);
 		
 		// add listener
 		defineListener();
@@ -90,7 +98,21 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 				}
 			}
 		});
-		
+		btnCheck3.addSelectionListener(new SelectionListener(){
+			@Override
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+				btnCheck3.setEnabled(false);
+			}
+
+			@Override
+			public void widgetSelected(SelectionEvent se) {
+				if(btnCheck3.getEnabled()){
+					SootConfig.extremeSpeedModel = true;
+				}else{
+					SootConfig.extremeSpeedModel = false;
+				}
+			}
+		});
 	}
 
 }

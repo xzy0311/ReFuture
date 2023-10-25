@@ -5,10 +5,16 @@ import java.util.Collections;
 import java.util.List;
 
 import refuture.refactoring.AnalysisUtils;
+import soot.PackManager;
 import soot.Scene;
 import soot.options.Options;
 
 public class SootConfig {
+	public static boolean extremeSpeedModel;
+	public static void sootConfigStaticInitial() {
+		extremeSpeedModel = false;
+	}
+	
     public static void setupSoot() {
         soot.G.reset();
         BasicOptions();
@@ -18,8 +24,10 @@ public class SootConfig {
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
         Scene.v().loadNecessaryClasses();
         System.out.println("[setupSoot]:加载必要类完毕！");
-        
-//        PackManager.v().runPacks();
+        if(!extremeSpeedModel) {
+        	System.out.println("[setupSoot]:当前非极速模式");
+            PackManager.v().runPacks();
+        }
         System.out.println("[setupSoot]:Soot配置完毕。");
     }
 
