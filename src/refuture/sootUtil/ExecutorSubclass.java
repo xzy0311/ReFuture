@@ -217,6 +217,9 @@ public class ExecutorSubclass {
         				
         				Expression exp = mInvocation.getExpression();
         				ITypeBinding typeBinding = exp.resolveTypeBinding();
+        				if(typeBinding == null) {
+        					return false;
+        				}
         				String typeName = typeBinding.getQualifiedName();
         				if(typeBinding.isNested()) {
         					typeName = typeBinding.getBinaryName();
@@ -260,6 +263,7 @@ public class ExecutorSubclass {
 			return false;
 		}
 		if(lv.size() == 2) {
+			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:注意，这个可能是两个参数的");
 			if(argType == 4) {
 				return true;
 			}

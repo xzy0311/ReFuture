@@ -103,11 +103,11 @@ public class AnalysisUtils {
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
 //				boolean javaFolder = element.toString().startsWith("src");//Jailer   SPECjbb
-//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika使用。
+				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
@@ -355,7 +355,8 @@ public class AnalysisUtils {
 		}
 		ITypeBinding typeBinding = exp.resolveTypeBinding();
 		if(typeBinding==null){
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，这里不卡");
+			Future2Completable.canRefactoringNode++;
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，应该是eclipse环境下的源码没有调试好，这里不卡");
 			return true;
 		}
 		String typeName = typeBinding.getQualifiedName();
