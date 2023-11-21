@@ -155,7 +155,7 @@ public class Future2Completable {
 				
 				boolean flag2 = refactorffSubmitCallable(invocStmt,invocationNode,change,cu);
 				boolean flag3 = refactorSubmitRunnable(invocStmt,invocationNode,change,cu);
-				boolean flag4 = refactorSubmitRunnableNValue(invocStmt,invocationNode,change,cu);//suspend
+				boolean flag4 = refactorSubmitRunnableNValue(invocStmt,invocationNode,change,cu);
 				boolean flag5 = false;
 //				if(flag3 == false) {
 //					flag5 = refactorSubmitFutureTask(invocStmt,invocationNode,change,cu);
@@ -659,62 +659,41 @@ public class Future2Completable {
 	/*
 	 * 		Future f = es.submit(r, value);
 	 * 
-		 FutureTask f = new FutureTask (r,value)；6.1改成了Future f = new ...
-		 CompletableFuture.runAsync(f,es);
 		 7.25:
-		 first: Callable f$rf$ = Executors.callable(r, v);
-		 Future f = es.submit(f$rf);
+	 *	 first: Callable f$rf$ = Executors.callable(r, v);
+		 Future f = es.submit(Executors.callable(r,v));
 		 ->submit(callable)->CaompletableFuture;
 		 
 	 * 
 	 */
 	private static boolean refactorSubmitRunnableNValue(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 4)) {
-        	//重构逻辑
-			if(!(invocationNode.getParent() instanceof VariableDeclarationFragment)) {
-				System.out.println("第四种模式,因为归于严苛无法重构");
-				return false;
-				//在return语句中的,这种情况就排除吧
-			}
-        	VariableDeclarationFragment vdf = (VariableDeclarationFragment) invocationNode.getParent();
-        	VariableDeclarationStatement vds = (VariableDeclarationStatement) vdf.getParent();
-        	Block b = (Block)vds.getParent();
-        	AST ast = b.getAST();
-        	SimpleName variableName = vdf.getName();
-        	List arguList = invocationNode.arguments();
-        	ASTRewrite rewriter = ASTRewrite.create(ast);
-        	ClassInstanceCreation cic = ast.newClassInstanceCreation();
-        	rewriter.set(cic, ClassInstanceCreation.TYPE_PROPERTY, ast.newSimpleName("FutureTask"), null);
-        	ListRewrite listRewriter = rewriter.getListRewrite(cic, ClassInstanceCreation.ARGUMENTS_PROPERTY);
-        	listRewriter.insertLast((ASTNode) arguList.get(0), null);
-        	listRewriter.insertLast((ASTNode) arguList.get(1), null);
-        	rewriter.set(vds, VariableDeclarationStatement.TYPE_PROPERTY, ast.newSimpleName("Future"), null);
-        	rewriter.set(vdf, VariableDeclarationFragment.INITIALIZER_PROPERTY, cic, null);
-        	
-        	MethodInvocation newMiv = ast.newMethodInvocation();
-        	rewriter.set(newMiv, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
-        	rewriter.set(newMiv, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"),null);
+			AST ast = invocationNode.getAST();
+			ASTRewrite rewriter = ASTRewrite.create(ast);
+			MethodInvocation newMiv = ast.newMethodInvocation();
+        	rewriter.set(newMiv, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("Executors"), null);
+        	rewriter.set(newMiv, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("callable"),null);
         	ListRewrite  newListRewriter = rewriter.getListRewrite(newMiv, MethodInvocation.ARGUMENTS_PROPERTY);
-        	newListRewriter.insertLast(variableName, null);
-        	listRewriter.insertLast(invocationNode.getExpression(), null);
-        	ExpressionStatement exps = ast.newExpressionStatement(newMiv);
-        	ListRewrite lastListRewrite = rewriter.getListRewrite(b, Block.STATEMENTS_PROPERTY);
-        	lastListRewrite.insertAfter(exps, vds, null);
+        	newListRewriter.insertLast((ASTNode)invocationNode.arguments().get(0),null);
+        	newListRewriter.insertLast((ASTNode)invocationNode.arguments().get(1),null);
+        	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
+        	listRewriter.replace((ASTNode)invocationNode.arguments().get(0), newMiv, null);
+        	listRewriter.remove((ASTNode)invocationNode.arguments().get(1), null);
         	TextEdit edits = rewriter.rewriteAST();
         	change.setEdit(edits);
-
-       	 ImportRewrite ir = ImportRewrite.create(cu, true);
-		 ir.addImport("java.util.concurrent.CompletableFuture");
-		try {
-			TextEdit editsImport = ir.rewriteImports(null);
-			change.addEdit(editsImport);
-		} catch (CoreException e) {
-			e.printStackTrace();
+        	
+       	 	ImportRewrite ir = ImportRewrite.create(cu, true);
+       	 	ir.addImport("java.util.concurrent.Executors");
+       	 	try {
+       	 		TextEdit editsImport = ir.rewriteImports(null);
+       	 		change.addEdit(editsImport);
+       	 	} catch (CoreException e) {
+       	 		e.printStackTrace();
+       	 	}
+       	 	AnalysisUtils.debugPrint("[refactorSubmitRunnableNValue]refactor success!");
+       	 		return true;
 		}
-		AnalysisUtils.debugPrint("[refactorSubmitRunnableNValue]refactor success!");
-        	return true;
-		}
-		return false;
+			return false;
 	}
 	
 	/*

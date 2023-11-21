@@ -1,5 +1,6 @@
 package refuture.refactoring;
 
+import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +49,7 @@ public class AnalysisUtils {
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();
 	static {
-//		skipMethodName.add("void doExecute(org.elasticsearch.tasks.Task,java.lang.Object,org.elasticsearch.action.ActionListener)");
+//		skipMethodName.add("void start(com.hazelcast.client.config.ClientIcmpPingConfig,com.hazelcast.spi.impl.executionservice.TaskScheduler,com.hazelcast.logging.ILogger,java.util.Collection)");
 //		skipMethodName.add("void doExecute(org.elasticsearch.action.Action,java.lang.Object,org.elasticsearch.action.ActionListener)");
 //		skipMethodName.add("org.elasticsearch.tasks.Task executeLocally(org.elasticsearch.action.GenericAction,java.lang.Object,org.elasticsearch.action.ActionListener)");
 //		skipMethodName.add("org.elasticsearch.tasks.Task executeLocally(org.elasticsearch.action.GenericAction,java.lang.Object,org.elasticsearch.tasks.TaskListener)");
@@ -98,7 +99,9 @@ public class AnalysisUtils {
 //			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			// 1.2.2hadoop zookeeper  use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
-			//1.2.0 上面开启,此项必须开启
+			// 1.2.3 traific use
+//			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"bin-test";
+			//1.3 上面开启,此项必须开启
 //			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
@@ -108,6 +111,7 @@ public class AnalysisUtils {
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
 //				boolean javaFolder = element.toString().startsWith("src");//Jailer   SPECjbb
 				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
+//				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("gen-java");
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {
@@ -121,7 +125,6 @@ public class AnalysisUtils {
 					}
 				}
 			}
-
 		} catch (JavaModelException e) {
 			e.printStackTrace();
 		}
@@ -131,7 +134,6 @@ public class AnalysisUtils {
 	/**
 	 * 得到 node所属的方法的Soot中名称，在方法体外和构造函数，则返回“void {@code<init>}()”,否则返回方法签名.
 	 * 方法的返回值若是引用类型，需要写全名。
-	 * 
 	 * @param node node必须保证，是类里面的语句节点，否则陷入无限循环。
 	 * @return the method name
 	 */
@@ -216,7 +218,6 @@ public class AnalysisUtils {
 
 	/**
 	 * 通过MethodDeclaration,得到参数的类型全名。 需要开启绑定。
-	 *
 	 * @param mdNode the md node
 	 * @return the method parameters
 	 */
@@ -231,7 +232,7 @@ public class AnalysisUtils {
 				ITypeBinding typeBinding = param.getType().resolveBinding();
 				
 				String typefullName;
-				if (typeBinding.isTypeVariable()) {
+				if (typeBinding.isTypeVariable()) {//是类型变量，也就是T等。
 					typefullName = "java.lang.Object";
 				} else if (typeBinding.isPrimitive() || typeBinding.isArray()) {
 					typefullName = typeBinding.getQualifiedName();
