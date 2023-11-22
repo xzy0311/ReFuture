@@ -137,7 +137,7 @@ public class AnalysisUtils {
 	 * @param node node必须保证，是类里面的语句节点，否则陷入无限循环。
 	 * @return the method name
 	 */
-	public static String getSootMethodName(ASTNode node) {
+	public static String getMethodNameNArgusofSoot(ASTNode node) {
 		String methodSootName = "void <init>()";
 		while (!(node instanceof TypeDeclaration)) {
 			if (node instanceof MethodDeclaration) {
@@ -215,6 +215,35 @@ public class AnalysisUtils {
 		return methodSootName;
 
 	}
+	
+	public static String getSimpleMethodNameofSoot(ASTNode node) {
+		String methodSootName = "<init>";
+		while (!(node instanceof TypeDeclaration)) {
+			if (node instanceof MethodDeclaration) {
+				MethodDeclaration mdNode = (MethodDeclaration) node;
+				Type type = mdNode.getReturnType2();
+				if (type == null) {// 构造函数为null
+					break;
+				}
+				String methodSimpleName = mdNode.getName().toString();
+				methodSootName = methodSimpleName;
+				break;
+			}else if(node instanceof Initializer){
+				if(Modifier.isStatic(((Initializer) node).getModifiers())) {
+					methodSootName = "<clinit>";
+				}
+				break;//在初始化块中，不是静态的，直接退出循环就行。
+			}else if(node instanceof FieldDeclaration) {
+				if(Modifier.isStatic(((FieldDeclaration) node).getModifiers())) {
+					methodSootName = "<clinit>";
+				}
+				break;//在字段中，不是静态的，直接退出循环就行。
+			}
+			node = node.getParent();
+		}
+		return methodSootName;
+
+	}
 
 	/**
 	 * 通过MethodDeclaration,得到参数的类型全名。 需要开启绑定。
@@ -264,22 +293,13 @@ public class AnalysisUtils {
 				break;
 			}
 			node = node.getParent();
-			if (node == node.getParent()) {
-				System.out.println("@error[AnalysisUtils.getMethodDeclaration4node]：有问题"+node);
-				throw new ExceptionInInitializerError("[AnalysisUtils.getMethodDeclaration4node]：有问题"+node);
-			}
 		}
 		if(node instanceof MethodDeclaration) {
 			return (MethodDeclaration) node;
-		}else {
-//			CompilationUnit cu = (CompilationUnit)node.getRoot();
-//			throw new NullPointerException("[AnalysisUtils.getMethodDeclaration4node]空方法定义,属于类："
-//			+getTypeDeclaration4node(node).resolveBinding().getQualifiedName()+"行号："+cu.getLineNumber(lineNumberPosition));
+		}else {//node instanceof TypeDeclaration
 			//if InvocationNode not in MethodDeclaration,it may in Initial Block (static or not) .if in static block it will in staic void <clinit>() in soot ,if in block ,it will in public void <init>().
 			//so ,i just return null;
 			return null;
-			
-			
 		}
 	}
 

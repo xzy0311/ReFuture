@@ -18,12 +18,15 @@ import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 
 import refuture.refactoring.AnalysisUtils;
+import soot.AmbiguousMethodException;
 import soot.Body;
 import soot.G;
+import soot.Hierarchy;
 import soot.Local;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
+import soot.Type;
 import soot.Unit;
 import soot.ValueBox;
 import soot.jimple.Stmt;
@@ -46,18 +49,24 @@ public class AdaptAst {
 		CompilationUnit cu = (CompilationUnit)miv.getRoot();
 		int lineNumber = cu.getLineNumber(miv.getStartPosition());//行号
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
-		String methodSootName = AnalysisUtils.getSootMethodName(miv);//得到soot中用到的subsignature。
+		SootClass sc = getSootClass4InvocNode(miv);
+//		if(sc == null) {
+//			return null;
+//		}
+		SootMethod sm;
+		try{
+			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(miv));
+		}catch(AmbiguousMethodException e) {
+			sm = sc.getMethod(AnalysisUtils.getMethodNameNArgusofSoot(miv));
+		}
 		if(!AnalysisUtils.skipMethodName.isEmpty()) {
-			if (AnalysisUtils.skipMethodName.contains(methodSootName)) {
+			if (AnalysisUtils.skipMethodName.contains(sm.getSignature())) {
 				return null;
 			}
 		}
-		SootClass sc = getSootClass4InvocNode(miv);
-		if(sc == null) {
-			return null;
-		}
-		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:包含submit/execute方法调用的类："+sc.getName()+"方法名"+methodSootName);
-		SootMethod sm = sc.getMethod(methodSootName);
+		
+		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getSignature());
+
 		Body body =sm.retrieveActiveBody();
         Iterator<Unit> i=body.getUnits().snapshotIterator();
         boolean notLocalFlag = false;// if method is localmethod,its jimple name is stemp name not execute or submit.
@@ -85,8 +94,8 @@ public class AdaptAst {
         	return TempStmt;
         }
         if(notLocalFlag) {
-        	System.out.println("@error[AdaptAST.getJimpleInvocStmt]:获取调用节点对应的Stmt出错{MethodSig:"+sm.getSignature()
-        	+"ASTLineNumber:"+lineNumber+"JimLineNumber:"+jimpleLineNumber);
+        	System.out.println("@error[AdaptAST.getJimpleInvocStmt]:获取调用节点对应的Stmt出错，找到有调用名称的语句，但是行号不对应且不是唯一一个这个方法调用在这个方法中{MethodSig:"
+        +sm.getSignature()+"ASTLineNumber:"+lineNumber+"JimLineNumber:"+jimpleLineNumber);
         }
 		//从这里开始分出lambda的处理
 		if(AdaptAst.invocInLambda(miv)) {
@@ -104,12 +113,25 @@ public class AdaptAst {
 		MethodInvocation invocLambdaMethod = AdaptAst.getInvocLambdaMethod(miv);
 		int invocLambdaMethodLineNumber = cu.getLineNumber(invocLambdaMethod.getStartPosition());
 		SootClass sc = getSootClass4InvocNode(miv);
-		if(sc == null) {
+//		if(sc == null) {
 //			return null;
-			throw new IllegalArgumentException();
+//			throw new IllegalArgumentException();
+//		}
+		SootMethod sm;
+		try{
+			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(miv));
+		}catch(AmbiguousMethodException e) {
+			sm = sc.getMethod(AnalysisUtils.getMethodNameNArgusofSoot(miv));
 		}
-		String methodSootName = AnalysisUtils.getSootMethodName(miv);
-		SootMethod sm = sc.getMethod(methodSootName);
+		
+		// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
+		int taskNumber = 1;
+		for(Object ob :invocLambdaMethod.arguments()) {
+			if(ob instanceof LambdaExpression) {
+				break;
+			}
+			taskNumber++;
+		}
 		Body body =sm.retrieveActiveBody();
         Iterator<Unit> it=body.getUnits().snapshotIterator();
         SootClass lambdaClass = null;
@@ -122,11 +144,17 @@ public class AdaptAst {
             		//接下来获取stmt中调用的lambda表达式的信息。
             		Local lambdaLocal = null;
             		List<ValueBox> boxList=stmt.getUseBoxes();
+            		int count = 1;
             		for(ValueBox valueBox : boxList) {
             			if(valueBox instanceof ImmediateBox) {
             				lambdaLocal = (Local)valueBox.getValue();
+            				if(count == taskNumber) {
+            					break;
+            				}
             			}
             		}
+            		
+            		
             		LocalDefs ld = G.v().soot_toolkits_scalar_LocalDefsFactory().newLocalDefs(body);
             		List<Unit> units = ld.getDefsOfAt(lambdaLocal, stmt);
             		if(units.size() !=1) {
@@ -179,8 +207,6 @@ public class AdaptAst {
         		}
         	}
         }
-        
-        
         throw new NullPointerException();
 	}
 
@@ -231,7 +257,6 @@ public class AdaptAst {
 			node = node.getParent();
 		}
 		MethodInvocation lambdaMethod = (MethodInvocation)node;
-		
 		return lambdaMethod;
 	}
 
@@ -261,7 +286,7 @@ public class AdaptAst {
 		ITypeBinding itb;
 		String typeFullName;
 		ASTNode astNode = AnalysisUtils.getMethodDeclaration4node(incovNode);
-		if(astNode == null) {
+		if(astNode == null) {//说明没有在方法内部
 			TypeDeclaration td = AnalysisUtils.getTypeDeclaration4node(incovNode);
 			if(td == null) {throw new NullPointerException();}
 			itb = td.resolveBinding();
@@ -269,8 +294,7 @@ public class AdaptAst {
 			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)astNode.getParent();
 			itb = ad.resolveBinding();
 		}else {
-			TypeDeclaration td=(TypeDeclaration)astNode
-					.getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
+			TypeDeclaration td=(TypeDeclaration)astNode.getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
 			itb = td.resolveBinding();//得到FullName,必须是用绑定。
 		}
 		if(itb.isNested()) {
