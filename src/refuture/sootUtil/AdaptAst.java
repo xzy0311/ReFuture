@@ -50,9 +50,9 @@ public class AdaptAst {
 		int lineNumber = cu.getLineNumber(miv.getStartPosition());//行号
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
 		SootClass sc = getSootClass4InvocNode(miv);
-//		if(sc == null) {
-//			return null;
-//		}
+		if(sc == null) {
+			return null;
+		}
 		SootMethod sm;
 		try{
 			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(miv));
@@ -113,10 +113,10 @@ public class AdaptAst {
 		MethodInvocation invocLambdaMethod = AdaptAst.getInvocLambdaMethod(miv);
 		int invocLambdaMethodLineNumber = cu.getLineNumber(invocLambdaMethod.getStartPosition());
 		SootClass sc = getSootClass4InvocNode(miv);
-//		if(sc == null) {
-//			return null;
+		if(sc == null) {
+			return null;
 //			throw new IllegalArgumentException();
-//		}
+		}
 		SootMethod sm;
 		try{
 			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(miv));
@@ -302,6 +302,12 @@ public class AdaptAst {
 		}else {
 			typeFullName = itb.getQualifiedName();
 		}
+		// maybe null
+		if(typeFullName == null){
+			System.out.println("@error[AdaptAst.getSootClass4InvocNode]:因为获取绑定信息中的名称出错,未获取成功,所以得不到类型名");
+			return null;
+			
+			}
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		if(sc.isPhantom()) {
 			System.out.println("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);

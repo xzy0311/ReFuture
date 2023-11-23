@@ -69,11 +69,14 @@ public class Cancel {
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();
 			for(MethodInvocation invocationNode:invocationNodes) {
-				if(!invocationNode.getName().toString().equals("cancel") || !isTrue(invocationNode)) {
+				if(!invocationNode.getName().toString().equals("cancel") || !isTrue(invocationNode) || invocationNode.getExpression() == null) {
 					continue;
 				}
 				//到这里都是cancel(true)了。根据astBinding 得到接收器类型。
 				ITypeBinding typeBinding = invocationNode.getExpression().resolveTypeBinding();
+				if(typeBinding == null) {
+					continue;
+				}
 				String typeName = typeBinding.getQualifiedName();
 				if(typeBinding.isNested()) {
 					typeName = typeBinding.getBinaryName();

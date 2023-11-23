@@ -1,6 +1,7 @@
 package refuture.refactoring;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.eclipse.core.runtime.CoreException;
@@ -85,7 +86,7 @@ public class RefutureRefactoring extends Refactoring {
 			throws CoreException, OperationCanceledException {
 		if(refactorPattern ==1) {
 			System.out.println("Future重构模式");
-			System.out.println("hello my good boy xzy ,this is "+ time++ +" times");
+			System.out.println("hello xzy ,this is "+ time++ +" times run this model."+"The current start time is "+ new Date());
 			if(time == 1) {
 				SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
 			}
@@ -102,7 +103,7 @@ public class RefutureRefactoring extends Refactoring {
 //			ForTask.refactor(allJavaFiles);   10月11日，暂时取消ForTask尝试。待添加寻找Thread相关代码，以及关闭soot的方法。
 			FindThread.find(allJavaFiles);
 		}
-
+		System.out.println("The current ent time is "+ new Date());
 		return null;
 	}
 

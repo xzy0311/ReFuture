@@ -49,10 +49,9 @@ public class AnalysisUtils {
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();
 	static {
-//		skipMethodName.add("void start(com.hazelcast.client.config.ClientIcmpPingConfig,com.hazelcast.spi.impl.executionservice.TaskScheduler,com.hazelcast.logging.ILogger,java.util.Collection)");
-//		skipMethodName.add("void doExecute(org.elasticsearch.action.Action,java.lang.Object,org.elasticsearch.action.ActionListener)");
-//		skipMethodName.add("org.elasticsearch.tasks.Task executeLocally(org.elasticsearch.action.GenericAction,java.lang.Object,org.elasticsearch.action.ActionListener)");
-//		skipMethodName.add("org.elasticsearch.tasks.Task executeLocally(org.elasticsearch.action.GenericAction,java.lang.Object,org.elasticsearch.tasks.TaskListener)");
+//		skipMethodName.add("<com.hazelcast.jet.impl.processor.AsyncTransformUsingServiceBatchP_IntegrationTest: com.hazelcast.function.BiFunctionEx transformNotPartitionedFn(com.hazelcast.function.FunctionEx)>");
+//		skipMethodName.add("<com.hazelcast.jet.impl.processor.AsyncTransformUsingServiceP_IntegrationTest: com.hazelcast.function.BiFunctionEx transformNotPartitionedFn(com.hazelcast.function.FunctionEx)>");
+//		skipMethodName.add("<com.hazelcast.jet.impl.processor.AsyncTransformUsingServiceP_IntegrationTest: com.hazelcast.jet.function.TriFunction transformPartitionedFn(com.hazelcast.function.FunctionEx)>");
 //		skipMethodName.add("org.elasticsearch.action.ActionFuture execute(org.elasticsearch.action.Action,java.lang.Object)");
 //		skipMethodName.add("void execute(org.elasticsearch.action.Action,java.lang.Object,org.elasticsearch.action.ActionListener)");
 //		skipMethodName.add("void shardExecute(org.elasticsearch.tasks.Task,java.lang.Object,org.elasticsearch.index.shard.ShardId,org.elasticsearch.action.ActionListener)");
