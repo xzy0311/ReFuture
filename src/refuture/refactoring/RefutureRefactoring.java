@@ -90,6 +90,7 @@ public class RefutureRefactoring extends Refactoring {
 			if(time == 1) {
 				SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
 			}
+			System.out.println("soot配置完毕的时间"+"The current start time is "+ new Date());
 	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
 	        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
 	        if(this.cancelPattern) {

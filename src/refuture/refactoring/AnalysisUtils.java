@@ -44,7 +44,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = true;
+	private static boolean debugFlag = false;
 
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();
@@ -85,7 +85,7 @@ public class AnalysisUtils {
 			 * ********这里有一些配置，需要手动更改。************
 			 */
 			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume xml项目。
-			boolean testFlag = true;
+			boolean testFlag = false;
 			if (testFlag) {
 				String projectOutPath = PROJECTOUTPATH.get(0);
 				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
@@ -99,9 +99,9 @@ public class AnalysisUtils {
 			// 1.2.2hadoop zookeeper  use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"test-classes";
 			// 1.2.3 traific use
-//			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"bin-test";
+			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"bin-test";
 			//1.3 上面开启,此项必须开启
-//			PROJECTOUTPATH.add(projectTestOutPath);
+			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
@@ -109,8 +109,8 @@ public class AnalysisUtils {
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");//xml,flume,jenkins
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");//tomcat
 //				boolean javaFolder = element.toString().startsWith("src");//Jailer   SPECjbb
-				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
-//				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("gen-java");
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
+				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("gen-java");
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
 					for (IJavaElement ele : packageRoot.getChildren()) {

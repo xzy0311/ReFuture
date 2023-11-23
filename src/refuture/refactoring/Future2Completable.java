@@ -28,7 +28,6 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.ReturnStatement;
-import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.ThrowStatement;
 import org.eclipse.jdt.core.dom.TryStatement;
@@ -77,6 +76,7 @@ public class Future2Completable {
 		inExecutor = 0;
 		return true;
 	}
+	
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
 		int i = 1;
 		int j = 1;
@@ -101,6 +101,7 @@ public class Future2Completable {
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();
+
 			for(MethodInvocation invocationNode:invocationNodes) {
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;
@@ -206,11 +207,10 @@ public class Future2Completable {
 					}
 				}
 				AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n");
-			}
-			if(printClassFlag) {
-				AnalysisUtils.debugPrint("--第"+j+++"个可能包含调用的类分析完毕-----------------------------%n");
-			}
-		}
+			}// 一个类中所有的调用分析完毕
+			if(printClassFlag) {AnalysisUtils.debugPrint("--第"+j+++"个可能包含调用的类分析完毕-----------------------------%n");}
+		}//所有的类分析完毕
+		
 		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个   SubmitCallable:"+flagMap.get("SubmitCallable")+"个   SubmitRunnable:"+
 		flagMap.get("SubmitRunnable")+"个   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点");
 		
