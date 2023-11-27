@@ -135,11 +135,20 @@ public class AdaptAst {
 		Body body =sm.retrieveActiveBody();
         Iterator<Unit> it=body.getUnits().snapshotIterator();
         SootClass lambdaClass = null;
+        int countInvoc = 0;
+        Iterator<Unit> tmpit = body.getUnits().snapshotIterator();
+        while(tmpit.hasNext())//防止判断行号从api中读取的有些误差,若只有一个调用则不需要判断行号
+        {
+            Stmt stmt=(Stmt) tmpit.next();
+            if(stmt.toString().contains(invocLambdaMethod.getName().toString())) {
+            	countInvoc ++;
+            }
+        }
         while(it.hasNext())
         {
             Stmt stmt=(Stmt) it.next();
             if(stmt.toString().contains(invocLambdaMethod.getName().toString())) {
-            	if(stmt.getJavaSourceStartLineNumber()==invocLambdaMethodLineNumber) {
+            	if((countInvoc == 1)||(stmt.getJavaSourceStartLineNumber()==invocLambdaMethodLineNumber)){
             		//这里得到了对应的JimpleIR中的调用lambda表达式的stmt。
             		//接下来获取stmt中调用的lambda表达式的信息。
             		Local lambdaLocal = null;
@@ -147,10 +156,13 @@ public class AdaptAst {
             		int count = 1;
             		for(ValueBox valueBox : boxList) {
             			if(valueBox instanceof ImmediateBox) {
-            				lambdaLocal = (Local)valueBox.getValue();
+            				if(valueBox.getValue() instanceof Local) {
+            					lambdaLocal = (Local)valueBox.getValue();
+            				}
             				if(count == taskNumber) {
             					break;
             				}
+            				count +=1;
             			}
             		}
             		
@@ -169,7 +181,10 @@ public class AdaptAst {
             	}
             }
         }
-        if(lambdaClass == null) {AnalysisUtils.throwNull();}
+
+        if(lambdaClass == null) {
+        	AnalysisUtils.throwNull();
+        	}
         List<SootMethod> lambdaSootMethodList = lambdaClass.getMethods();
         List<SootMethod> mainClassMethodList = new ArrayList();
         for(SootMethod method : lambdaSootMethodList) {
