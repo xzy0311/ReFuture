@@ -5,6 +5,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -44,7 +45,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = false;
+	private static boolean debugFlag = true;
 
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();
@@ -74,8 +75,8 @@ public class AnalysisUtils {
 	        int secondSlashIndex = projectoutpath.indexOf('/', projectoutpath.indexOf('/') + 1);
 	        projectoutpath = projectoutpath.substring(secondSlashIndex);
 			PROJECTOUTPATH = new ArrayList<String>();
-//			PROJECTOUTPATH.add(PROJECTPATH + projectoutpath);
-			PROJECTOUTPATH.add(PROJECTPATH + projectoutpath +"/1");
+			PROJECTOUTPATH.add(PROJECTPATH + projectoutpath);
+//			PROJECTOUTPATH.add(PROJECTPATH + projectoutpath +"/1");
 		} catch (JavaModelException ex) {
 			System.out.println(ex);
 		}
@@ -92,7 +93,6 @@ public class AnalysisUtils {
 				PROJECTOUTPATH.add(projectTestOutPath);
 				testFlag = false;
 			}
-			
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用dah
 //			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
@@ -382,12 +382,6 @@ public class AnalysisUtils {
 			typeName = typeBinding.getBinaryName();
 		}
 		
-		
-//		Set<String> dirtyclasses = ExecutorSubclass.getAllDirtyExecutorSubClassName();
-//		if(invocationNode.getName().toString().equals("submit")&&dirtyclasses.contains(typeName)) {
-//			debugPrint("[AnalysisUtils.receiverObjectIsComplete]根据ASTtypeBinding 属于污染类，进行排除");
-//			return false;
-//		}
 		if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName)||typeName == "java.lang.Object")) {
 			Future2Completable.canRefactoringNode++;
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]初步ast判定可以,这里不卡");
@@ -399,6 +393,14 @@ public class AnalysisUtils {
 			return true;
 		}
 		debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
+		IMethodBinding methodBinding = invocationNode.resolveMethodBinding();
+		for(ITypeBinding paraTypeBinding:methodBinding.getParameterTypes()) {
+			String bName = paraTypeBinding.getBinaryName();
+			if(bName.equals("java.util.concurrent.Callable") || bName.equals("java.lang.Runnable")) {
+				Future2Completable.maybeRefactoringNode++;
+			}
+		}
+		
 		return false;
 	}
 	public static void debugPrint(String message) {
