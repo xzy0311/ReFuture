@@ -1,6 +1,7 @@
 package refuture.sootUtil;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.ArrayList;
@@ -16,14 +17,18 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.ForTask;
+import soot.Body;
+import soot.G;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
+import soot.Unit;
 import soot.ValueBox;
 import soot.jimple.Stmt;
 import soot.jimple.internal.JimpleLocalBox;
+import soot.toolkits.scalar.LocalDefs;
 
 // 这个类就像ExecutorSubclass一样，在最开始初始化一次。找到所有的调用future.cancel()的local。
 // 然后通过一个方法，能够得到当前输入的invocstmt 左值的local是否可能指向同一个对象，就行了。
@@ -73,15 +78,7 @@ public class Cancel {
 					continue;
 				}
 				//到这里都是cancel(true)了。根据astBinding 得到接收器类型。
-				ITypeBinding typeBinding = invocationNode.getExpression().resolveTypeBinding();
-				if(typeBinding == null) {
-					continue;
-				}
-				String typeName = typeBinding.getQualifiedName();
-				if(typeBinding.isNested()) {
-					typeName = typeBinding.getBinaryName();
-				}
-				typeName = typeName.replaceAll("<[^>]*>", "");
+				String typeName = AnalysisUtils.getTypeName4Exp(invocationNode.getExpression());
 				if(allFutureAndsubName.contains(typeName)) {
 					//在这里确定了调用了future.cancel()。接下来开始将exp对应的sootlocal存入静态字段。
 					System.out.println("存在调用Future.cancel(true)方法的语句");
@@ -89,6 +86,17 @@ public class Cancel {
 					if(invocStmt == null) {
 						continue; 
 					}
+					//得到invocationNode所在类
+					//得到invocationNode所在方法
+					//得到对应的soot方法。
+					//得body。
+					//Body body = sm.retrieveActiveBody();
+//					 LocalDefs ld = G.v().soot_toolkits_scalar_LocalDefsFactory().newLocalDefs(body);
+					//使用local和unit，得到定义的unit。
+					//得到定义的unit中的Local，并加入待分析里面。
+					
+					
+					
 					List<ValueBox> lvbs = invocStmt.getUseBoxes();
 					for(ValueBox vb : lvbs) {
 						if(vb instanceof JimpleLocalBox) {
@@ -98,11 +106,11 @@ public class Cancel {
 						}
 					}
 				}
-				
+				else if(typeName == "java.lang.Object") {
+					System.out.println("||||||||||||||||||||||||||||||||||可能需要精确度更高的分析取代ASTBinding");
+				}
 			}
-			
 		}
-	
 	}
 	
 	public static boolean futureUseCancelTure(MethodInvocation invocationNode, Stmt invocStmt) {

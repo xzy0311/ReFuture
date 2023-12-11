@@ -2,14 +2,17 @@ package refuture.sootUtil;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -23,6 +26,8 @@ import soot.Body;
 import soot.G;
 import soot.Hierarchy;
 import soot.Local;
+import soot.PointsToAnalysis;
+import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
@@ -31,6 +36,7 @@ import soot.Unit;
 import soot.ValueBox;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
+import soot.jimple.internal.JimpleLocalBox;
 import soot.toolkits.scalar.LocalDefs;
 
 
@@ -225,43 +231,43 @@ public class AdaptAst {
         throw new NullPointerException();
 	}
 
-	private static int invocaMethodNumInAstLambda(MethodInvocation methodInvocation) {
-		SimpleName methodName = methodInvocation.getName();
-		LambdaExpression lambdaExpression = getInvocLambdaExp(methodInvocation);
-		ArrayList<MethodInvocation> list = new ArrayList<>();
-		lambdaExpression.accept(new ASTVisitor() {
-			public boolean visit(MethodInvocation node) {
-				if(node.getName().equals(methodName)) {
-					list.add(node);
-				}
-				return true;
-			}
-		});
-		Comparator<ASTNode> astNodeComparator = new AdaptAst.ASTNodeComparator();
-		Collections.sort(list, astNodeComparator);
-		int location = list.indexOf(methodInvocation);
-		if(location == -1) {
-			throw new IllegalArgumentException("未得到位置");
-		}
-		return location+1;
-	}
-	static class ASTNodeComparator implements Comparator<ASTNode> {
-	    @Override
-	    public int compare(ASTNode node1, ASTNode node2) {
-	        // 自定义比较规则：按照位置排序。
-	        int lastDigit1 = node1.getStartPosition();
-	        int lastDigit2 = node2.getStartPosition();
-
-	        return Integer.compare(lastDigit1, lastDigit2);
-	    }
-	}
-	private static LambdaExpression getInvocLambdaExp(MethodInvocation miv) {
-		ASTNode node = miv;
-		while(!(node instanceof LambdaExpression)) {
-			node = node.getParent();
-		}
-		return (LambdaExpression) node;
-	}
+//	private static int invocaMethodNumInAstLambda(MethodInvocation methodInvocation) {
+//		SimpleName methodName = methodInvocation.getName();
+//		LambdaExpression lambdaExpression = getInvocLambdaExp(methodInvocation);
+//		ArrayList<MethodInvocation> list = new ArrayList<>();
+//		lambdaExpression.accept(new ASTVisitor() {
+//			public boolean visit(MethodInvocation node) {
+//				if(node.getName().equals(methodName)) {
+//					list.add(node);
+//				}
+//				return true;
+//			}
+//		});
+//		Comparator<ASTNode> astNodeComparator = new AdaptAst.ASTNodeComparator();
+//		Collections.sort(list, astNodeComparator);
+//		int location = list.indexOf(methodInvocation);
+//		if(location == -1) {
+//			throw new IllegalArgumentException("未得到位置");
+//		}
+//		return location+1;
+//	}
+//	static class ASTNodeComparator implements Comparator<ASTNode> {
+//	    @Override
+//	    public int compare(ASTNode node1, ASTNode node2) {
+//	        // 自定义比较规则：按照位置排序。
+//	        int lastDigit1 = node1.getStartPosition();
+//	        int lastDigit2 = node2.getStartPosition();
+//
+//	        return Integer.compare(lastDigit1, lastDigit2);
+//	    }
+//	}
+//	private static LambdaExpression getInvocLambdaExp(MethodInvocation miv) {
+//		ASTNode node = miv;
+//		while(!(node instanceof LambdaExpression)) {
+//			node = node.getParent();
+//		}
+//		return (LambdaExpression) node;
+//	}
 	
 	private static MethodInvocation getInvocLambdaMethod(MethodInvocation miv) {
 		ASTNode node = miv;
@@ -331,5 +337,28 @@ public class AdaptAst {
 		}
 		return sc;
 	}
-	
+	public static Set<String> getMayTypesName4ReceiverObject(Stmt invocStmt) {
+		List<ValueBox> lvbs = invocStmt.getUseBoxes();
+		Iterator<ValueBox> it =lvbs.iterator();
+    	while(it.hasNext()) {
+    		Object o = it.next();
+    		if (o instanceof JimpleLocalBox) {
+    			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
+    			JimpleLocalBox jlb = (JimpleLocalBox) o;
+    			Local local = (Local)jlb.getValue();
+    			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+    			PointsToSet ptset = pa.reachingObjects(local);
+    			Set<Type> typeSet = ptset.possibleTypes();
+    			if(typeSet == null || typeSet.size()==0) {
+    				break;
+    			}
+    			Set<String> typeSetStrings = new HashSet<>();
+    			for (Type obj : typeSet) {
+    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
+    			}
+    			return typeSetStrings;
+    		}
+    	}
+		return null;
+	}
 }

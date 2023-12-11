@@ -10,6 +10,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 
 import refuture.refactoring.AnalysisUtils;
+import refuture.refactoring.RefutureException;
 import soot.Hierarchy;
 import soot.Local;
 import soot.PointsToAnalysis;
@@ -209,16 +210,11 @@ public class ExecutorSubclass {
         				//说明没有被访问到，可以进行AST判断
         				
         				Expression exp = mInvocation.getExpression();
-        				ITypeBinding typeBinding = exp.resolveTypeBinding();
-        				if(typeBinding == null) {
+        				String typeName = AnalysisUtils.getTypeName4Exp(exp);
+        				if(typeName == null) {
         					return false;
         				}
-        				String typeName = typeBinding.getQualifiedName();
-        				if(typeBinding.isNested()) {
-        					typeName = typeBinding.getBinaryName();
-        				}
-        				typeName = typeName.replaceAll("<[^>]*>", "");
-        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到,进一步判断,类型为："+typeName);
+        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到,通过AST进一步判断,类型为："+typeName);
         				if(completeSetTypeStrings.contains(typeName)) {
         					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
         					return true;
@@ -277,12 +273,10 @@ public class ExecutorSubclass {
 				if(typeSet.isEmpty()) {
 					//利用ASTbinding 获得类型
 					Expression exp = (Expression) invocationNode.arguments().get(0);
-    				ITypeBinding typeBinding = exp.resolveTypeBinding();
-    				String typeName = typeBinding.getQualifiedName();
-    				if(typeBinding.isNested()) {
-    					typeName = typeBinding.getBinaryName();
+    				String typeName = AnalysisUtils.getTypeName4Exp(exp);
+    				if(typeName == null) {
+    					throw new RefutureException(invocationNode);
     				}
-    				typeName = typeName.replaceAll("<[^>]*>", "");
     				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]程序中没有访问到,进一步判断,类型为："+typeName);
     				if(callable.getName().equals(typeName)) {
     					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
@@ -316,12 +310,7 @@ public class ExecutorSubclass {
 				if(typeSet.isEmpty()) {
 					//利用ASTbinding 获得类型
 					Expression exp = (Expression) invocationNode.arguments().get(0);
-    				ITypeBinding typeBinding = exp.resolveTypeBinding();
-    				String typeName = typeBinding.getQualifiedName();
-    				if(typeBinding.isNested()) {
-    					typeName = typeBinding.getBinaryName();
-    				}
-    				typeName = typeName.replaceAll("<[^>]*>", "");
+    				String typeName = AnalysisUtils.getTypeName4Exp(exp);
     				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]程序中没有访问到,进一步判断,类型为："+typeName);
     				if(runnable.getName().equals(typeName)) {
     					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
@@ -386,7 +375,7 @@ public class ExecutorSubclass {
 	public static int arguModel(MethodInvocation invocationNode, Stmt invocStmt) {
 		if(invocationNode.arguments().size() == 1) {
 			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
-			String binaryName = firstArgu.resolveTypeBinding().getBinaryName().toString();
+			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
 			if(runnablesubClasses.contains(binaryName)) {
 				return 1;
 			}else if(callableSubClasses.contains(binaryName)){
@@ -397,7 +386,7 @@ public class ExecutorSubclass {
 		}
 		else if(invocationNode.arguments().size() == 2) {
 			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
-			String binaryName = firstArgu.resolveTypeBinding().getBinaryName().toString();
+			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
 			if(runnablesubClasses.contains(binaryName)) {
 				return 3;
 			}else {

@@ -59,10 +59,6 @@ import soot.jimple.Stmt;
  * 
  */
 public class Future2Completable {
-
-	private static boolean status = true;
-
-	private static String errorCause;
 	
 	private static List<Change> allChanges;
 	
@@ -73,8 +69,6 @@ public class Future2Completable {
 	public static int inExecutor;
 	
 	public static boolean initStaticField() {
-		status = true;
-		errorCause = "没有错误";
 		allChanges = new ArrayList<Change>();
 		canRefactoringNode = 0;
 		inExecutor = 0;
@@ -144,7 +138,6 @@ public class Future2Completable {
 				}else {
 					returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
 				}
-				
 				if(returnValue == false) {
 					//因执行器类型不安全，不能重构。
 					illExecutor++;
@@ -330,10 +323,8 @@ public class Future2Completable {
         				stmtNode = stmtNode.getParent();
         			}
         			AST blockAst;
-        			ASTNode blockNode = (ASTNode)invocationNode;
-        			while (!(blockNode instanceof Block)) {
-        				blockNode = blockNode.getParent();
-        			}
+        			ASTNode blockNode =AnalysisUtils.getBlockNode (invocationNode);
+        			if(blockNode == null) {throw new RefutureException(invocationNode);}
         			blockAst = blockNode.getAST();
         			VariableDeclarationFragment vdf = blockAst.newVariableDeclarationFragment();
         			String callableName = "callable$Rf$"+invocNum[0]++;
@@ -759,22 +750,6 @@ public class Future2Completable {
 	public static List<Change>  getallChanges() {
 		return allChanges;
 	}
-	
-	
-	private static void setErrorStatus() {
-		status = false;
-	}
-	public static boolean getStatus() {
-		return status;
-	}
-	
-	private static void setErrorCause(String cause) {
-		errorCause = cause;
-	}
-	public static String getErrorCause() {
-		return errorCause;
-	}
-	
 	
 	
 }

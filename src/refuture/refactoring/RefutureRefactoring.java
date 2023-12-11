@@ -20,7 +20,6 @@ import refuture.sootUtil.ExecutorSubclass;
 import refuture.sootUtil.SootConfig;
 
 
-// TODO: Auto-generated Javadoc
 /**
  * 此类是重构的动作类 重构的预览可能是Wizard的功能吧。.
  */
@@ -98,9 +97,6 @@ public class RefutureRefactoring extends Refactoring {
 		        Cancel.initCancel(allJavaFiles);
 	        }
 			Future2Completable.refactor(allJavaFiles);
-			if(!Future2Completable.getStatus()) {
-				return RefactoringStatus.createErrorStatus(Future2Completable.getErrorCause());
-			}
 		}else if(refactorPattern == 2) {
 //			ForTask.refactor(allJavaFiles);   10月11日，暂时取消ForTask尝试。待添加寻找Thread相关代码，以及关闭soot的方法。
 			FindThread.find(allJavaFiles);

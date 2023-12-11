@@ -279,7 +279,7 @@ public class AnalysisUtils {
 	}
 
 	/**
-	 * 得到节点所属的方法块的方法定义节点, 
+	 * 得到节点所属的方法块的方法定义节点, 可能返回null;
 	 *
 	 * @param node the node
 	 * @return the method declaration 4 node
@@ -371,15 +371,11 @@ public class AnalysisUtils {
 			
 			return false;
 		}
-		ITypeBinding typeBinding = exp.resolveTypeBinding();
-		if(typeBinding==null){
+		String typeName = getTypeName4Exp(exp);
+		if(typeName==null){
 			Future2Completable.canRefactoringNode++;
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，应该是eclipse环境下的源码没有调试好，这里不卡");
 			return true;
-		}
-		String typeName = typeBinding.getQualifiedName();
-		if(typeBinding.isNested()) {
-			typeName = typeBinding.getBinaryName();
 		}
 		
 		if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName)||typeName == "java.lang.Object")) {
@@ -408,11 +404,14 @@ public class AnalysisUtils {
 			System.out.println(message);
 		}
 	}
-	public static int lineNumberPrint(MethodInvocation invocationNode) {
-		CompilationUnit astUnit = (CompilationUnit)invocationNode.getRoot();
-		return astUnit.getColumnNumber(invocationNode.getStartPosition());
+	public static String invocNodeInfo(MethodInvocation invocationNode) {
+		StringBuilder message = new StringBuilder();
+    	message.append("所在类为"+getTypeDeclaration4node(invocationNode).getName()+";");
+    	message.append("所在方法为"+getMethodNameNArgusofSoot(invocationNode)+";");
+    	CompilationUnit astUnit = (CompilationUnit)invocationNode.getRoot();
+    	message.append("行号为"+astUnit.getColumnNumber(invocationNode.getStartPosition())+";");
+    	return message.toString();
 	}
-	
 	
     public static int countGreaterThanOneLessThanSign(String text) {
         int count = 0;
@@ -440,6 +439,18 @@ public class AnalysisUtils {
 			getNode = getNode.getParent();
 		}
 		return null;
+	}
+	public static String getTypeName4Exp(Expression exp) {
+		ITypeBinding typeBinding = exp.resolveTypeBinding();
+		if(typeBinding == null) {
+			return null;
+		}
+		String typeName = typeBinding.getQualifiedName();
+		if(typeBinding.isNested()) {
+			typeName = typeBinding.getBinaryName();
+		}
+		typeName = typeName.replaceAll("<[^>]*>", "");
+		return typeName;
 	}
 
 }
