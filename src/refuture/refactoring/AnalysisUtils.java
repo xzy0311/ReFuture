@@ -45,7 +45,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = true;
+	private static boolean debugFlag = false;
 
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();
@@ -103,11 +103,11 @@ public class AnalysisUtils {
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");// xml,flume,jenkins
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");// tomcat
 //				boolean javaFolder = element.toString().startsWith("src");// Jailer   SPECjbb
-				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("gen-java");
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
@@ -396,7 +396,7 @@ public class AnalysisUtils {
 		IMethodBinding methodBinding = invocationNode.resolveMethodBinding();
 		for(ITypeBinding paraTypeBinding:methodBinding.getParameterTypes()) {
 			String bName = paraTypeBinding.getBinaryName();
-			if(bName.equals("java.util.concurrent.Callable") || bName.equals("java.lang.Runnable")) {
+			if(ExecutorSubclass.callableSubClasses.contains(bName)|| ExecutorSubclass.runnablesubClasses.contains(bName)) {
 				Future2Completable.maybeRefactoringNode++;
 			}
 		}

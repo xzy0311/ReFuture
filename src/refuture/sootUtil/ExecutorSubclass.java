@@ -47,6 +47,11 @@ public class ExecutorSubclass {
 	/** The all appendent classes. */
 	private static Set<SootClass>allAdditionalClasses;
 	
+	/** 包括子接口和所有实现类限定名. */
+	public static Set<String> callableSubClasses;
+	
+	/** 包括子接口和所有实现类限定名. */
+	public static Set<String> runnablesubClasses;
 	/**
 	 * Inits the static field.
 	 *
@@ -58,9 +63,36 @@ public class ExecutorSubclass {
 		allAdditionalClasses = new HashSet<SootClass>();
 		allExecutorServiceSubClasses= new HashSet<SootClass>();
 		allExecutorSubClasses = new HashSet<SootClass>();
+		callableSubClasses = new HashSet<String>();
+		runnablesubClasses = new HashSet<String>();
 		return true;
 	}
 	
+	
+	public static void taskTypeAnalysis() {
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
+		SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
+		hierarchy.getImplementersOf(callable).forEach((e)->{
+			e = (SootClass)e;
+			callableSubClasses.add(e.getName());
+			});
+		hierarchy.getSubinterfacesOfIncluding(callable).forEach((e)->{
+			e = (SootClass)e;
+			callableSubClasses.add(e.getName());
+			});
+		hierarchy.getImplementersOf(runnable).forEach((e)->{
+			e = (SootClass)e;
+			runnablesubClasses.add(e.getName());
+			});
+		hierarchy.getSubinterfacesOfIncluding(runnable).forEach((e)->{
+			e = (SootClass)e;
+			runnablesubClasses.add(e.getName());
+			});
+		
+		System.out.println(callableSubClasses);
+		System.out.println(runnablesubClasses);
+	}
 
 	/**
 	 *
@@ -81,15 +113,21 @@ public class ExecutorSubclass {
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
-		allExecutorSubClasses.addAll(hierarchy.getDirectSubinterfacesOfIncluding(executorClass));
+		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
 		allExecutorServiceSubClasses.addAll(hierarchy.getImplementersOf(executorServiceClass));
-		allExecutorServiceSubClasses.add(executorServiceClass);
+		allExecutorServiceSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorServiceClass));
 		for(SootClass tPESubClass : allExecutorServiceSubClasses) {
 			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
 				continue;
 			}
+			List<SootClass> superClasses = null;
 			// 首先判定它继承的父类，有没有污染类
-			List<SootClass> superClasses = hierarchy.getSuperclassesOfIncluding(tPESubClass);
+			if(tPESubClass.isInterface()) {
+				superClasses = hierarchy.getSuperinterfacesOfIncluding(tPESubClass);
+			}else {
+				superClasses = hierarchy.getSuperclassesOfIncluding(tPESubClass);
+			}
+			
 			boolean isDirty = false;
 			for(SootClass superClass : superClasses) {
 				if(allDirtyClasses.contains(superClass)){
@@ -105,53 +143,10 @@ public class ExecutorSubclass {
 			boolean flag3 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable)");
 			boolean flag4 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.util.concurrent.Callable)");
 			boolean flag5 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.lang.Runnable,java.lang.Object)");
-			if(flag1||flag2||flag3) {
-				allDirtyClasses.add(tPESubClass);//先不想逻辑试试看
-				// 重新定义了submit(),需要对内部调用的方法进行判断，是否是私有或者保护方法，不能移植到异步任务中。
-//				if(flag4||flag5) {
-//					
-//				}
-//				
-//				if(flag1) {
-//					SootMethod sm = tPESubClass.getMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
-//					Body body = sm.retrieveActiveBody();
-//					UnitPatchingChain uc = body.getUnits();
-//					for(Unit unit : uc){
-//						Stmt j = (Stmt) unit;
-//						if(j.containsInvokeExpr()) {
-//							InvokeExpr invokeExp = j.getInvokeExpr();
-//							String invocMethodName = invokeExp.getMethodRef().getSubSignature().toString();
-//							SootMethod invocMethod = Scene.v().getMethod(invocMethodName);
-//							if(invocMethodName.contains("java.util.concurrent.Callable")&&invocMethod.isConstructor()) {
-//								//代表了包装callable的Task类。
-//								SootClass taskClass = invocMethod.getDeclaringClass();
-//								if(!taskClass.isPublic()) {
-//									allDirtyClasses.add(tPESubClass);
-//								}
-//								
-//							}
-//							
-//							
-//							
-//						}
-//						
-//					}
-//				}else if(flag2) {
-//					
-//				}else if(flag3) {
-//					
-//				}else {
-//					throw new IllegalStateException("判断子类，出现不应该有的错误。");
-//				}
-//				
+			if(flag1||flag2||flag3||flag4||flag5) {
+				allDirtyClasses.add(tPESubClass);
 			}else {
-				// 没有重新定义submit
-				if(flag4||flag5) {//重新定义newTaskof
-					allDirtyClasses.add(tPESubClass);//先不想逻辑试试看
-					
-				}else {//没有重新定义newTaskof
-					mayCompleteExecutorSubClasses.add(tPESubClass);
-				}
+				mayCompleteExecutorSubClasses.add(tPESubClass);
 			}
 		}
 
@@ -177,8 +172,6 @@ public class ExecutorSubclass {
 				allAdditionalClasses.add(executorSubClass);
 			}
 		}
-		
-		System.out.println("allAdditionalClasses: " + allAdditionalClasses);
 	}
 	
 	/**
@@ -241,7 +234,6 @@ public class ExecutorSubclass {
         	return false;
 	}
 
-
 	/**
 	 * 判断参数的类型是否复合要求。.
 	 * @param invocationNode 
@@ -258,11 +250,11 @@ public class ExecutorSubclass {
 		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
 		List<Value> lv =ivcExp.getArgs();
 		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-		if(lv.size() == 0) {
+		if(invocationNode.arguments().size() == 0) {
 			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:未传入实参，排除");
 			return false;
 		}
-		if(lv.size() == 2) {
+		if(invocationNode.arguments().size() == 2) {
 			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:注意，这个可能是两个参数的");
 			if(argType == 4) {
 				return true;
@@ -383,6 +375,40 @@ public class ExecutorSubclass {
 		AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是local变量，排除");
 		return false;
 	}
+	
+	/**
+	 * 判断参数的类型是否复合要求。.
+	 * @param invocationNode 
+	 * @param invocStmt the invoc stmt
+	 * @param argType   为1,代表是callable;为2,代表Runnable;为3,代表FutureTask;为4,代表两个参数。
+	 * @return return 1代表Runnable,return 2代表callable，return 3 代表Runnable,value。
+	 */
+	public static int arguModel(MethodInvocation invocationNode, Stmt invocStmt) {
+		if(invocationNode.arguments().size() == 1) {
+			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
+			String binaryName = firstArgu.resolveTypeBinding().getBinaryName().toString();
+			if(runnablesubClasses.contains(binaryName)) {
+				return 1;
+			}else if(callableSubClasses.contains(binaryName)){
+				return 2;
+			}else {
+				System.out.println("￥￥￥￥￥￥￥￥￥￥￥￥￥1"+binaryName);
+			}
+		}
+		else if(invocationNode.arguments().size() == 2) {
+			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
+			String binaryName = firstArgu.resolveTypeBinding().getBinaryName().toString();
+			if(runnablesubClasses.contains(binaryName)) {
+				return 3;
+			}else {
+				System.out.println("￥￥￥￥￥￥￥￥￥￥￥￥2"+binaryName);
+			}
+		}
+		AnalysisUtils.debugPrint("[ExecutorSubclass.arguModel]:参数个数为0或大于2，排除");
+		return -1;
+		
+	}
+	
 	
 	
 	public static Set<String> getCompleteExecutorSubClassesName(){
