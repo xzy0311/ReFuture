@@ -321,9 +321,12 @@ public class Future2Completable {
         		ASTNode lambdaBody = lambdaExpression.getBody();
         		Block blockFirst;
         		if(lambdaBody instanceof Expression) {
+        			// return exp;
+        			ReturnStatement reExp = ast.newReturnStatement();
+    	        	rewriter.set(reExp, ReturnStatement.EXPRESSION_PROPERTY, lambdaBody, null);
         			blockFirst = ast.newBlock();
         			ListRewrite tryBlockFirstListRewrite = rewriter.getListRewrite(blockFirst, Block.STATEMENTS_PROPERTY);
-    	        	tryBlockFirstListRewrite.insertLast(lambdaBody, null);
+    	        	tryBlockFirstListRewrite.insertLast(reExp, null);
         		}else {
         			blockFirst = (Block) lambdaBody;
         		}
