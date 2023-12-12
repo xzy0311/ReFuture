@@ -215,7 +215,7 @@ public class AdaptAst {
         		}
         	}
         }
-        throw new NullPointerException();
+        throw new RefutureException(miv);
 	}
 
 //	private static int invocaMethodNumInAstLambda(MethodInvocation methodInvocation) {

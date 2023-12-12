@@ -27,31 +27,35 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		// define UI
 		Composite composite = new Composite(parent, SWT.NONE);
 		GridLayout lay = new GridLayout();
-		lay.numColumns = 2;
+		lay.numColumns = 1; // Set to 1 to have each button on a new line
 		composite.setLayout(lay);
+
+		// Button 1
 		btnCheck1 = new Button(composite, SWT.CHECK);
 		btnCheck1.setText("Find Thread Mode");
-		GridData gdBtnCheck = new GridData();
-		gdBtnCheck.horizontalSpan = 2;
-		gdBtnCheck.horizontalAlignment = GridData.FILL;
-		btnCheck1.setLayoutData(gdBtnCheck);
+		GridData gdBtnCheck1 = new GridData(SWT.FILL, SWT.CENTER, true, false);
+		btnCheck1.setLayoutData(gdBtnCheck1);
+
+		// Button 2
 		btnCheck2 = new Button(composite, SWT.CHECK);
 		btnCheck2.setText("Cancel Detect Mode");
-		GridData gdBtnCheck2 = new GridData();
-		gdBtnCheck2.horizontalAlignment = GridData.FILL;
+		GridData gdBtnCheck2 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck2.setLayoutData(gdBtnCheck2);
-		
+
+		// Button 3
 		btnCheck3 = new Button(composite, SWT.CHECK);
 		btnCheck3.setText("Extreme Speed Mode");
-		GridData gdBtnCheck3 = new GridData();
-		gdBtnCheck3.horizontalAlignment = GridData.FILL;
+		GridData gdBtnCheck3 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck3.setLayoutData(gdBtnCheck3);
-		
+
+		// Add listeners and other necessary code
 		// add listener
 		defineListener();
 		// 将 composite 纳入框架的控制
 		setControl(composite);
+
 		Dialog.applyDialogFont(composite);
+
 //		notifyStatus(true, "refactoring finished");
 	}
 	
