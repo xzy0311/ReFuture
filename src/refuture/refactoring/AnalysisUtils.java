@@ -103,11 +103,11 @@ public class AnalysisUtils {
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");// xml,flume,jenkins
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");// tomcat
 //				boolean javaFolder = element.toString().startsWith("src");// Jailer   SPECjbb
-//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
+				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("gen-java");
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
@@ -355,39 +355,45 @@ public class AnalysisUtils {
 		Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
 		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
 		if(exp==null){
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，进行排除。");
+			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，继续重构。");
 			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
 			SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
 			if(sc != null) {
 				if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(sc.getName())) {
 					Future2Completable.canRefactoringNode++;
 					Future2Completable.inExecutor++;
+					return true;
 				}
 				else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(sc.getName())) {
 					Future2Completable.canRefactoringNode++;
 					Future2Completable.inExecutor++;
+					return true;
 				}
 			}
-			
-			return false;
+			throw new RefutureException(invocationNode,"SootClass为空");
+//			return false;
 		}
 		String typeName = getTypeName4Exp(exp);
 		if(typeName==null){
 			Future2Completable.canRefactoringNode++;
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，应该是eclipse环境下的源码没有调试好，这里不卡");
-			return true;
+			throw new RefutureException(invocationNode,"typeBinding为null，应该是eclipse环境下的源码没有调试好，这里卡");
+//			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，应该是eclipse环境下的源码没有调试好，这里不卡");
+//			return true;
 		}
 		
-		if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName)||typeName == "java.lang.Object")) {
+		if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName))) {
 			Future2Completable.canRefactoringNode++;
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]初步ast判定可以,这里不卡");
 			return true;
 		}
-		else if(invocationNode.getName().toString().equals("submit")&&(allSubServiceNames.contains(typeName)||typeName == "java.lang.Object")) {
+		else if(invocationNode.getName().toString().equals("submit")&&(allSubServiceNames.contains(typeName))) {
 			Future2Completable.canRefactoringNode++;
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定可以,这里不卡");
 			return true;
+		}else if(typeName == "java.lang.Object") {
+			throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
 		}
+		
 		debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
 		IMethodBinding methodBinding = invocationNode.resolveMethodBinding();
 		for(ITypeBinding paraTypeBinding:methodBinding.getParameterTypes()) {
@@ -450,6 +456,7 @@ public class AnalysisUtils {
 			typeName = typeBinding.getBinaryName();
 		}
 		typeName = typeName.replaceAll("<[^>]*>", "");
+		
 		return typeName;
 	}
 

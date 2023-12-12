@@ -21,6 +21,7 @@ import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 
 import refuture.refactoring.AnalysisUtils;
+import refuture.refactoring.RefutureException;
 import soot.AmbiguousMethodException;
 import soot.Body;
 import soot.G;
@@ -56,15 +57,10 @@ public class AdaptAst {
 		int lineNumber = cu.getLineNumber(miv.getStartPosition());//行号
 		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
 		SootClass sc = getSootClass4InvocNode(miv);
-		if(sc == null) {
-			return null;
-		}
-		SootMethod sm;
-		try{
-			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(miv));
-		}catch(AmbiguousMethodException e) {
-			sm = sc.getMethod(AnalysisUtils.getMethodNameNArgusofSoot(miv));
-		}
+//		if(sc == null) {
+//			return null;
+//		}
+		SootMethod sm = getSootMethod4invocNode(miv);
 		if(!AnalysisUtils.skipMethodName.isEmpty()) {
 			if (AnalysisUtils.skipMethodName.contains(sm.getSignature())) {
 				return null;
@@ -89,7 +85,7 @@ public class AdaptAst {
             		TempStmt = stmt;
             	}
             	jimpleLineNumber = stmt.getJavaSourceStartLineNumber();
-            	if(jimpleLineNumber==lineNumber) {
+            	if(jimpleLineNumber==lineNumber||lineNumber - jimpleLineNumber == 1) {
             		return stmt;
             	}
             }
@@ -107,7 +103,7 @@ public class AdaptAst {
 		if(AdaptAst.invocInLambda(miv)) {
 			return getJimpleInvocStmtInLambda(miv);
 		}
-		throw new IllegalStateException("排查错误原因。");
+		throw new RefutureException(miv,"排查错误原因。");
 //        return null;
 		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
 		//也就是说正常情况下不应该出错。
@@ -119,16 +115,7 @@ public class AdaptAst {
 		MethodInvocation invocLambdaMethod = AdaptAst.getInvocLambdaMethod(miv);
 		int invocLambdaMethodLineNumber = cu.getLineNumber(invocLambdaMethod.getStartPosition());
 		SootClass sc = getSootClass4InvocNode(miv);
-		if(sc == null) {
-			return null;
-//			throw new IllegalArgumentException();
-		}
-		SootMethod sm;
-		try{
-			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(miv));
-		}catch(AmbiguousMethodException e) {
-			sm = sc.getMethod(AnalysisUtils.getMethodNameNArgusofSoot(miv));
-		}
+		SootMethod sm =getSootMethod4invocNode(miv);
 		
 		// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
 		int taskNumber = 1;
@@ -192,7 +179,7 @@ public class AdaptAst {
         	AnalysisUtils.throwNull();
         	}
         List<SootMethod> lambdaSootMethodList = lambdaClass.getMethods();
-        List<SootMethod> mainClassMethodList = new ArrayList();
+        List<SootMethod> mainClassMethodList = new ArrayList<SootMethod>();
         for(SootMethod method : lambdaSootMethodList) {
         	if(method.getName().toString().equals("<init>")||method.getName().toString().equals("bootstrap$")) {
         		continue;
@@ -309,7 +296,7 @@ public class AdaptAst {
 		ASTNode astNode = AnalysisUtils.getMethodDeclaration4node(incovNode);
 		if(astNode == null) {//说明没有在方法内部
 			TypeDeclaration td = AnalysisUtils.getTypeDeclaration4node(incovNode);
-			if(td == null) {throw new NullPointerException();}
+			if(td == null) {throw new RefutureException(incovNode,"这个文件主类型可能为枚举类型");}
 			itb = td.resolveBinding();
 		}else if(astNode.getParent() instanceof AnonymousClassDeclaration) {
 			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)astNode.getParent();
@@ -326,14 +313,13 @@ public class AdaptAst {
 		// maybe null
 		if(typeFullName == null){
 			System.out.println("@error[AdaptAst.getSootClass4InvocNode]:因为获取绑定信息中的名称出错,未获取成功,所以得不到类型名");
-			return null;
-			
+			throw new RefutureException(incovNode,"@error[AdaptAst.getSootClass4InvocNode]:因为获取绑定信息中的名称出错,未获取成功,所以得不到类型名");
+//			return null;
 			}
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		if(sc.isPhantom()) {
-			System.out.println("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
 //			return null;
-			throw new IllegalStateException("@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
+			throw new RefutureException(incovNode,"@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
 		}
 		return sc;
 	}
@@ -360,5 +346,15 @@ public class AdaptAst {
     		}
     	}
 		return null;
+	}
+	public static SootMethod getSootMethod4invocNode(MethodInvocation invocationNode) {
+		SootMethod sm;
+		SootClass sc = getSootClass4InvocNode(invocationNode);
+		try{
+			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(invocationNode));
+		}catch(AmbiguousMethodException e) {
+			sm = sc.getMethod(AnalysisUtils.getMethodNameNArgusofSoot(invocationNode));
+		}
+		return sm;
 	}
 }

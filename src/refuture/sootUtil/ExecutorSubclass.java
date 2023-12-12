@@ -91,8 +91,8 @@ public class ExecutorSubclass {
 			runnablesubClasses.add(e.getName());
 			});
 		
-		System.out.println(callableSubClasses);
-		System.out.println(runnablesubClasses);
+		AnalysisUtils.debugPrint("CallableSubClasses:"+callableSubClasses.toString());
+		AnalysisUtils.debugPrint("RunnableSubClasses:"+runnablesubClasses.toString());
 	}
 
 	/**
@@ -150,7 +150,8 @@ public class ExecutorSubclass {
 				mayCompleteExecutorSubClasses.add(tPESubClass);
 			}
 		}
-
+		AnalysisUtils.debugPrint("mayCompleteExecutorSubClasses:"+mayCompleteExecutorSubClasses.toString());
+		AnalysisUtils.debugPrint("allDirtyClasses:"+allDirtyClasses.toString());
 	}
 
 	/**

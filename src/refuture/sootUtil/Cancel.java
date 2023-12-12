@@ -17,6 +17,7 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.ForTask;
+import refuture.refactoring.RefutureException;
 import soot.Body;
 import soot.G;
 import soot.Local;
@@ -24,9 +25,11 @@ import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
+import soot.SootMethod;
 import soot.Unit;
 import soot.ValueBox;
 import soot.jimple.Stmt;
+import soot.jimple.internal.JAssignStmt.LinkedVariableBox;
 import soot.jimple.internal.JimpleLocalBox;
 import soot.toolkits.scalar.LocalDefs;
 
@@ -79,6 +82,7 @@ public class Cancel {
 				}
 				//到这里都是cancel(true)了。根据astBinding 得到接收器类型。
 				String typeName = AnalysisUtils.getTypeName4Exp(invocationNode.getExpression());
+				if(typeName == null) { throw new RefutureException(invocationNode);}
 				if(allFutureAndsubName.contains(typeName)) {
 					//在这里确定了调用了future.cancel()。接下来开始将exp对应的sootlocal存入静态字段。
 					System.out.println("存在调用Future.cancel(true)方法的语句");
@@ -88,21 +92,28 @@ public class Cancel {
 					}
 					//得到invocationNode所在类
 					//得到invocationNode所在方法
-					//得到对应的soot方法。
-					//得body。
-					//Body body = sm.retrieveActiveBody();
-//					 LocalDefs ld = G.v().soot_toolkits_scalar_LocalDefsFactory().newLocalDefs(body);
+					SootMethod sootMethod = AdaptAst.getSootMethod4invocNode(invocationNode);
+					//得到对应的soot方法的body。
+					Body body = sootMethod.retrieveActiveBody();
+					LocalDefs ld = G.v().soot_toolkits_scalar_LocalDefsFactory().newLocalDefs(body);
 					//使用local和unit，得到定义的unit。
 					//得到定义的unit中的Local，并加入待分析里面。
-					
-					
-					
 					List<ValueBox> lvbs = invocStmt.getUseBoxes();
 					for(ValueBox vb : lvbs) {
 						if(vb instanceof JimpleLocalBox) {
 							JimpleLocalBox jlb = (JimpleLocalBox) vb;
 							Local futureLocal = (Local)jlb.getValue();
-							invocCancelLocals.add(futureLocal);
+							List<Unit> units = ld.getDefsOfAt(futureLocal, invocStmt);
+							for (Unit defUnit : units) {
+								List<ValueBox> dfbs = defUnit.getDefBoxes();
+								for(ValueBox vdb : dfbs) {
+									if(vdb instanceof LinkedVariableBox) {
+										Local futureDefLocal = (Local) vdb.getValue();
+										invocCancelLocals.add(futureDefLocal);
+									}
+								}
+							}
+							
 						}
 					}
 				}

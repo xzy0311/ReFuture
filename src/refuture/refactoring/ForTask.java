@@ -154,113 +154,113 @@ public class ForTask {
 //		System.out.println("该项目中所有的get()数为："+getNumber);
 //	}
 	
-	public static List<MethodInvocation> findIsDone(List<MethodInvocation> invocationNodes, List<SootClass> allFutureSubClasses, TextFileChange change) {
-		List<MethodInvocation> futureIsDone = new ArrayList<MethodInvocation>();
-		for(MethodInvocation invocationNode:invocationNodes) {
-			if(invocationNode.getName().toString().equals("isDone")) {
-				if(invocationNode.getExpression()==null) {
-					continue;
-				}
-				String a =invocationNode.getExpression().resolveTypeBinding().getBinaryName();
-		        int index = a.indexOf("<");
-		        // 如果找到了"<"符号，则删除该符号及之后的所有字符
-		        if (index != -1) {
-		            a = a.substring(0, index);
-		        }
-				SootClass sootClass = Scene.v().getSootClass(a);
-				if(sootClass.isPhantom()) {continue;}
-				if(allFutureSubClasses.contains(sootClass)) {
-					AnalysisUtils.debugPrint("[ForTask.findIsDone;BinaryName:]"+a);
-					futureIsDone.add(invocationNode);
-				}
-			}			
-		}
-		return futureIsDone;
-	}
-	
-	/**
-	 * //增加一个找异步任务中存在get()的情况。第一步：找到get()，判断调用者对象是否是Future或者它的子类。第二步：输出定义它所在的类以及所有的父类。
-	 * @param allFutureSubClasses 
-	 * @param change 
-	 */
-	public static List<MethodInvocation> findGet(List<MethodInvocation> invocationNodes, List<SootClass> allFutureSubClasses, TextFileChange change) {
-		List<MethodInvocation> futureGet = new ArrayList<MethodInvocation>();
-		for(MethodInvocation invocationNode:invocationNodes) {
-			if(invocationNode.getName().toString().equals("get")) {
-				if(invocationNode.getExpression()==null) {
-					continue;
-				}
-				ITypeBinding binding = invocationNode.getExpression().resolveTypeBinding();
-				if(binding == null) {
-					continue;
-				}
-				String a =binding.getBinaryName();
-		        int index = a.indexOf("<");
-		        // 如果找到了"<"符号，则删除该符号及之后的所有字符
-		        if (index != -1) {
-		            a = a.substring(0, index);
-		        }
-				SootClass sootClass = Scene.v().getSootClass(a);
-				if(sootClass.isPhantom()) {continue;}
-				if(allFutureSubClasses.contains(sootClass)) {
-					AnalysisUtils.debugPrint("[ForTask.findGet;BinaryName:]"+a);
-					futureGet.add(invocationNode);
-				}
-			}
-		}
-		return futureGet;
-	}
-	
-	public static List<MethodInvocation> findEsSubmitOExecute(List<MethodInvocation> invocationNodes){
-		List<MethodInvocation> futureSOE = new ArrayList<MethodInvocation>();
-		for(MethodInvocation method:invocationNodes) {
-			if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
-				if(!AnalysisUtils.receiverObjectIsComplete(method)) {
-					continue;
-				}
-				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
-				boolean returnValue;
-				if(method.getName().toString().equals("submit")) {
-					returnValue = ExecutorSubclass.canRefactor(method,invocStmt,true);
-				}else {
-					returnValue = ExecutorSubclass.canRefactor(method,invocStmt,false);
-				}
-				if(returnValue) {
-					futureSOE.add(method);
-				}
-			}
-		}
-		return futureSOE;
-	}
-
-
-	public static boolean inSubmitExecuteArg(ASTNode node) {
-		while(true) {
-			if(node instanceof TypeDeclaration) {
-				TypeDeclaration type = (TypeDeclaration)node;
-				if(type.resolveBinding().isTopLevel() ) {
-					break;
-				}
-			}
-			if(node instanceof MethodInvocation) {
-				MethodInvocation method = (MethodInvocation)node;
-				if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
-					Expression exp = method.getExpression();
-					if(exp==null){
-						continue;
-					}
-					Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
-					boolean returnValue = ExecutorSubclass.canRefactor(method,invocStmt,false);
-					if(returnValue) {
-						return true;
-					}
-				}
-			}
-			node = node.getParent();
-		}
-		return false;
-	}
-	
+//	public static List<MethodInvocation> findIsDone(List<MethodInvocation> invocationNodes, List<SootClass> allFutureSubClasses, TextFileChange change) {
+//		List<MethodInvocation> futureIsDone = new ArrayList<MethodInvocation>();
+//		for(MethodInvocation invocationNode:invocationNodes) {
+//			if(invocationNode.getName().toString().equals("isDone")) {
+//				if(invocationNode.getExpression()==null) {
+//					continue;
+//				}
+//				String a =invocationNode.getExpression().resolveTypeBinding().getBinaryName();
+//		        int index = a.indexOf("<");
+//		        // 如果找到了"<"符号，则删除该符号及之后的所有字符
+//		        if (index != -1) {
+//		            a = a.substring(0, index);
+//		        }
+//				SootClass sootClass = Scene.v().getSootClass(a);
+//				if(sootClass.isPhantom()) {continue;}
+//				if(allFutureSubClasses.contains(sootClass)) {
+//					AnalysisUtils.debugPrint("[ForTask.findIsDone;BinaryName:]"+a);
+//					futureIsDone.add(invocationNode);
+//				}
+//			}			
+//		}
+//		return futureIsDone;
+//	}
+//	
+//	/**
+//	 * //增加一个找异步任务中存在get()的情况。第一步：找到get()，判断调用者对象是否是Future或者它的子类。第二步：输出定义它所在的类以及所有的父类。
+//	 * @param allFutureSubClasses 
+//	 * @param change 
+//	 */
+//	public static List<MethodInvocation> findGet(List<MethodInvocation> invocationNodes, List<SootClass> allFutureSubClasses, TextFileChange change) {
+//		List<MethodInvocation> futureGet = new ArrayList<MethodInvocation>();
+//		for(MethodInvocation invocationNode:invocationNodes) {
+//			if(invocationNode.getName().toString().equals("get")) {
+//				if(invocationNode.getExpression()==null) {
+//					continue;
+//				}
+//				ITypeBinding binding = invocationNode.getExpression().resolveTypeBinding();
+//				if(binding == null) {
+//					continue;
+//				}
+//				String a =binding.getBinaryName();
+//		        int index = a.indexOf("<");
+//		        // 如果找到了"<"符号，则删除该符号及之后的所有字符
+//		        if (index != -1) {
+//		            a = a.substring(0, index);
+//		        }
+//				SootClass sootClass = Scene.v().getSootClass(a);
+//				if(sootClass.isPhantom()) {continue;}
+//				if(allFutureSubClasses.contains(sootClass)) {
+//					AnalysisUtils.debugPrint("[ForTask.findGet;BinaryName:]"+a);
+//					futureGet.add(invocationNode);
+//				}
+//			}
+//		}
+//		return futureGet;
+//	}
+//	
+//	public static List<MethodInvocation> findEsSubmitOExecute(List<MethodInvocation> invocationNodes){
+//		List<MethodInvocation> futureSOE = new ArrayList<MethodInvocation>();
+//		for(MethodInvocation method:invocationNodes) {
+//			if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
+//				if(!AnalysisUtils.receiverObjectIsComplete(method)) {
+//					continue;
+//				}
+//				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
+//				boolean returnValue;
+//				if(method.getName().toString().equals("submit")) {
+//					returnValue = ExecutorSubclass.canRefactor(method,invocStmt,true);
+//				}else {
+//					returnValue = ExecutorSubclass.canRefactor(method,invocStmt,false);
+//				}
+//				if(returnValue) {
+//					futureSOE.add(method);
+//				}
+//			}
+//		}
+//		return futureSOE;
+//	}
+//
+//
+//	public static boolean inSubmitExecuteArg(ASTNode node) {
+//		while(true) {
+//			if(node instanceof TypeDeclaration) {
+//				TypeDeclaration type = (TypeDeclaration)node;
+//				if(type.resolveBinding().isTopLevel() ) {
+//					break;
+//				}
+//			}
+//			if(node instanceof MethodInvocation) {
+//				MethodInvocation method = (MethodInvocation)node;
+//				if(method.getName().toString().equals("submit")||method.getName().toString().equals("execute")) {
+//					Expression exp = method.getExpression();
+//					if(exp==null){
+//						continue;
+//					}
+//					Stmt invocStmt = AdaptAst.getJimpleInvocStmt(method);
+//					boolean returnValue = ExecutorSubclass.canRefactor(method,invocStmt,false);
+//					if(returnValue) {
+//						return true;
+//					}
+//				}
+//			}
+//			node = node.getParent();
+//		}
+//		return false;
+//	}
+//	
 	public static List<SootClass> getAllFutureAndItsSubClasses(){
 		SootClass futureSootClass = Scene.v().getSootClass("java.util.concurrent.Future");
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
@@ -272,86 +272,86 @@ public class ForTask {
 		allFutureSubclasses.addAll(hierarchy.getSubinterfacesOfIncluding(futureSootClass));
 		return allFutureSubclasses;
 	}
-	public static boolean inTasks(ASTNode node) {
-		//添加lambda表达式判断逻辑
-		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-		SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
-		SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
-		List<SootClass> allTaskList = new java.util.ArrayList<SootClass>();
-		allTaskList.addAll(hierarchy.getImplementersOf(callable));
-		allTaskList.addAll(hierarchy.getImplementersOf(runnable));
-		while(true) {
-			if(node instanceof AbstractTypeDeclaration) {
-				AbstractTypeDeclaration t = (AbstractTypeDeclaration) node;
-				ITypeBinding binding = t.resolveBinding();
-				String typeFullName;
-				if(binding.isNested()) {
-					typeFullName = binding.getBinaryName();
-				}else {
-					typeFullName = binding.getQualifiedName();
-				}
-//				System.out.println("[ForTask.inTasks]:类定义的名称为:"+typeFullName);
-				SootClass sc = Scene.v().getSootClass(typeFullName);
-				if(sc.isPhantom()) {
-					System.out.println("@error[ForTask.inTasks]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
-					break;
-				}
-				if(allTaskList.contains(sc)) {
-					return true;
-				}
-				if(binding.isTopLevel()) {
-//					System.out.println("[ForTask.inTasks]:TopLevel类定义的名称为:"+typeFullName);
-					break;
-				}
-			}else if(node instanceof LambdaExpression) {
-				LambdaExpression lExp = (LambdaExpression)node;
-				ITypeBinding itb = lExp.resolveTypeBinding();
-				String name = itb.getBinaryName();
-				if(name.equals("java.util.concurrent.Callable")||name.equals("java.lang.Runnable")) {
-					return true;
-				}
-			}
-			
-			node = node.getParent();
-		}
-		
-		return false;
-	}
-	
-	public static boolean inCompletableFuture(ASTNode node) {
-		while(true) {
-			if(node instanceof Block) {
-				node = node.getParent();
-				while(true) {
-					if(node instanceof MethodInvocation) {
-						MethodInvocation method = (MethodInvocation)node;
-						if(method.getExpression() !=null) {
-							String name = method.getExpression().resolveTypeBinding().getBinaryName();
-							if(name.equals("java.util.concurrent.CompletableFuture")) {
-								return true;
-							}
-						}
-					}
-					if(node instanceof TypeDeclaration) {
-						TypeDeclaration type = (TypeDeclaration)node;
-						if(type.resolveBinding().isTopLevel()) {
-							break;
-						}
-					}
-					node = node.getParent();
-				}
-			}
-			if(node instanceof TypeDeclaration) {
-				TypeDeclaration type = (TypeDeclaration)node;
-				if(type.resolveBinding().isTopLevel()) {
-					break;
-				}
-			}
-			node = node.getParent();
-		}
-		return false;
-	}
-	public static Collection<? extends Change> getallChanges() {
-		return allChanges;
-	}
+//	public static boolean inTasks(ASTNode node) {
+//		//添加lambda表达式判断逻辑
+//		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+//		SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
+//		SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
+//		List<SootClass> allTaskList = new java.util.ArrayList<SootClass>();
+//		allTaskList.addAll(hierarchy.getImplementersOf(callable));
+//		allTaskList.addAll(hierarchy.getImplementersOf(runnable));
+//		while(true) {
+//			if(node instanceof AbstractTypeDeclaration) {
+//				AbstractTypeDeclaration t = (AbstractTypeDeclaration) node;
+//				ITypeBinding binding = t.resolveBinding();
+//				String typeFullName;
+//				if(binding.isNested()) {
+//					typeFullName = binding.getBinaryName();
+//				}else {
+//					typeFullName = binding.getQualifiedName();
+//				}
+////				System.out.println("[ForTask.inTasks]:类定义的名称为:"+typeFullName);
+//				SootClass sc = Scene.v().getSootClass(typeFullName);
+//				if(sc.isPhantom()) {
+//					System.out.println("@error[ForTask.inTasks]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
+//					break;
+//				}
+//				if(allTaskList.contains(sc)) {
+//					return true;
+//				}
+//				if(binding.isTopLevel()) {
+////					System.out.println("[ForTask.inTasks]:TopLevel类定义的名称为:"+typeFullName);
+//					break;
+//				}
+//			}else if(node instanceof LambdaExpression) {
+//				LambdaExpression lExp = (LambdaExpression)node;
+//				ITypeBinding itb = lExp.resolveTypeBinding();
+//				String name = itb.getBinaryName();
+//				if(name.equals("java.util.concurrent.Callable")||name.equals("java.lang.Runnable")) {
+//					return true;
+//				}
+//			}
+//			
+//			node = node.getParent();
+//		}
+//		
+//		return false;
+//	}
+//	
+//	public static boolean inCompletableFuture(ASTNode node) {
+//		while(true) {
+//			if(node instanceof Block) {
+//				node = node.getParent();
+//				while(true) {
+//					if(node instanceof MethodInvocation) {
+//						MethodInvocation method = (MethodInvocation)node;
+//						if(method.getExpression() !=null) {
+//							String name = method.getExpression().resolveTypeBinding().getBinaryName();
+//							if(name.equals("java.util.concurrent.CompletableFuture")) {
+//								return true;
+//							}
+//						}
+//					}
+//					if(node instanceof TypeDeclaration) {
+//						TypeDeclaration type = (TypeDeclaration)node;
+//						if(type.resolveBinding().isTopLevel()) {
+//							break;
+//						}
+//					}
+//					node = node.getParent();
+//				}
+//			}
+//			if(node instanceof TypeDeclaration) {
+//				TypeDeclaration type = (TypeDeclaration)node;
+//				if(type.resolveBinding().isTopLevel()) {
+//					break;
+//				}
+//			}
+//			node = node.getParent();
+//		}
+//		return false;
+//	}
+//	public static Collection<? extends Change> getallChanges() {
+//		return allChanges;
+//	}
 }
