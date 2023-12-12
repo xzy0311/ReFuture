@@ -10,6 +10,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
+import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureRefactoring;
 import refuture.sootUtil.SootConfig;
 
@@ -18,6 +19,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	Button btnCheck1;
 	Button btnCheck2;
 	Button btnCheck3;
+	Button btnCheck4;
 	public FutureTaskRefactoringWizardPage(String name) {
 		super(name);
 	}
@@ -38,15 +40,21 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 
 		// Button 2
 		btnCheck2 = new Button(composite, SWT.CHECK);
-		btnCheck2.setText("Cancel Detect Mode");
+		btnCheck2.setText("Disable Cancel(true) Detect Mode");
 		GridData gdBtnCheck2 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck2.setLayoutData(gdBtnCheck2);
-
+		
 		// Button 3
 		btnCheck3 = new Button(composite, SWT.CHECK);
-		btnCheck3.setText("Extreme Speed Mode");
+		btnCheck3.setText("Extreme Speed Mode(Debug Use)");
 		GridData gdBtnCheck3 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck3.setLayoutData(gdBtnCheck3);
+		
+		// Button 4
+		btnCheck4 = new Button(composite, SWT.CHECK);
+		btnCheck4.setText("Fine Refactoring");
+		GridData gdBtnCheck4 = new GridData(SWT.FILL, SWT.CENTER, true, false);
+		btnCheck4.setLayoutData(gdBtnCheck4);
 
 		// Add listeners and other necessary code
 		// add listener
@@ -96,9 +104,9 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 			@Override
 			public void widgetSelected(SelectionEvent se) {
 				if(btnCheck2.getEnabled()){
-					refactoring.setCancelPattern(true);
+					refactoring.setDisableCancelPattern(true);
 				}else{
-					refactoring.setCancelPattern(false);
+					refactoring.setDisableCancelPattern(false);
 				}
 			}
 		});
@@ -114,6 +122,22 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 					SootConfig.extremeSpeedModel = true;
 				}else{
 					SootConfig.extremeSpeedModel = false;
+				}
+			}
+		});
+		
+		btnCheck4.addSelectionListener(new SelectionListener(){
+			@Override
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+				btnCheck4.setEnabled(false);
+			}
+
+			@Override
+			public void widgetSelected(SelectionEvent se) {
+				if(btnCheck4.getEnabled()){
+					Future2Completable.fineRefactoring = true;
+				}else{
+					Future2Completable.fineRefactoring = false;
 				}
 			}
 		});

@@ -69,11 +69,14 @@ public class Future2Completable {
 	
 	public static int inExecutor;
 	
+	public static boolean fineRefactoring;
+	
 	public static boolean initStaticField() {
 		allChanges = new ArrayList<Change>();
 		canRefactoringNode = 0;
 		inExecutor = 0;
 		maybeRefactoringNode =0;
+		fineRefactoring = false;
 		return true;
 	}
 	
@@ -93,6 +96,10 @@ public class Future2Completable {
 			int[] invocSubmitNum = {1};
 			boolean printClassFlag = false;
 			IFile source = (IFile) cu.getResource();
+			TextFileChange classChange = null;
+			if(!fineRefactoring) {
+				classChange= new TextFileChange(cu.getElementName(),source);
+			}
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
 			parser.setResolveBindings(true);
 			parser.setStatementsRecovery(true);
@@ -104,6 +111,12 @@ public class Future2Completable {
 			List<MethodInvocation> invocationNodes = miv.getResult();
 
 			for(MethodInvocation invocationNode:invocationNodes) {
+				TextFileChange change;
+				if(fineRefactoring) {
+					change= new TextFileChange("Future2Completable",source);
+				}else {
+					change = classChange;
+				}
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
 					continue;
 				}
@@ -146,7 +159,6 @@ public class Future2Completable {
 					continue;
 				}
 				
-				TextFileChange change = new TextFileChange("Future2Completable",source);
 				ExecutorSubclass.arguModel(invocationNode,invocStmt);
 				boolean flag1 = refactorExecuteRunnable(invocStmt,invocationNode,change,cu);
 				if(Cancel.futureUseCancelTure(invocationNode,invocStmt)) {
@@ -166,7 +178,9 @@ public class Future2Completable {
 					}else if(flag4==true) {
 						flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
 					}
-					allChanges.add(change);
+					if(fineRefactoring) {
+						allChanges.add(change);
+					}
 					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
 					if(outMD != null) {
 						ASTNode outTD = outMD.getParent();
@@ -198,6 +212,9 @@ public class Future2Completable {
 				}
 				AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n");
 			}// 一个类中所有的调用分析完毕
+			if(!fineRefactoring) {
+				allChanges.add(classChange);
+			}
 			if(printClassFlag) {AnalysisUtils.debugPrint("--第"+j+++"个可能包含调用的类分析完毕-----------------------------%n");}
 		}//所有的类分析完毕
 		
@@ -229,7 +246,11 @@ public class Future2Completable {
             		listRewriter.insertLast(expression, null);
             	}
             	TextEdit edits = rewriter.rewriteAST();
-            	change.setEdit(edits);
+            	if(change.getEdit() == null) {
+                	change.setEdit(edits);
+            	}else {
+                	change.addEdit(edits);
+            	}
            	 ImportRewrite ir = ImportRewrite.create(cu, true);
    			 ir.addImport("java.util.concurrent.CompletableFuture");
    			try {
@@ -406,7 +427,12 @@ public class Future2Completable {
         			blockRewriter.set(callableStmt, VariableDeclarationStatement.TYPE_PROPERTY, blockAst.newSimpleType(blockAst.newSimpleName("Callable")), null);
         			ListRewrite blockListRewrite = blockRewriter.getListRewrite(blockNode, Block.STATEMENTS_PROPERTY);
         			blockListRewrite.insertBefore(callableStmt, stmtNode, null);
-        			change.setEdit(blockRewriter.rewriteAST());
+        			TextEdit edits = blockRewriter.rewriteAST();
+                	if(change.getEdit() == null) {
+                    	change.setEdit(edits);
+                	}else {
+                    	change.addEdit(edits);
+                	}
         			rewriter.set(invocCall, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName(callableName), null);
         		}
 	        	rewriter.set(invocCall, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("call"), null);
@@ -705,7 +731,11 @@ public class Future2Completable {
         		listRewriter.insertLast(expression, null);
         	}
         	TextEdit edits = rewriter.rewriteAST();
-        	change.setEdit(edits);
+        	if(change.getEdit() == null) {
+            	change.setEdit(edits);
+        	}else {
+            	change.addEdit(edits);
+        	}
         	
        	 ImportRewrite ir = ImportRewrite.create(cu, true);
 		 ir.addImport("java.util.concurrent.CompletableFuture");
@@ -743,7 +773,11 @@ public class Future2Completable {
 //        		listRewriter.insertLast(expression, null);
 //        	}
 //        	TextEdit edits = rewriter.rewriteAST();
-//        	change.setEdit(edits);
+//			if(change.getEdit() == null) {
+//		    	change.setEdit(edits);
+//			}else {
+//		    	change.addEdit(edits);
+//			}
 //        	
 //       	 ImportRewrite ir = ImportRewrite.create(cu, true);
 //		 ir.addImport("java.util.concurrent.CompletableFuture");
@@ -782,7 +816,11 @@ public class Future2Completable {
         	listRewriter.replace((ASTNode)invocationNode.arguments().get(0), newMiv, null);
         	listRewriter.remove((ASTNode)invocationNode.arguments().get(1), null);
         	TextEdit edits = rewriter.rewriteAST();
-        	change.setEdit(edits);
+        	if(change.getEdit() == null) {
+            	change.setEdit(edits);
+        	}else {
+            	change.addEdit(edits);
+        	}
         	
        	 	ImportRewrite ir = ImportRewrite.create(cu, true);
        	 	ir.addImport("java.util.concurrent.Executors");
@@ -814,7 +852,11 @@ public class Future2Completable {
 //        	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
 //        	listRewriter.insertLast(invocationNode.getExpression(), null);
 //        	TextEdit edits = rewriter.rewriteAST();
-//        	change.setEdit(edits);
+//			if(change.getEdit() == null) {
+//		    	change.setEdit(edits);
+//			}else {
+//		    	change.addEdit(edits);
+//			}
 //        	 ImportRewrite ir = ImportRewrite.create(cu, true);
 //			 ir.addImport("java.util.concurrent.CompletableFuture");
 //			try {

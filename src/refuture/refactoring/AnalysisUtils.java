@@ -365,11 +365,12 @@ public class AnalysisUtils {
 					Future2Completable.canRefactoringNode++;
 					Future2Completable.inExecutor++;
 					return true;
-				}
-				else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(sc.getName())) {
+				}else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(sc.getName())) {
 					Future2Completable.canRefactoringNode++;
 					Future2Completable.inExecutor++;
 					return true;
+				}else {
+					return false;
 				}
 			}
 			throw new RefutureException(invocationNode,"SootClass为空");

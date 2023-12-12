@@ -39,7 +39,7 @@ public class RefutureRefactoring extends Refactoring {
 	
 	int refactorPattern;
 
-	boolean cancelPattern;
+	boolean disableCancelPattern;
 	public static int time = 0;
 	/**
 	 * Instantiates a new future task refactoring.
@@ -52,7 +52,7 @@ public class RefutureRefactoring extends Refactoring {
 		potentialJavaFiles = new ArrayList<IJavaElement>();
 		InitAllStaticfield.init();//初始化所有的静态字段。
 		this.refactorPattern = 1;
-		this.cancelPattern = false;
+		this.disableCancelPattern = false;
 	}
 
 	public boolean setRefactorPattern(int pattern) {
@@ -60,8 +60,8 @@ public class RefutureRefactoring extends Refactoring {
 		return true;
 	}
 	
-	public boolean setCancelPattern(boolean pattern) {
-		this.cancelPattern = pattern;
+	public boolean setDisableCancelPattern(boolean pattern) {
+		this.disableCancelPattern = pattern;
 		return true;
 	}
 
@@ -93,7 +93,7 @@ public class RefutureRefactoring extends Refactoring {
 			ExecutorSubclass.taskTypeAnalysis();
 	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
 	        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
-	        if(this.cancelPattern) {
+	        if(!this.disableCancelPattern) {
 		        Cancel.initCancel(allJavaFiles);
 	        }
 			Future2Completable.refactor(allJavaFiles);
