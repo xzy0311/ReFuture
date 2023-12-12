@@ -211,6 +211,9 @@ public class ExecutorSubclass {
         				//说明没有被访问到，可以进行AST判断
         				
         				Expression exp = mInvocation.getExpression();
+        				if (exp == null) {
+        					
+        				}
         				String typeName = AnalysisUtils.getTypeName4Exp(exp);
         				if(typeName == null) {
         					return false;

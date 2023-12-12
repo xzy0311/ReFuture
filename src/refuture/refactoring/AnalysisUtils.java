@@ -14,6 +14,7 @@ import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -86,7 +87,7 @@ public class AnalysisUtils {
 			 * ********这里有一些配置，需要手动更改。************
 			 */
 			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume xml项目。
-			boolean testFlag = true;
+			boolean testFlag = false;
 			if (testFlag) {
 				String projectOutPath = PROJECTOUTPATH.get(0);
 				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
@@ -95,21 +96,21 @@ public class AnalysisUtils {
 			}
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用dah
-//			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
+			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			// 1.2.3 traific use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"bin-test";
 			// 1.2.4 dropward use
 //			String projectTestOutPath = "/home/xzy/runtime-workspace/dropwizard-1.3.16/dropwizard-logging/target/classes";
 			//1.3 上面开启,此项必须开启
-//			PROJECTOUTPATH.add(projectTestOutPath);
+			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
 //				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");// xml,flume,jenkins
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");// tomcat
 //				boolean javaFolder = element.toString().startsWith("src");// Jailer   SPECjbb
-				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
+//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("gen-java");
 				if (javaFolder) {// 找到包，给AST使用
 					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
@@ -353,28 +354,61 @@ public class AnalysisUtils {
 	 * 3.10.17日,为了方便统计相关信息,这里不再卡污染类.只卡this和压根不是ExecutorService子类.
 	 */
 	public static boolean receiverObjectIsComplete(MethodInvocation invocationNode) {
+		List<Expression> arguExps =  invocationNode.arguments();
+		if(arguExps.size() == 0) {return false;}
+		boolean isTask = false;
+		for(Expression arguExp : arguExps) {
+			String arguTypeName = getTypeName4Exp(arguExp);
+			if(arguTypeName == null) {
+				throw new RefutureException(invocationNode,"得不到类型绑定");
+			}else if(arguTypeName == "java.lang.Object") {throw new RefutureException(invocationNode,"得到了object");}
+			if(ExecutorSubclass.callableSubClasses.contains(arguTypeName)|| ExecutorSubclass.runnablesubClasses.contains(arguTypeName)) {
+				isTask = true;
+			}
+		}
+		if(isTask) {Future2Completable.maybeRefactoringNode++;}else {return false;}
+		
+ //到这里,invocation是submit/execute(task...);
 		Expression exp = invocationNode.getExpression();
 		Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
 		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
 		if(exp==null){
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，继续重构。");
 			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
-			SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
-			if(sc != null) {
-				if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(sc.getName())) {
-					Future2Completable.canRefactoringNode++;
-					Future2Completable.inExecutor++;
-					return true;
-				}else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(sc.getName())) {
-					Future2Completable.canRefactoringNode++;
-					Future2Completable.inExecutor++;
-					return true;
-				}else {
-					return false;
-				}
+			ASTNode aboutTypeDeclaration = (ASTNode) invocationNode;
+			while(aboutTypeDeclaration instanceof TypeDeclaration||aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+				aboutTypeDeclaration = aboutTypeDeclaration.getParent();
 			}
-			throw new RefutureException(invocationNode,"SootClass为空");
-//			return false;
+			String typeName = null;
+			if(aboutTypeDeclaration instanceof TypeDeclaration) {
+				TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
+				ITypeBinding tdBinding = td.resolveBinding();
+				typeName = tdBinding.getQualifiedName();
+				if(tdBinding.isNested()) {
+					typeName = tdBinding.getBinaryName();
+				}
+			}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+				AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
+				ITypeBinding tdBinding = acd.resolveBinding();
+				typeName = tdBinding.getQualifiedName();
+				if(tdBinding.isNested()) {
+					typeName = tdBinding.getBinaryName();
+				}
+			}else {
+				throw new RefutureException(invocationNode,"迭代,未得到类型定义或者匿名类定义");
+			}
+			typeName = typeName.replaceAll("<[^>]*>", "");
+			if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(typeName)) {
+				Future2Completable.canRefactoringNode++;
+				Future2Completable.inExecutor++;
+				return true;
+			}else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(typeName)) {
+				Future2Completable.canRefactoringNode++;
+				Future2Completable.inExecutor++;
+				return true;
+			}else {
+				return false;
+			}
 		}
 		String typeName = getTypeName4Exp(exp);
 		if(typeName==null){
@@ -398,13 +432,7 @@ public class AnalysisUtils {
 		}
 		
 		debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
-		IMethodBinding methodBinding = invocationNode.resolveMethodBinding();
-		for(ITypeBinding paraTypeBinding:methodBinding.getParameterTypes()) {
-			String bName = paraTypeBinding.getBinaryName();
-			if(ExecutorSubclass.callableSubClasses.contains(bName)|| ExecutorSubclass.runnablesubClasses.contains(bName)) {
-				Future2Completable.maybeRefactoringNode++;
-			}
-		}
+
 		
 		return false;
 	}
@@ -449,6 +477,7 @@ public class AnalysisUtils {
 		}
 		return null;
 	}
+	
 	public static String getTypeName4Exp(Expression exp) {
 		ITypeBinding typeBinding = exp.resolveTypeBinding();
 		if(typeBinding == null) {
@@ -459,7 +488,6 @@ public class AnalysisUtils {
 			typeName = typeBinding.getBinaryName();
 		}
 		typeName = typeName.replaceAll("<[^>]*>", "");
-		
 		return typeName;
 	}
 
