@@ -98,9 +98,10 @@ public class AnalysisUtils {
 //			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			// 1.2.3 traific use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"bin-test";
-			String projectTestOutPath = "/home/xzy/runtime-workspace/dropwizard-1.3.16/dropwizard-logging/target/classes";
+			// 1.2.4 dropward use
+//			String projectTestOutPath = "/home/xzy/runtime-workspace/dropwizard-1.3.16/dropwizard-logging/target/classes";
 			//1.3 上面开启,此项必须开启
-			PROJECTOUTPATH.add(projectTestOutPath);
+//			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
