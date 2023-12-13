@@ -368,7 +368,7 @@ public class AnalysisUtils {
 		}
 		if(isTask) {Future2Completable.maybeRefactoringNode++;}else {return false;}
 		
- //到这里,invocation是submit/execute(task...);
+		//到这里,invocation是submit/execute(task...);
 		Expression exp = invocationNode.getExpression();
 		Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
 		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
@@ -400,19 +400,20 @@ public class AnalysisUtils {
 			typeName = typeName.replaceAll("<[^>]*>", "");
 			if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(typeName)) {
 				Future2Completable.canRefactoringNode++;
-				Future2Completable.inExecutor++;
 				return true;
 			}else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(typeName)) {
 				Future2Completable.canRefactoringNode++;
-				Future2Completable.inExecutor++;
 				return true;
+			}else if(typeName == "java.lang.Object") {
+				throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
 			}else {
+				Future2Completable.useNotExecutorSubClass++;
 				return false;
 			}
 		}
 		String typeName = getTypeName4Exp(exp);
 		if(typeName==null){
-			Future2Completable.canRefactoringNode++;
+//			Future2Completable.canRefactoringNode++;
 			throw new RefutureException(invocationNode,"typeBinding为null，应该是eclipse环境下的源码没有调试好，这里卡");
 //			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，应该是eclipse环境下的源码没有调试好，这里不卡");
 //			return true;
@@ -430,12 +431,13 @@ public class AnalysisUtils {
 		}else if(typeName == "java.lang.Object") {
 			throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
 		}
-		
 		debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
-
-		
+		Future2Completable.useNotExecutorSubClass++;
 		return false;
 	}
+	
+	
+	
 	public static void debugPrint(String message) {
 		if(debugFlag == true) {
 			System.out.println(message);

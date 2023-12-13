@@ -5,9 +5,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.RefutureException;
@@ -105,7 +108,8 @@ public class ExecutorSubclass {
 	public static void threadPoolExecutorSubClassAnalysis() {
 		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
 		SootClass executorClass = Scene.v().getSootClass("java.util.concurrent.Executor");
-		mayCompleteExecutorSubClasses.add(executorServiceClass);//是安全的。
+//		mayCompleteExecutorSubClasses.add(executorServiceClass);//不是安全的。
+		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService"));
@@ -115,20 +119,18 @@ public class ExecutorSubclass {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
 		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
-		allExecutorServiceSubClasses.addAll(hierarchy.getImplementersOf(executorServiceClass));
-		allExecutorServiceSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorServiceClass));
-		for(SootClass tPESubClass : allExecutorServiceSubClasses) {
+		List<SootClass> serviceSubImplementers = hierarchy.getImplementersOf(executorServiceClass);
+		allExecutorServiceSubClasses.addAll(serviceSubImplementers);
+		List<SootClass> serviceSubInterfaces = hierarchy.getSubinterfacesOfIncluding(executorServiceClass);
+		allExecutorServiceSubClasses.addAll(serviceSubInterfaces);
+		
+		for(SootClass tPESubClass : serviceSubImplementers) {
 			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
 				continue;
 			}
-			List<SootClass> superClasses = null;
-			// 首先判定它继承的父类，有没有污染类
-			if(tPESubClass.isInterface()) {
-				superClasses = hierarchy.getSuperinterfacesOfIncluding(tPESubClass);
-			}else {
-				superClasses = hierarchy.getSuperclassesOfIncluding(tPESubClass);
-			}
 			
+			// 首先判定它继承的父类，有没有污染类
+			List<SootClass> superClasses = hierarchy.getSuperclassesOfIncluding(tPESubClass);
 			boolean isDirty = false;
 			for(SootClass superClass : superClasses) {
 				if(allDirtyClasses.contains(superClass)){
@@ -149,7 +151,7 @@ public class ExecutorSubclass {
 			}else {
 				mayCompleteExecutorSubClasses.add(tPESubClass);
 			}
-		}
+		}	
 		AnalysisUtils.debugPrint("mayCompleteExecutorSubClasses:"+mayCompleteExecutorSubClasses.toString());
 		AnalysisUtils.debugPrint("allDirtyClasses:"+allDirtyClasses.toString());
 	}
@@ -209,28 +211,66 @@ public class ExecutorSubclass {
         			}
         			if(typeSetStrings.isEmpty()) {
         				//说明没有被访问到，可以进行AST判断
-        				
         				Expression exp = mInvocation.getExpression();
+        				String typeName = null;
         				if (exp == null) {
-        					
-        				}
-        				String typeName = AnalysisUtils.getTypeName4Exp(exp);
-        				if(typeName == null) {
-        					return false;
+        					ASTNode aboutTypeDeclaration = (ASTNode) mInvocation;
+        					while(aboutTypeDeclaration instanceof TypeDeclaration||aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+        						aboutTypeDeclaration = aboutTypeDeclaration.getParent();
+        					}
+        					if(aboutTypeDeclaration instanceof TypeDeclaration) {
+        						TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
+        						ITypeBinding tdBinding = td.resolveBinding();
+        						typeName = tdBinding.getQualifiedName();
+        						if(tdBinding.isNested()) {
+        							typeName = tdBinding.getBinaryName();
+        						}
+        					}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+        						AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
+        						ITypeBinding tdBinding = acd.resolveBinding();
+        						typeName = tdBinding.getQualifiedName();
+        						if(tdBinding.isNested()) {
+        							typeName = tdBinding.getBinaryName();
+        						}
+        					}else {
+        						throw new RefutureException(mInvocation,"迭代,未得到类型定义或者匿名类定义");
+        					}
+        					typeName = typeName.replaceAll("<[^>]*>", "");
+        					if(completeSetTypeStrings.contains(typeName)) {
+            					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
+            					return true;
+            				}
+        				}else {
+        					typeName = AnalysisUtils.getTypeName4Exp(exp);
+        					SootClass sc = Scene.v().getSootClass(typeName);
+        					if(sc.isInterface()) {
+        						Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+        						List<SootClass> allImplementers = hierarchy.getImplementersOf(sc);
+        						for(SootClass implementer : allImplementers) {
+        							if(allDirtyClasses.contains(implementer)) {
+        								return false;
+        							}
+        						}
+        						return true;
+        					}else {
+        						if(completeSetTypeStrings.contains(typeName)) {
+        							//不再判断子类是否都满足，虽然AST的精度不够。
+                					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
+                					return true;
+                				}else {
+                					return false;
+                				}
+        					}
         				}
         				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到,通过AST进一步判断,类型为："+typeName);
-        				if(completeSetTypeStrings.contains(typeName)) {
-        					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
-        					return true;
-        				}
         			}else if(completeSetTypeStrings.containsAll(typeSetStrings)) {
         				//是安全重构的子集，就可以进行重构了。
-        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据sootClass 可以重构");
+        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构");
         				return true;
         			}
         		}	
         	}
-        	AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]不是安全重构的子集，进行排除");
+        	AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]在Stmt中的receiverobject有问题，进行排除");
         	return false;
 	}
 

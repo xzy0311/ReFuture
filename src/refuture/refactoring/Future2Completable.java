@@ -67,14 +67,14 @@ public class Future2Completable {
 	
 	public static int maybeRefactoringNode;
 	
-	public static int inExecutor;
+	public static int useNotExecutorSubClass;
 	
 	public static boolean fineRefactoring;
 	
 	public static boolean initStaticField() {
 		allChanges = new ArrayList<Change>();
 		canRefactoringNode = 0;
-		inExecutor = 0;
+		useNotExecutorSubClass = 0;
 		maybeRefactoringNode =0;
 		fineRefactoring = false;
 		return true;
@@ -132,7 +132,7 @@ public class Future2Completable {
 				}
 				AnalysisUtils.debugPrint("**第"+invocNum+"个{execute或submit}调用分析开始**********************************************************%n");
 				
-				//修改成先利用ast的类型绑定进行初次判断执行器变量的类型，排除一些非法的。已添加0712
+
 				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
 					//在执行器类中+1
 					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
@@ -221,7 +221,7 @@ public class Future2Completable {
 		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
 		flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点;" + "疑似有"+maybeRefactoringNode+"个额外提交点。");
 		
-		System.out.println("其中，重构失败的原因是：执行器类中："+inExecutor+"个；    因为stmt缺失，无法判断类型"+noStmt+"个；     因执行器类型不安全，不能重构"+illExecutor
+		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    因为stmt缺失，无法判断类型"+noStmt+"个；     因执行器类型不安全，不能重构"+illExecutor
 				+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
 	}
 	
