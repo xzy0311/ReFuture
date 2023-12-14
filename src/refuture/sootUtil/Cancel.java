@@ -85,7 +85,6 @@ public class Cancel {
 				if(typeName == null) { throw new RefutureException(invocationNode);}
 				if(allFutureAndsubName.contains(typeName)) {
 					//在这里确定了调用了future.cancel()。接下来开始将exp对应的sootlocal存入静态字段。
-					System.out.println("存在调用Future.cancel(true)方法的语句");
 					Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
 					if(invocStmt == null) {
 						continue; 
@@ -122,6 +121,7 @@ public class Cancel {
 				}
 			}
 		}
+		System.out.println("本程序中共包含调用cancel(true)的Future实例:"+invocCancelLocals.size()+"处");
 	}
 	
 	public static boolean futureUseCancelTure(MethodInvocation invocationNode, Stmt invocStmt) {

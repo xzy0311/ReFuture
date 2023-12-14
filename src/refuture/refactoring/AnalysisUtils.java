@@ -5,7 +5,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Executors;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -30,9 +29,7 @@ import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
-import refuture.sootUtil.AdaptAst;
 import refuture.sootUtil.ExecutorSubclass;
-import soot.SootClass;
 
 /**
  * The Class AnalysisUtils. 提供分析方法的工具包类，它的方法都是静态的。
@@ -87,7 +84,7 @@ public class AnalysisUtils {
 			 * ********这里有一些配置，需要手动更改。************
 			 */
 			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume xml项目。
-			boolean testFlag = false;
+			boolean testFlag = true;
 			if (testFlag) {
 				String projectOutPath = PROJECTOUTPATH.get(0);
 				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
@@ -96,13 +93,13 @@ public class AnalysisUtils {
 			}
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用dah
-			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
+//			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			// 1.2.3 traific use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"bin-test";
 			// 1.2.4 dropward use
 //			String projectTestOutPath = "/home/xzy/runtime-workspace/dropwizard-1.3.16/dropwizard-logging/target/classes";
 			//1.3 上面开启,此项必须开启
-			PROJECTOUTPATH.add(projectTestOutPath);
+//			PROJECTOUTPATH.add(projectTestOutPath);
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
@@ -376,7 +373,7 @@ public class AnalysisUtils {
 			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，继续重构。");
 			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
 			ASTNode aboutTypeDeclaration = (ASTNode) invocationNode;
-			while(aboutTypeDeclaration instanceof TypeDeclaration||aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+			while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
 				aboutTypeDeclaration = aboutTypeDeclaration.getParent();
 			}
 			String typeName = null;
@@ -488,6 +485,16 @@ public class AnalysisUtils {
 		String typeName = typeBinding.getQualifiedName();
 		if(typeBinding.isNested()) {
 			typeName = typeBinding.getBinaryName();
+		}else if(typeBinding.isAnonymous()) {
+			ITypeBinding superTypeBinding = typeBinding.getSuperclass();
+			if(superTypeBinding.isNested()) {
+				typeName = superTypeBinding.getBinaryName();
+			}else {
+				typeName = superTypeBinding.getQualifiedName();
+			}
+		}
+		if (typeName == null) {
+			return null;
 		}
 		typeName = typeName.replaceAll("<[^>]*>", "");
 		return typeName;

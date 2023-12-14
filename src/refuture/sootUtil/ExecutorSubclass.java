@@ -215,7 +215,7 @@ public class ExecutorSubclass {
         				String typeName = null;
         				if (exp == null) {
         					ASTNode aboutTypeDeclaration = (ASTNode) mInvocation;
-        					while(aboutTypeDeclaration instanceof TypeDeclaration||aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+        					while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
         						aboutTypeDeclaration = aboutTypeDeclaration.getParent();
         					}
         					if(aboutTypeDeclaration instanceof TypeDeclaration) {
@@ -417,22 +417,28 @@ public class ExecutorSubclass {
 	 * @return return 1代表Runnable,return 2代表callable，return 3 代表Runnable,value。
 	 */
 	public static int arguModel(MethodInvocation invocationNode, Stmt invocStmt) {
+		String invocName = invocationNode.getName().toString();
 		if(invocationNode.arguments().size() == 1) {
 			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
 			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
 			if(runnablesubClasses.contains(binaryName)) {
-				return 1;
-			}else if(callableSubClasses.contains(binaryName)){
+				if(invocName.equals("submit")) {
+					return 3;
+				}else {//上下文已限制为submit/execute
+					return 1;
+				}
+				
+			}else if(callableSubClasses.contains(binaryName)&&invocName.equals("submit")){
 				return 2;
 			}else {
 				System.out.println("￥￥￥￥￥￥￥￥￥￥￥￥￥1"+binaryName);
 			}
 		}
-		else if(invocationNode.arguments().size() == 2) {
+		else if(invocationNode.arguments().size() == 2 ||invocName.equals("submit")) {
 			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
 			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
 			if(runnablesubClasses.contains(binaryName)) {
-				return 3;
+				return 4;
 			}else {
 				System.out.println("￥￥￥￥￥￥￥￥￥￥￥￥2"+binaryName);
 			}
