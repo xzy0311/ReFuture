@@ -178,6 +178,7 @@ public class AdaptAst {
         if(lambdaClass == null) {
         	AnalysisUtils.throwNull();
         	}
+        
         List<SootMethod> lambdaSootMethodList = lambdaClass.getMethods();
         List<SootMethod> mainClassMethodList = new ArrayList<SootMethod>();
         for(SootMethod method : lambdaSootMethodList) {
@@ -215,6 +216,9 @@ public class AdaptAst {
         		}
         	}
         }
+
+        
+        
         throw new RefutureException(miv);
 	}
 
@@ -267,7 +271,7 @@ public class AdaptAst {
 		MethodInvocation lambdaMethod = (MethodInvocation)node;
 		return lambdaMethod;
 	}
-
+	
 	private static boolean invocInLambda(MethodInvocation miv) {
 		ASTNode node = (ASTNode) miv;
 		MethodDeclaration method = AnalysisUtils.getMethodDeclaration4node(miv);

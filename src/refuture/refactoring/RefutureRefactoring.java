@@ -85,11 +85,10 @@ public class RefutureRefactoring extends Refactoring {
 			throws CoreException, OperationCanceledException {
 		if(refactorPattern ==1) {
 			System.out.println("Future重构模式");
-			System.out.println("hello xzy ,this is "+ time++ +" times run this model."+"The current start time is "+ new Date());
+			System.out.println("hello xzy ,this is "+ time++ +" times run this model.");
 			if(time == 1) {
 				SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
 			}
-			System.out.println("soot配置完毕的时间"+"The current start time is "+ new Date());
 			ExecutorSubclass.taskTypeAnalysis();
 	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
 	        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
@@ -101,7 +100,8 @@ public class RefutureRefactoring extends Refactoring {
 //			ForTask.refactor(allJavaFiles);   10月11日，暂时取消ForTask尝试。待添加寻找Thread相关代码，以及关闭soot的方法。
 			FindThread.find(allJavaFiles);
 		}
-		System.out.println("The current ent time is "+ new Date());
+		Date endTime = new Date();
+		System.out.println("The current ent time is "+ endTime +"已花费:" + ((endTime.getTime()-SootConfig.startTime.getTime())/1000)+"s");
 		return null;
 	}
 

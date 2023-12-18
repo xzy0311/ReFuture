@@ -2,6 +2,7 @@ package refuture.sootUtil;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import refuture.refactoring.AnalysisUtils;
@@ -11,11 +12,14 @@ import soot.options.Options;
 
 public class SootConfig {
 	public static boolean extremeSpeedModel;
+	public static Date startTime;
 	public static void sootConfigStaticInitial() {
 		extremeSpeedModel = false;
 	}
 	
     public static void setupSoot() {
+    	startTime =new Date();
+		System.out.println("The current start time is "+ startTime);
         soot.G.reset();
         BasicOptions();
         JBPhaseOptions();
@@ -29,6 +33,8 @@ public class SootConfig {
             PackManager.v().runPacks();
         }
         System.out.println("[setupSoot]:Soot配置完毕。");
+        Date currentTime = new Date();
+        System.out.println("soot配置完毕的时间"+"The current start time is "+ currentTime+"已花费:"+((currentTime.getTime()-startTime.getTime())/1000)+"s");
     }
 
     /**

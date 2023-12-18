@@ -7,6 +7,7 @@ import java.util.List;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IImportDeclaration;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
@@ -109,7 +110,7 @@ public class Future2Completable {
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();
-
+			boolean scClassflag = false;
 			for(MethodInvocation invocationNode:invocationNodes) {
 				TextFileChange change;
 				if(fineRefactoring) {
@@ -164,6 +165,7 @@ public class Future2Completable {
 		        }
 				int refactorMode = ExecutorSubclass.arguModel(invocationNode,invocStmt);
 				boolean flag = true;
+				boolean scflag = false;
 				switch (refactorMode) {
 			    case 1:
 			    	refactorExecuteRunnable(invocStmt, invocationNode, change, cu);
@@ -172,6 +174,8 @@ public class Future2Completable {
 			    case 2:
 			    	refactorffSubmitCallable(invocStmt, invocationNode, change, cu, invocSubmitNum);
 			    	flagMap.put("SubmitCallable",flagMap.get("SubmitCallable")+1 );
+			    	scflag = true;
+			    	scClassflag = true;
 			        break;
 			    case 3:
 			    	refactorSubmitRunnable(invocStmt, invocationNode, change, cu);
@@ -187,6 +191,17 @@ public class Future2Completable {
 				}
 				if(flag) {
 					if(fineRefactoring) {
+						ImportRewrite ir = ImportRewrite.create(cu, true);
+						ir.addImport("java.util.concurrent.CompletableFuture");
+						if(scflag) {
+							ir.addImport("java.util.concurrent.CompletionException");
+						}
+						try {
+							TextEdit editsImport = ir.rewriteImports(null);
+							change.addEdit(editsImport);
+						} catch (CoreException e) {
+							e.printStackTrace();
+						}
 						allChanges.add(change);
 					}
 					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
@@ -221,13 +236,24 @@ public class Future2Completable {
 				AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n");
 			}// 一个类中所有的调用分析完毕
 			if(!fineRefactoring&&classChange.getEdit() != null) {
+				ImportRewrite ir = ImportRewrite.create(cu, true);
+				ir.addImport("java.util.concurrent.CompletableFuture");
+				if(scClassflag) {
+					ir.addImport("java.util.concurrent.CompletionException");
+				}
+				try {
+					TextEdit editsImport = ir.rewriteImports(null);
+					classChange.addEdit(editsImport);
+				} catch (CoreException e) {
+					e.printStackTrace();
+				}
 				allChanges.add(classChange);
 			}
 			if(printClassFlag) {AnalysisUtils.debugPrint("--第"+j+++"个可能包含调用的类分析完毕-----------------------------%n");}
 		}//所有的类分析完毕
 		
 		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
-		flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点;" + "疑似有"+maybeRefactoringNode+"个额外提交点。");
+		flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点;" + "疑似有"+maybeRefactoringNode+"个提交点。");
 		
 		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    因为stmt缺失，无法判断类型"+noStmt+"个；     因执行器类型不安全，不能重构"+illExecutor
 				+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
@@ -258,14 +284,7 @@ public class Future2Completable {
     	}else {
         	change.addEdit(edits);
     	}
-		ImportRewrite ir = ImportRewrite.create(cu, true);
-		ir.addImport("java.util.concurrent.CompletableFuture");
-		try {
-			TextEdit editsImport = ir.rewriteImports(null);
-			change.addEdit(editsImport);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
+
 		AnalysisUtils.debugPrint("[refactorExecuteRunnable]refactor success!");
 	}
 
@@ -689,15 +708,7 @@ public class Future2Completable {
     	}else {
         	change.addEdit(edits);
     	}
-	   	ImportRewrite ir = ImportRewrite.create(cu, true);
-		ir.addImport("java.util.concurrent.CompletableFuture");
-		ir.addImport("java.util.concurrent.CompletionException");
-		try {
-			TextEdit editsImport = ir.rewriteImports(null);
-			change.addEdit(editsImport);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
+ 
 		AnalysisUtils.debugPrint("[refactorffSubmitCallable]refactor success!");
 	}
 	
@@ -733,14 +744,6 @@ public class Future2Completable {
         	change.addEdit(edits);
     	}
     	
-       	ImportRewrite ir = ImportRewrite.create(cu, true);
-		ir.addImport("java.util.concurrent.CompletableFuture");
-		try {
-			TextEdit editsImport = ir.rewriteImports(null);
-			change.addEdit(editsImport);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
 		AnalysisUtils.debugPrint("[refactorSubmitRunnable]refactor success!");
 	}
 	
@@ -813,15 +816,7 @@ public class Future2Completable {
     	}else {
         	change.addEdit(edits);
     	}
-    	
-   	 	ImportRewrite ir = ImportRewrite.create(cu, true);
-   	 	ir.addImport("java.util.concurrent.Executors");
-   	 	try {
-   	 		TextEdit editsImport = ir.rewriteImports(null);
-   	 		change.addEdit(editsImport);
-   	 	} catch (CoreException e) {
-   	 		e.printStackTrace();
-   	 	}
+
    	 	AnalysisUtils.debugPrint("[refactorSubmitRunnableNValue]refactor success!");
 	}
 	
