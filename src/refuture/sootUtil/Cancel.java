@@ -92,6 +92,10 @@ public class Cancel {
 					//得到invocationNode所在类
 					//得到invocationNode所在方法
 					SootMethod sootMethod = AdaptAst.getSootMethod4invocNode(invocationNode);
+					if(AdaptAst.invocInLambda(invocationNode)>0) {
+						sootMethod = AdaptAst.getSootRealFunction4InLambda(invocationNode);
+					}
+					
 					//得到对应的soot方法的body。
 					Body body = sootMethod.retrieveActiveBody();
 					LocalDefs ld = G.v().soot_toolkits_scalar_LocalDefsFactory().newLocalDefs(body);
