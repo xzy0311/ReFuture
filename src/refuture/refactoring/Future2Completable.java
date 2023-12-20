@@ -135,7 +135,6 @@ public class Future2Completable {
 				
 
 				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
-					//在执行器类中+1
 					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 					continue;
 				}

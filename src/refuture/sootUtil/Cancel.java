@@ -1,7 +1,6 @@
 package refuture.sootUtil;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.ArrayList;
@@ -11,7 +10,6 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 
 import refuture.astvisitor.MethodInvocationVisiter;
@@ -38,7 +36,9 @@ import soot.toolkits.scalar.LocalDefs;
 public class Cancel {
 	private static List <Local> invocCancelLocals;
 	
+	public static boolean debug_UseDefRech;
 	public static boolean initStaticField() {
+		debug_UseDefRech = true;
 		invocCancelLocals = new ArrayList<Local>();
 		return true;
 	}
@@ -106,15 +106,19 @@ public class Cancel {
 						if(vb instanceof JimpleLocalBox) {
 							JimpleLocalBox jlb = (JimpleLocalBox) vb;
 							Local futureLocal = (Local)jlb.getValue();
-							List<Unit> units = ld.getDefsOfAt(futureLocal, invocStmt);
-							for (Unit defUnit : units) {
-								List<ValueBox> dfbs = defUnit.getDefBoxes();
-								for(ValueBox vdb : dfbs) {
-									if(vdb instanceof LinkedVariableBox) {
-										Local futureDefLocal = (Local) vdb.getValue();
-										invocCancelLocals.add(futureDefLocal);
+							if(debug_UseDefRech) {
+								List<Unit> units = ld.getDefsOfAt(futureLocal, invocStmt);
+								for (Unit defUnit : units) {
+									List<ValueBox> dfbs = defUnit.getDefBoxes();
+									for(ValueBox vdb : dfbs) {
+										if(vdb instanceof LinkedVariableBox) {
+											Local futureDefLocal = (Local) vdb.getValue();
+											invocCancelLocals.add(futureDefLocal);
+										}
 									}
 								}
+							}else {
+								invocCancelLocals.add(futureLocal);
 							}
 							
 						}

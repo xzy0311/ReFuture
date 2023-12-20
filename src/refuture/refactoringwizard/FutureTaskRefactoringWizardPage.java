@@ -12,6 +12,7 @@ import org.eclipse.swt.widgets.Composite;
 
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureRefactoring;
+import refuture.sootUtil.Cancel;
 import refuture.sootUtil.SootConfig;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
@@ -20,6 +21,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	Button btnCheck2;
 	Button btnCheck3;
 	Button btnCheck4;
+	Button btnCheck5;
 	public FutureTaskRefactoringWizardPage(String name) {
 		super(name);
 	}
@@ -56,6 +58,12 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		GridData gdBtnCheck4 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck4.setLayoutData(gdBtnCheck4);
 
+		btnCheck5 = new Button(composite, SWT.CHECK);
+		btnCheck5.setText("调试用，关闭DefRech");
+		GridData gdBtnCheck5 = new GridData(SWT.FILL, SWT.CENTER, true, false);
+		btnCheck5.setLayoutData(gdBtnCheck5);
+
+		
 		// Add listeners and other necessary code
 		// add listener
 		defineListener();
@@ -141,6 +149,23 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 				}
 			}
 		});
+		
+		btnCheck5.addSelectionListener(new SelectionListener(){
+			@Override
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+				btnCheck5.setEnabled(false);
+			}
+
+			@Override
+			public void widgetSelected(SelectionEvent se) {
+				if(btnCheck5.getEnabled()){
+					Cancel.debug_UseDefRech = false;
+				}else{
+					Cancel.debug_UseDefRech = true;
+				}
+			}
+		});
+		
 	}
 
 }
