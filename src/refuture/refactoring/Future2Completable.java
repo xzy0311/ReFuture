@@ -71,6 +71,9 @@ public class Future2Completable {
 	public static int useNotExecutorSubClass;
 	
 	public static boolean fineRefactoring;
+	public static String debugClassName;
+	public static String debugMethodName;
+	public static int debugLineNumber;
 	
 	public static boolean initStaticField() {
 		allChanges = new ArrayList<Change>();
@@ -112,6 +115,10 @@ public class Future2Completable {
 			List<MethodInvocation> invocationNodes = miv.getResult();
 			boolean scClassflag = false;
 			for(MethodInvocation invocationNode:invocationNodes) {
+				int lineNumber = astUnit.getLineNumber(invocationNode.getStartPosition());
+				if((lineNumber == debugLineNumber)&&(cu.getElementName().equals(debugClassName))&&(debugMethodName.equals(AnalysisUtils.getMethodDeclaration4node(invocationNode).getName().toString()))) {
+					System.out.println("已到达指定位置");
+				}
 				TextFileChange change;
 				if(fineRefactoring) {
 					change= new TextFileChange("Future2Completable",source);
@@ -207,14 +214,14 @@ public class Future2Completable {
 					if(outMD != null) {
 						ASTNode outTD = outMD.getParent();
 						if(outTD instanceof AnonymousClassDeclaration) {
-							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber);
 						}else {
-							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber);
 						}
 					}else {
 						TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
 						if(outTD == null) {throw new NullPointerException();}
-						System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：字段或者初始化块,行号：%d%n",i,outTD.resolveBinding().getQualifiedName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+						System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：字段或者初始化块,行号：%d%n",i,outTD.resolveBinding().getQualifiedName(),lineNumber);
 					}
 					i = i+1;
 				}else {
@@ -222,14 +229,14 @@ public class Future2Completable {
 					if(outMD != null) {
 						ASTNode outTD = outMD.getParent();
 						if(outTD instanceof AnonymousClassDeclaration) {
-							System.out.printf("[Task->CF]:重构失败类名：%s，方法名：%s,行号：%d%n",((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+							System.out.printf("[Task->CF]:重构失败类名：%s，方法名：%s,行号：%d%n",((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber);
 						}else {
-							System.out.printf("[Task->CF]:重构失败类名：%s，方法名：%s,行号：%d%n",((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.resolveBinding().getName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+							System.out.printf("[Task->CF]:重构失败类名：%s，方法名：%s,行号：%d%n",((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber);
 						}
 					}else {
 						TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
 						if(outTD == null) {throw new NullPointerException();}
-						System.out.printf("[Task->CF]:重构失败类名：%s，方法名：字段或者初始化块,行号：%d%n",outTD.resolveBinding().getQualifiedName(),astUnit.getLineNumber(invocationNode.getStartPosition()));
+						System.out.printf("[Task->CF]:重构失败类名：%s，方法名：字段或者初始化块,行号：%d%n",outTD.resolveBinding().getQualifiedName(),lineNumber);
 					}
 				}
 				AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n");

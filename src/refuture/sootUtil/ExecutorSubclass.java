@@ -129,17 +129,17 @@ public class ExecutorSubclass {
 				continue;
 			}
 			
-			// 首先判定它继承的父类，有没有污染类
-			List<SootClass> superClasses = hierarchy.getSuperclassesOfIncluding(tPESubClass);
-			boolean isDirty = false;
-			for(SootClass superClass : superClasses) {
-				if(allDirtyClasses.contains(superClass)){
-					allDirtyClasses.add(tPESubClass);
-					isDirty = true;
-					break;
-				}
-			}
-			if(isDirty) {continue;}
+//			// 首先判定它继承的父类，有没有污染类
+//			List<SootClass> superClasses = hierarchy.getSuperclassesOfIncluding(tPESubClass);
+//			boolean isDirty = false;
+//			for(SootClass superClass : superClasses) {
+//				if(allDirtyClasses.contains(superClass)){
+//					allDirtyClasses.add(tPESubClass);
+//					isDirty = true;
+//					break;
+//				}
+//			}
+//			if(isDirty) {continue;}
 			//判断是否是dirtyClass
 			boolean flag1 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
 			boolean flag2 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)");
@@ -148,12 +148,21 @@ public class ExecutorSubclass {
 			boolean flag5 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.lang.Runnable,java.lang.Object)");
 			if(flag1||flag2||flag3||flag4||flag5) {
 				allDirtyClasses.add(tPESubClass);
+				List<SootClass> dirtySubClasses = hierarchy.getSubclassesOf(tPESubClass);
+				for(SootClass dirtyclass:dirtySubClasses) {
+					allDirtyClasses.add(dirtyclass);
+					if(mayCompleteExecutorSubClasses.contains(dirtyclass)) {
+						mayCompleteExecutorSubClasses.remove(dirtyclass);
+					}
+				}
 			}else {
 				mayCompleteExecutorSubClasses.add(tPESubClass);
 			}
-		}	
+		}
 		AnalysisUtils.debugPrint("mayCompleteExecutorSubClasses:"+mayCompleteExecutorSubClasses.toString());
 		AnalysisUtils.debugPrint("allDirtyClasses:"+allDirtyClasses.toString());
+//		System.out.println("mayCompleteExecutorSubClasses:"+mayCompleteExecutorSubClasses.toString());
+//		System.out.println("allDirtyClasses:"+allDirtyClasses.toString());
 	}
 
 	/**
@@ -413,7 +422,6 @@ public class ExecutorSubclass {
 	 * 判断参数的类型是否复合要求。.
 	 * @param invocationNode 
 	 * @param invocStmt the invoc stmt
-	 * @param argType   为1,代表是callable;为2,代表Runnable;为3,代表FutureTask;为4,代表两个参数。
 	 * @return return 1代表Runnable,return 2代表callable，return 3 代表Runnable,value。
 	 */
 	public static int arguModel(MethodInvocation invocationNode, Stmt invocStmt) {

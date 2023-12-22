@@ -9,8 +9,11 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.Label;
 
 import refuture.refactoring.Future2Completable;
+import refuture.refactoring.RefutureException;
 import refuture.refactoring.RefutureRefactoring;
 import refuture.sootUtil.Cancel;
 import refuture.sootUtil.SootConfig;
@@ -22,6 +25,9 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	Button btnCheck3;
 	Button btnCheck4;
 	Button btnCheck5;
+	Text textField1;
+	Text textField2;
+	Text textField3;
 	public FutureTaskRefactoringWizardPage(String name) {
 		super(name);
 	}
@@ -63,6 +69,20 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		GridData gdBtnCheck5 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck5.setLayoutData(gdBtnCheck5);
 
+		Label label1 = new Label(composite, SWT.NONE);
+		label1.setText("需定位的所在类:");
+		textField1 = new Text(composite, SWT.BORDER);
+ 		textField1.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+ 		Label label2 = new Label(composite, SWT.NONE);
+		label2.setText("需定位的所在方法:");
+		textField2 = new Text(composite, SWT.BORDER);
+		textField2.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+		Label label3 = new Label(composite, SWT.NONE);
+		label3.setText("需定位的行号:");
+		textField3 = new Text(composite, SWT.BORDER);
+		textField3.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 		
 		// Add listeners and other necessary code
 		// add listener
@@ -165,6 +185,26 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 				}
 			}
 		});
+		
+		textField1.addModifyListener(e -> {
+		    String input = textField1.getText();
+		    Future2Completable.debugClassName = input;
+		});
+
+		textField2.addModifyListener(e -> {
+		    String input = textField2.getText();
+		    Future2Completable.debugMethodName = input;
+		});
+
+		textField3.addModifyListener(e -> {
+		    try {
+		        int input = Integer.parseInt(textField3.getText());
+		        Future2Completable.debugLineNumber = input;
+		    } catch (NumberFormatException ex) {
+		        throw new RefutureException(ex.getMessage());
+		    }
+		});
+		
 		
 	}
 
