@@ -92,8 +92,10 @@ public class AnalysisUtils {
 				testFlag = false;
 			}
 			//1.2 手动添加测试类class文件路径
-			// 1.2.1cassandra使用dah
+			// 1.2.1cassandra使用
 //			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
+			// 1.2.2 elasticSearch 使用
+//			String projectTestOutPath = PROJECTPATH+File.separator+"build-eclipse"+File.separator+"2";
 			// 1.2.3 traific use
 //			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"bin-test";
 			// 1.2.4 dropward use

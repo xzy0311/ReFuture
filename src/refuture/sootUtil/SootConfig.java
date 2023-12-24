@@ -49,8 +49,8 @@ public class SootConfig {
         Options.v().set_whole_program(true);
         // 行数表
         Options.v().set_keep_line_number(true);
-        // 输入文件时，使用的编译码类型
-        Options.v().set_output_format(Options.output_format_jimple);
+        // Set output format for Soot
+        Options.v().set_output_format(Options.output_format_none);
         // 添加jar包路径
         Options.v().set_process_jar_dir(getJarFolderPath());
         // 处理目录中所有的类

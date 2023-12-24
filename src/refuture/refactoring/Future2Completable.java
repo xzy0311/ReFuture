@@ -70,10 +70,13 @@ public class Future2Completable {
 	
 	public static int useNotExecutorSubClass;
 	
+	public static int executeOverload;
+	
 	public static boolean fineRefactoring;
 	public static String debugClassName;
 	public static String debugMethodName;
 	public static int debugLineNumber;
+	
 	
 	public static boolean initStaticField() {
 		allChanges = new ArrayList<Change>();
@@ -81,13 +84,13 @@ public class Future2Completable {
 		useNotExecutorSubClass = 0;
 		maybeRefactoringNode =0;
 		fineRefactoring = false;
+		executeOverload = 0;
 		return true;
 	}
 	
 	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
 		int i = 1;
 		int j = 1;
-		int noStmt = 0;
 		int illExecutor = 0;
 		int useCancelTrue = 0;	
 		HashMap<String,Integer> flagMap = new HashMap<String,Integer>();
@@ -130,10 +133,6 @@ public class Future2Completable {
 				}
 				if(!printClassFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
-					if(sc == null) {
-						noStmt++;
-						continue;
-					}
 					AnalysisUtils.debugPrint("--第"+j+"个包含可能调用的类："+sc.getName()+"分析开始------------------------------%n");
 					printClassFlag =true;
 					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
@@ -146,12 +145,6 @@ public class Future2Completable {
 					continue;
 				}
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
-				if(invocStmt ==null) {
-					//因为stmt缺失，无法判断类型
-					noStmt++;
-					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
-					continue;
-				}
 				
 				boolean returnValue;
 				if(invocationNode.getName().toString().equals("execute")) {
@@ -261,7 +254,7 @@ public class Future2Completable {
 		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
 		flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点;" + "疑似有"+maybeRefactoringNode+"个提交点。");
 		
-		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    因为stmt缺失，无法判断类型"+noStmt+"个；     因执行器类型不安全，不能重构"+illExecutor
+		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    重载后的execute方法"+executeOverload+"个；     因执行器类型不安全，不能重构"+illExecutor
 				+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
 	}
 	

@@ -13,6 +13,7 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import refuture.refactoring.AnalysisUtils;
+import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
 import soot.Hierarchy;
 import soot.Local;
@@ -442,7 +443,7 @@ public class ExecutorSubclass {
 				System.out.println("￥￥￥￥￥￥￥￥￥￥￥￥￥1"+binaryName);
 			}
 		}
-		else if(invocationNode.arguments().size() == 2 ||invocName.equals("submit")) {
+		else if(invocationNode.arguments().size() == 2 && invocName.equals("submit")) {
 			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
 			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
 			if(runnablesubClasses.contains(binaryName)) {
@@ -451,7 +452,8 @@ public class ExecutorSubclass {
 				System.out.println("￥￥￥￥￥￥￥￥￥￥￥￥2"+binaryName);
 			}
 		}
-		AnalysisUtils.debugPrint("[ExecutorSubclass.arguModel]:参数个数为0或大于2，排除");
+		AnalysisUtils.debugPrint("[ExecutorSubclass.arguModel]:参数个数为0或大于2，或者execute的参数不为1排除");
+		Future2Completable.executeOverload++;
 		return -1;
 		
 	}
