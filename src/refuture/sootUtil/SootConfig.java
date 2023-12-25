@@ -1,19 +1,25 @@
 package refuture.sootUtil;
 
 import java.io.File;
-import java.io.FilenameFilter;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import refuture.refactoring.AnalysisUtils;
 import soot.PackManager;
 import soot.Scene;
-import soot.SootClass;
 import soot.options.Options;
 
 public class SootConfig {
+	public static boolean extremeSpeedModel;
+	public static Date startTime;
+	public static void sootConfigStaticInitial() {
+		extremeSpeedModel = false;
+	}
+	
     public static void setupSoot() {
+    	startTime =new Date();
+		System.out.println("The current start time is "+ startTime);
         soot.G.reset();
         BasicOptions();
         JBPhaseOptions();
@@ -22,11 +28,13 @@ public class SootConfig {
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
         Scene.v().loadNecessaryClasses();
         System.out.println("[setupSoot]:加载必要类完毕！");
-        
-        PackManager.v().runPacks();
-        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
-        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
+        if(!extremeSpeedModel) {
+        	System.out.println("[setupSoot]:当前非极速模式");
+            PackManager.v().runPacks();
+        }
         System.out.println("[setupSoot]:Soot配置完毕。");
+        Date currentTime = new Date();
+        System.out.println("soot配置完毕的时间"+"The current start time is "+ currentTime+"已花费:"+((currentTime.getTime()-startTime.getTime())/1000)+"s");
     }
 
     /**
@@ -41,14 +49,12 @@ public class SootConfig {
         Options.v().set_whole_program(true);
         // 行数表
         Options.v().set_keep_line_number(true);
-        // 输入文件时，使用的编译码类型
-        Options.v().set_output_format(Options.output_format_jimple);
+        // Set output format for Soot
+        Options.v().set_output_format(Options.output_format_none);
         // 添加jar包路径
         Options.v().set_process_jar_dir(getJarFolderPath());
         // 处理目录中所有的类
         Options.v().set_process_dir(AnalysisUtils.getSootClassPath());
-        // 详细地打印处理过程的信息
-        Options.v().set_verbose(true);
     }
 
     /**
