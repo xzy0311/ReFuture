@@ -55,8 +55,6 @@ public class SootConfig {
         Options.v().set_process_jar_dir(getJarFolderPath());
         // 处理目录中所有的类
         Options.v().set_process_dir(AnalysisUtils.getSootClassPath());
-        // 详细地打印处理过程的信息
-        Options.v().set_verbose(true);
     }
 
     /**

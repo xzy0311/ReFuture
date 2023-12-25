@@ -1,31 +1,28 @@
 package refuture.sootUtil;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
 
 import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.LambdaExpression;
-import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.RefutureException;
 import soot.AmbiguousMethodException;
 import soot.Body;
 import soot.G;
-import soot.Hierarchy;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.PointsToSet;
@@ -130,20 +127,20 @@ public class AdaptAst {
 		//得到通过AST得到的方法名称，类名称，调用的行号。
 		//得到lambda外的函数调用的名称
 		//12.19修改,得到SootMethod下的第一层lambda外的methodInvocation.并获得总共的层数.若外层不是方法调用,而是变量定义语句,则应该会报错,报错的时候再解决.
-		List<MethodInvocation> InvocLambdaMethodList = AdaptAst.getInvocLambdaMethod2Delcaration(miv,deep);
+		List<Expression> InvocLambdaMethodList = AdaptAst.getInvocLambdaMethod2Delcaration(miv,deep);
 		
 		SootClass sc = getSootClass4InvocNode(miv);
 		SootMethod sm =getSootMethod4invocNode(miv);
 		SootMethod mainMethod = sm;
 		//得到lambda的SootClass,通过调用Lambda的MIV所在的Body和Stmt.
 		for(int i = 0 ;i < InvocLambdaMethodList.size();i++) {
-			MethodInvocation invocLambdaMethod = InvocLambdaMethodList.get(i);
+			Expression invocLambdaMethod = InvocLambdaMethodList.get(i);
 			mainMethod = getSootRealFunction4Lambda(mainMethod,invocLambdaMethod,sc.getName());
 		}
 		return mainMethod;
 	}
 	// 得到方法调用及其外部的SootMethod, 以及主类的SootClass.getName().得到存在于主SootClass中的实际Lambda表达式内容的方法的SootMethod.
-	private static SootMethod getSootRealFunction4Lambda(SootMethod sm,MethodInvocation invocLambdaMethod,String mainClassName) {
+	private static SootMethod getSootRealFunction4Lambda(SootMethod sm,Expression invocLambdaMethod,String mainClassName) {
 		SootClass lambdaClass = getInvocSootLambdaOnBody(sm,invocLambdaMethod);
     	SootMethod method = getSootFunction4Lambda(lambdaClass);
     	//新的情况，在lambda表达式中，并没有直接的调用这个函数。而是又调用存在于主类的一个lambda方法，并且里面包含行号。
@@ -171,20 +168,35 @@ public class AdaptAst {
 		return mainClassMethodList.get(0);
 	}
 	// 得到调用Lambda的MIV,及其所在的SootMethod中实际调用的Lambda的SootClass.
-	private static SootClass getInvocSootLambdaOnBody(SootMethod sm,MethodInvocation invocLambdaMethod){
+	private static SootClass getInvocSootLambdaOnBody(SootMethod sm,Expression invocLambdaMethod){
 		//这里得到了对应的JimpleIR中的调用lambda表达式的stmt。
 		CompilationUnit cu = (CompilationUnit)invocLambdaMethod.getRoot();
 		int invocLambdaMethodLineNumber = cu.getLineNumber(invocLambdaMethod.getStartPosition());
-		Stmt bMIVstmt=getStmt4StringOnBody(sm, invocLambdaMethod.getName().toString(), invocLambdaMethodLineNumber);
-		// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
-		int taskNumber = 1;
-		for(Object ob :invocLambdaMethod.arguments()) {
-			if(ob instanceof LambdaExpression) {
-				break;
-			}
-			taskNumber++;
-		}
+		Stmt bMIVstmt = null;		
 		Local lambdaLocal = null;
+		int taskNumber = 1;
+		//12.25日添加，支持new 调用构造方法时传入的lambda，这时使用lambda实现的参数不能够在arguments中找到。
+		if(invocLambdaMethod instanceof ClassInstanceCreation) {
+			ClassInstanceCreation invocLambdaClassInstanceCreation = (ClassInstanceCreation)invocLambdaMethod;
+			bMIVstmt=getStmt4StringOnBody(sm, "void <init>", invocLambdaMethodLineNumber);
+			for(Object ob :invocLambdaClassInstanceCreation.arguments()) {
+				if(ob instanceof LambdaExpression) {
+					break;
+				}
+				taskNumber++;
+			}
+		}else {
+			MethodInvocation invocLambdaMethodInvocation = (MethodInvocation)invocLambdaMethod;
+			bMIVstmt=getStmt4StringOnBody(sm, invocLambdaMethodInvocation.getName().toString(), invocLambdaMethodLineNumber);
+			// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
+			for(Object ob :invocLambdaMethodInvocation.arguments()) {
+				if(ob instanceof LambdaExpression) {
+					break;
+				}
+				taskNumber++;
+			}
+		}
+		
 		List<ValueBox> boxList=bMIVstmt.getUseBoxes();
 		int count = 1;
 		for(ValueBox valueBox : boxList) {
@@ -202,7 +214,7 @@ public class AdaptAst {
 		LocalDefs ld = G.v().soot_toolkits_scalar_LocalDefsFactory().newLocalDefs(sm.retrieveActiveBody());
 		List<Unit> units = ld.getDefsOfAt(lambdaLocal, bMIVstmt);
 		if(units.size() !=1) {
-			throw new IllegalStateException("不应该不是1");
+			throw new RefutureException("不应该不是1");
 		}
 		Unit unit = units.get(0);
 		String unitString = unit.toString();
@@ -211,6 +223,7 @@ public class AdaptAst {
         unitString = unitString.substring(firstLessThanIndex + 1, firstColonIndex);
         return Scene.v().getSootClass(unitString);
 	}
+
 	// 给定SootMethod 和 要匹配的字符串及行号,若匹配成功,则返回Stmt.
 	public static Stmt getStmt4StringOnBody(SootMethod sm,String mivName,int ASTLineNume) {
 		Body body =sm.retrieveActiveBody();
@@ -246,21 +259,22 @@ public class AdaptAst {
 		throw new RefutureException("未获得SootLambdaClass的sootMethod");
 	}
 	//得到存在链式调用Lambda表达式嵌套的情况下,调用Labmda表达式的方法由MethodDeclaration到MIV的所有调用Lambda的MethodInvocation列表
-	private static List<MethodInvocation> getInvocLambdaMethod2Delcaration(MethodInvocation miv,int deep) {
-		List<MethodInvocation> methodInvocList = new ArrayList<MethodInvocation>() ;
+	//因为JDT对于构造方法调用，不是MethodInvocation，所有这里加入构造方法调用支持。
+	private static List<Expression> getInvocLambdaMethod2Delcaration(MethodInvocation miv,int deep) {
+		List<Expression> methodInvocList = new ArrayList<>() ;
 		ASTNode node = miv;
 		for(;deep>0;deep--) {
 			do {
 				node = node.getParent();
 			}while(!(node instanceof LambdaExpression));
 			//不考虑其他可能,报错再说,只要需要变量/对象的地方,就有可能需要LambdaExpression.
-			while(!(node instanceof MethodInvocation)) {
+			while(!(node instanceof MethodInvocation)&&!(node instanceof ClassInstanceCreation)) {
 				node = node.getParent();
 				if (node instanceof MethodDeclaration) {
 					throw new RefutureException(miv);
 				}
 			}
-			methodInvocList.add((MethodInvocation) node);
+			methodInvocList.add((Expression) node);
 		}
 		Collections.reverse(methodInvocList);
 		return methodInvocList;
