@@ -76,6 +76,7 @@ public class Future2Completable {
 	public static String debugClassName;
 	public static String debugMethodName;
 	public static int debugLineNumber;
+	public static int debugUsePoint2num;
 	
 	
 	public static boolean initStaticField() {
@@ -85,6 +86,7 @@ public class Future2Completable {
 		maybeRefactoringNode =0;
 		fineRefactoring = false;
 		executeOverload = 0;
+		debugUsePoint2num = 0;
 		return true;
 	}
 	
@@ -113,8 +115,11 @@ public class Future2Completable {
 			parser.setBindingsRecovery(true);
 			parser.setSource(cu);
 			CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
+			
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
+			ICompilationUnit ic = (ICompilationUnit) astUnit.getTypeRoot();
+			
 			List<MethodInvocation> invocationNodes = miv.getResult();
 			boolean scClassflag = false;
 			for(MethodInvocation invocationNode:invocationNodes) {
@@ -128,9 +133,8 @@ public class Future2Completable {
 				}else {
 					change = classChange;
 				}
-				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) {
-					continue;
-				}
+				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;
+				
 				if(!printClassFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
 					AnalysisUtils.debugPrint("--第"+j+"个包含可能调用的类："+sc.getName()+"分析开始------------------------------%n");
@@ -256,6 +260,7 @@ public class Future2Completable {
 		
 		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    重载后的execute方法"+executeOverload+"个；     因执行器类型不安全，不能重构"+illExecutor
 				+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
+		System.out.println("Pointo命中："+debugUsePoint2num);
 	}
 	
 

@@ -5,9 +5,12 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import org.eclipse.jdt.core.ICompilationUnit;
+
 import refuture.refactoring.AnalysisUtils;
 import soot.PackManager;
 import soot.Scene;
+import soot.SootMethod;
 import soot.options.Options;
 
 public class SootConfig {
@@ -17,17 +20,23 @@ public class SootConfig {
 		extremeSpeedModel = false;
 	}
 	
-    public static void setupSoot() {
+    public static void setupSoot(List<ICompilationUnit> allJavaFiles) {
     	startTime =new Date();
 		System.out.println("The current start time is "+ startTime);
         soot.G.reset();
         BasicOptions();
         JBPhaseOptions();
-        CGPhaseOptions();//启用Spark
 
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
         Scene.v().loadNecessaryClasses();
         System.out.println("[setupSoot]:加载必要类完毕！");
+		ExecutorSubclass.taskTypeAnalysis();
+        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
+        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
+		CollectionEntrypoint.entryPointInit(allJavaFiles);
+        CGPhaseOptions();//启用Spark
+		
+		
         if(!extremeSpeedModel) {
         	System.out.println("[setupSoot]:当前非极速模式");
             PackManager.v().runPacks();
@@ -73,11 +82,16 @@ public class SootConfig {
      */
     public static void CGPhaseOptions(){
     	//兼容多个main函数，并且不可抵达的方法也会进行分析。
-    	Options.v().setPhaseOption("cg", "all-reachable:true");
+    	List<SootMethod> entryList = Scene.v().getEntryPoints();
+    	for(SootMethod sm :CollectionEntrypoint.entryPointList) {
+    		if(entryList.contains(sm)) continue;
+    		entryList.add(sm);
+    	}
+    	Scene.v().setEntryPoints(entryList);
+    	
         // 开启创建CG
         Options.v().setPhaseOption("cg.spark","enabled:true");
         // 同 BasicOptions 中的 verbose
-        Options.v().setPhaseOption("cg.spark","verbose:true");
         // 一种复杂的分析方法，能够题升精度，同时会消耗大量时间。
         Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
     }

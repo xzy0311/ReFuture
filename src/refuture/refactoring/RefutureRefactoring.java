@@ -16,6 +16,7 @@ import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
 import refuture.sootUtil.Cancel;
+import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
 import refuture.sootUtil.SootConfig;
 
@@ -77,7 +78,6 @@ public class RefutureRefactoring extends Refactoring {
 			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		}
 		return RefactoringStatus.createInfoStatus("Ininal condition has been checked");
-		
 	}
 
 	@Override
@@ -87,11 +87,8 @@ public class RefutureRefactoring extends Refactoring {
 			System.out.println("Future重构模式");
 			System.out.println("hello xzy ,this is "+ time++ +" times run this model.");
 			if(time == 1) {
-				SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
+				SootConfig.setupSoot(allJavaFiles);//配置初始化soot,用来分析类层次结构
 			}
-			ExecutorSubclass.taskTypeAnalysis();
-	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
-	        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
 	        if(!this.disableCancelPattern) {
 		        Cancel.initCancel(allJavaFiles);
 	        }

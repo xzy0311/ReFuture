@@ -220,6 +220,7 @@ public class ExecutorSubclass {
         				completeSetTypeStrings = getAllExecutorSubClassesName();
         			}
         			if(typeSetStrings.isEmpty()) {
+        				Future2Completable.debugUsePoint2num++;
         				//说明没有被访问到，可以进行AST判断
         				Expression exp = mInvocation.getExpression();
         				String typeName = null;

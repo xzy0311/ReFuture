@@ -336,30 +336,7 @@ public class AdaptAst {
 		}
 		return sc;
 	}
-	public static Set<String> getMayTypesName4ReceiverObject(Stmt invocStmt) {
-		List<ValueBox> lvbs = invocStmt.getUseBoxes();
-		Iterator<ValueBox> it =lvbs.iterator();
-    	while(it.hasNext()) {
-    		Object o = it.next();
-    		if (o instanceof JimpleLocalBox) {
-    			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
-    			JimpleLocalBox jlb = (JimpleLocalBox) o;
-    			Local local = (Local)jlb.getValue();
-    			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-    			PointsToSet ptset = pa.reachingObjects(local);
-    			Set<Type> typeSet = ptset.possibleTypes();
-    			if(typeSet == null || typeSet.size()==0) {
-    				break;
-    			}
-    			Set<String> typeSetStrings = new HashSet<>();
-    			for (Type obj : typeSet) {
-    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
-    			}
-    			return typeSetStrings;
-    		}
-    	}
-		return null;
-	}
+
 	public static SootMethod getSootMethod4invocNode(MethodInvocation invocationNode) {
 		SootMethod sm;
 		SootClass sc = getSootClass4InvocNode(invocationNode);
