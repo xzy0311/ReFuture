@@ -92,7 +92,7 @@ public class RefutureRefactoring extends Refactoring {
 	        if(!this.disableCancelPattern) {
 		        Cancel.initCancel(allJavaFiles);
 	        }
-			Future2Completable.refactor(allJavaFiles);
+			Future2Completable.refactor();
 		}else if(refactorPattern == 2) {
 //			ForTask.refactor(allJavaFiles);   10月11日，暂时取消ForTask尝试。待添加寻找Thread相关代码，以及关闭soot的方法。
 			FindThread.find(allJavaFiles);

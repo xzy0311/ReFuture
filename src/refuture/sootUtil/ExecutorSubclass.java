@@ -208,7 +208,6 @@ public class ExecutorSubclass {
         			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
         			PointsToSet ptset = pa.reachingObjects(local);
         			Set<Type> typeSet = ptset.possibleTypes();
-
         			Set<String> typeSetStrings = new HashSet<>();
         			for (Type obj : typeSet) {
         				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
@@ -219,7 +218,15 @@ public class ExecutorSubclass {
         			}else {
         				completeSetTypeStrings = getAllExecutorSubClassesName();
         			}
-        			if(typeSetStrings.isEmpty()) {
+        			if(!typeSetStrings.isEmpty()) {
+        				if(completeSetTypeStrings.containsAll(typeSetStrings)) {
+            				//是安全重构的子集，就可以进行重构了。
+            				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构");
+            				return true;
+        				}
+        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 进行排除");
+        				return false;
+        			}else  {
         				Future2Completable.debugUsePoint2num++;
         				//说明没有被访问到，可以进行AST判断
         				Expression exp = mInvocation.getExpression();
@@ -248,9 +255,9 @@ public class ExecutorSubclass {
         					}
         					typeName = typeName.replaceAll("<[^>]*>", "");
         					if(completeSetTypeStrings.contains(typeName)) {
-            					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
-            					return true;
-            				}
+        						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
+        						return true;
+        					}
         				}else {
         					typeName = AnalysisUtils.getTypeName4Exp(exp);
         					SootClass sc = Scene.v().getSootClass(typeName);
@@ -266,25 +273,22 @@ public class ExecutorSubclass {
         					}else {
         						if(completeSetTypeStrings.contains(typeName)) {
         							//不再判断子类是否都满足，虽然AST的精度不够。
-                					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
-                					return true;
-                				}else {
-                					return false;
-                				}
+        							AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
+        							return true;
+        						}else {
+        							return false;
+        						}
         					}
+        					
         				}
         				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到,通过AST进一步判断,类型为："+typeName);
-        			}else if(completeSetTypeStrings.containsAll(typeSetStrings)) {
-        				//是安全重构的子集，就可以进行重构了。
-        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构");
-        				return true;
         			}
         		}	
         	}
         	AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]在Stmt中的receiverobject有问题，进行排除");
         	return false;
 	}
-
+	
 	/**
 	 * 判断参数的类型是否复合要求。.
 	 * @param invocationNode 
@@ -293,133 +297,133 @@ public class ExecutorSubclass {
 	 * @param argType   为1,代表是callable;为2,代表Runnable;为3,代表FutureTask;为4,代表两个参数。
 	 * @return true, if successful
 	 */
-	public static boolean canRefactorArgu(MethodInvocation invocationNode, Stmt invocStmt,int argType) {
-		/*这里已经限制了调用的方法是submit或者execute，所以第一个参数一定是：callable、Runnable或者，FutureTask。
-		 * 我只分析invocStmt第一个参数，根据argType进行判断，为1,则判断是否是callable的子类，为2或者3,则判断是否是FutureTask,
-		 * 若不是，再判断是否是Runnable。lambda表达式也可以正常的分析，因为在Jinple中，lambda表达式会首先由一个Local变量指向它代表的对象。
-		 */
-		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
-		List<Value> lv =ivcExp.getArgs();
-		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-		if(invocationNode.arguments().size() == 0) {
-			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:未传入实参，排除");
-			return false;
-		}
-		if(invocationNode.arguments().size() == 2) {
-			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:注意，这个可能是两个参数的");
-			if(argType == 4) {
-				return true;
-			}
-			return false;
-		}
-		if(lv.get(0)instanceof Local) {
-			Local la1 = (Local) lv.get(0);
-			PointsToSet ptset = pa.reachingObjects(la1);
-			Set<Type> typeSet = ptset.possibleTypes();
-			Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-			SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
-			List<SootClass> callableImplementers =hierarchy.getImplementersOf(callable);
-			SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
-			SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
-			List<SootClass> runnableImplementers =hierarchy.getImplementersOf(runnable);
-			switch (argType) {
-			case 1://是否是Callable的子类.
-				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]进入callable子类判断");
-				if(typeSet.isEmpty()) {
-					//利用ASTbinding 获得类型
-					Expression exp = (Expression) invocationNode.arguments().get(0);
-    				String typeName = AnalysisUtils.getTypeName4Exp(exp);
-    				if(typeName == null) {
-    					throw new RefutureException(invocationNode);
-    				}
-    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]程序中没有访问到,进一步判断,类型为："+typeName);
-    				if(callable.getName().equals(typeName)) {
-    					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
-						return true;
-    				}
-    				for(SootClass callableImplementer:callableImplementers) {
-    					if(callableImplementer.getName().equals(typeName)) {
-    						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
-    						return true;
-    					}
-    				}
-    				
-    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据AST不是callable的子类,排除,得到的类型名为"+ typeName);
-				}else {
-					for(Type type:typeSet) {
-						SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-						if(sc.isPhantom()) {
-							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
-							return false;
-						}
-						if(callableImplementers.contains(sc)) {
-							return true;
-						}else {
-							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是callable的子类，排除");
-						}
-					}
-				}
-				break;
-			case 2:		
-				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]进入runnable子类判断");
-				if(typeSet.isEmpty()) {
-					//利用ASTbinding 获得类型
-					Expression exp = (Expression) invocationNode.arguments().get(0);
-    				String typeName = AnalysisUtils.getTypeName4Exp(exp);
-    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]程序中没有访问到,进一步判断,类型为："+typeName);
-    				if(runnable.getName().equals(typeName)) {
-    					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
-						return true;
-    				}
-    				for(SootClass runnableImplementer:runnableImplementers) {
-    					if(runnableImplementer.getName().equals(typeName)) {
-    						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
-    						return true;
-    					}
-    				}
-    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据AST不是runnable的子类,排除,得到的类型名为"+ typeName);
-				}else {
-					for(Type type:typeSet) {
-						SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-						if(sc.isPhantom()) {
-							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
-							return false;
-						}
-						if(runnableImplementers.contains(sc)) {
-							return true;
-						}else{
-							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是Runnable的子类，排除");
-						}
-					}
-				}
-				break;
-			case 3:		
-				for(Type type:typeSet) {
-					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-					if(sc.isPhantom()) {
-						AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
-						return false;
-					}
-					if(hierarchy.isClassSuperclassOfIncluding(futureTask, sc)) {
-						return true;
-					}
-				}
-				break;
-			case 4:		
-				if(lv.size()==2) {
-				return true;
-			}
-				break;
-			default:
-				throw new IllegalArgumentException("Invalid number");
-		}
-			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:哎，排除");
-			return false;
-		}
-		AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是local变量，排除");
-		return false;
-	}
-	
+//	public static boolean canRefactorArgu(MethodInvocation invocationNode, Stmt invocStmt,int argType) {
+//		/*这里已经限制了调用的方法是submit或者execute，所以第一个参数一定是：callable、Runnable或者，FutureTask。
+//		 * 我只分析invocStmt第一个参数，根据argType进行判断，为1,则判断是否是callable的子类，为2或者3,则判断是否是FutureTask,
+//		 * 若不是，再判断是否是Runnable。lambda表达式也可以正常的分析，因为在Jinple中，lambda表达式会首先由一个Local变量指向它代表的对象。
+//		 */
+//		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
+//		List<Value> lv =ivcExp.getArgs();
+//		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+//		if(invocationNode.arguments().size() == 0) {
+//			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:未传入实参，排除");
+//			return false;
+//		}
+//		if(invocationNode.arguments().size() == 2) {
+//			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:注意，这个可能是两个参数的");
+//			if(argType == 4) {
+//				return true;
+//			}
+//			return false;
+//		}
+//		if(lv.get(0)instanceof Local) {
+//			Local la1 = (Local) lv.get(0);
+//			PointsToSet ptset = pa.reachingObjects(la1);
+//			Set<Type> typeSet = ptset.possibleTypes();
+//			Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+//			SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
+//			List<SootClass> callableImplementers =hierarchy.getImplementersOf(callable);
+//			SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
+//			SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
+//			List<SootClass> runnableImplementers =hierarchy.getImplementersOf(runnable);
+//			switch (argType) {
+//			case 1://是否是Callable的子类.
+//				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]进入callable子类判断");
+//				if(typeSet.isEmpty()) {
+//					//利用ASTbinding 获得类型
+//					Expression exp = (Expression) invocationNode.arguments().get(0);
+//    				String typeName = AnalysisUtils.getTypeName4Exp(exp);
+//    				if(typeName == null) {
+//    					throw new RefutureException(invocationNode);
+//    				}
+//    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]程序中没有访问到,进一步判断,类型为："+typeName);
+//    				if(callable.getName().equals(typeName)) {
+//    					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
+//						return true;
+//    				}
+//    				for(SootClass callableImplementer:callableImplementers) {
+//    					if(callableImplementer.getName().equals(typeName)) {
+//    						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
+//    						return true;
+//    					}
+//    				}
+//    				
+//    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据AST不是callable的子类,排除,得到的类型名为"+ typeName);
+//				}else {
+//					for(Type type:typeSet) {
+//						SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+//						if(sc.isPhantom()) {
+//							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
+//							return false;
+//						}
+//						if(callableImplementers.contains(sc)) {
+//							return true;
+//						}else {
+//							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是callable的子类，排除");
+//						}
+//					}
+//				}
+//				break;
+//			case 2:		
+//				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]进入runnable子类判断");
+//				if(typeSet.isEmpty()) {
+//					//利用ASTbinding 获得类型
+//					Expression exp = (Expression) invocationNode.arguments().get(0);
+//    				String typeName = AnalysisUtils.getTypeName4Exp(exp);
+//    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]程序中没有访问到,进一步判断,类型为："+typeName);
+//    				if(runnable.getName().equals(typeName)) {
+//    					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
+//						return true;
+//    				}
+//    				for(SootClass runnableImplementer:runnableImplementers) {
+//    					if(runnableImplementer.getName().equals(typeName)) {
+//    						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
+//    						return true;
+//    					}
+//    				}
+//    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据AST不是runnable的子类,排除,得到的类型名为"+ typeName);
+//				}else {
+//					for(Type type:typeSet) {
+//						SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+//						if(sc.isPhantom()) {
+//							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
+//							return false;
+//						}
+//						if(runnableImplementers.contains(sc)) {
+//							return true;
+//						}else{
+//							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是Runnable的子类，排除");
+//						}
+//					}
+//				}
+//				break;
+//			case 3:		
+//				for(Type type:typeSet) {
+//					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
+//					if(sc.isPhantom()) {
+//						AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
+//						return false;
+//					}
+//					if(hierarchy.isClassSuperclassOfIncluding(futureTask, sc)) {
+//						return true;
+//					}
+//				}
+//				break;
+//			case 4:		
+//				if(lv.size()==2) {
+//				return true;
+//			}
+//				break;
+//			default:
+//				throw new IllegalArgumentException("Invalid number");
+//		}
+//			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:哎，排除");
+//			return false;
+//		}
+//		AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是local变量，排除");
+//		return false;
+//	}
+//	
 	/**
 	 * 判断参数的类型是否复合要求。.
 	 * @param invocationNode 

@@ -43,7 +43,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	private static boolean debugFlag = false;
+	public static boolean debugFlag = false;
 
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();
@@ -354,89 +354,89 @@ public class AnalysisUtils {
 	 * 2.不是污染的执行器子类。
 	 * 3.10.17日,为了方便统计相关信息,这里不再卡污染类.只卡this和压根不是ExecutorService子类.
 	 */
-	public static boolean receiverObjectIsComplete(MethodInvocation invocationNode) {
-		List<Expression> arguExps =  invocationNode.arguments();
-		if(arguExps.size() == 0) {return false;}
-		boolean isTask = false;
-		for(Expression arguExp : arguExps) {
-			String arguTypeName = getTypeName4Exp(arguExp);
-			if(arguTypeName == null) {
-				throw new RefutureException(invocationNode,"得不到类型绑定");
-			}else if(arguTypeName == "java.lang.Object") {throw new RefutureException(invocationNode,"得到了object");}
-			if(ExecutorSubclass.callableSubClasses.contains(arguTypeName)|| ExecutorSubclass.runnablesubClasses.contains(arguTypeName)) {
-				isTask = true;
-			}
-		}
-		if(isTask) {Future2Completable.maybeRefactoringNode++;}else {return false;}
-		
-		//到这里,invocation是submit/execute(task...);
-		Expression exp = invocationNode.getExpression();
-		Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
-		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
-		if(exp==null){
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，继续重构。");
-			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
-			ASTNode aboutTypeDeclaration = (ASTNode) invocationNode;
-			while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
-				aboutTypeDeclaration = aboutTypeDeclaration.getParent();
-			}
-			String typeName = null;
-			if(aboutTypeDeclaration instanceof TypeDeclaration) {
-				TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
-				ITypeBinding tdBinding = td.resolveBinding();
-				typeName = tdBinding.getQualifiedName();
-				if(tdBinding.isNested()) {
-					typeName = tdBinding.getBinaryName();
-				}
-			}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
-				AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
-				ITypeBinding tdBinding = acd.resolveBinding();
-				typeName = tdBinding.getQualifiedName();
-				if(tdBinding.isNested()) {
-					typeName = tdBinding.getBinaryName();
-				}
-			}else {
-				throw new RefutureException(invocationNode,"迭代,未得到类型定义或者匿名类定义");
-			}
-			typeName = typeName.replaceAll("<[^>]*>", "");
-			if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(typeName)) {
-				Future2Completable.canRefactoringNode++;
-				return true;
-			}else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(typeName)) {
-				Future2Completable.canRefactoringNode++;
-				return true;
-			}else if(typeName == "java.lang.Object") {
-				throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
-			}else {
-				Future2Completable.useNotExecutorSubClass++;
-				return false;
-			}
-		}
-		String typeName = getTypeName4Exp(exp);
-		if(typeName==null){
+//	public static boolean receiverObjectIsComplete(MethodInvocation invocationNode) {
+//		List<Expression> arguExps =  invocationNode.arguments();
+//		if(arguExps.size() == 0) {return false;}
+//		boolean isTask = false;
+//		for(Expression arguExp : arguExps) {
+//			String arguTypeName = getTypeName4Exp(arguExp);
+//			if(arguTypeName == null) {
+//				throw new RefutureException(invocationNode,"得不到类型绑定");
+//			}else if(arguTypeName == "java.lang.Object") {throw new RefutureException(invocationNode,"得到了object");}
+//			if(ExecutorSubclass.callableSubClasses.contains(arguTypeName)|| ExecutorSubclass.runnablesubClasses.contains(arguTypeName)) {
+//				isTask = true;
+//			}
+//		}
+//		if(isTask) {Future2Completable.maybeRefactoringNode++;}else {return false;}
+//		
+//		//到这里,invocation是submit/execute(task...);
+//		Expression exp = invocationNode.getExpression();
+//		Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
+//		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
+//		if(exp==null){
+//			debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，继续重构。");
+//			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
+//			ASTNode aboutTypeDeclaration = (ASTNode) invocationNode;
+//			while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
+//				aboutTypeDeclaration = aboutTypeDeclaration.getParent();
+//			}
+//			String typeName = null;
+//			if(aboutTypeDeclaration instanceof TypeDeclaration) {
+//				TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
+//				ITypeBinding tdBinding = td.resolveBinding();
+//				typeName = tdBinding.getQualifiedName();
+//				if(tdBinding.isNested()) {
+//					typeName = tdBinding.getBinaryName();
+//				}
+//			}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+//				AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
+//				ITypeBinding tdBinding = acd.resolveBinding();
+//				typeName = tdBinding.getQualifiedName();
+//				if(tdBinding.isNested()) {
+//					typeName = tdBinding.getBinaryName();
+//				}
+//			}else {
+//				throw new RefutureException(invocationNode,"迭代,未得到类型定义或者匿名类定义");
+//			}
+//			typeName = typeName.replaceAll("<[^>]*>", "");
+//			if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(typeName)) {
+//				Future2Completable.canRefactoringNode++;
+//				return true;
+//			}else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(typeName)) {
+//				Future2Completable.canRefactoringNode++;
+//				return true;
+//			}else if(typeName == "java.lang.Object") {
+//				throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
+//			}else {
+//				Future2Completable.useNotExecutorSubClass++;
+//				return false;
+//			}
+//		}
+//		String typeName = getTypeName4Exp(exp);
+//		if(typeName==null){
+////			Future2Completable.canRefactoringNode++;
+//			throw new RefutureException(invocationNode,"typeBinding为null，应该是eclipse环境下的源码没有调试好，这里卡");
+////			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，应该是eclipse环境下的源码没有调试好，这里不卡");
+////			return true;
+//		}
+//		
+//		if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName))) {
 //			Future2Completable.canRefactoringNode++;
-			throw new RefutureException(invocationNode,"typeBinding为null，应该是eclipse环境下的源码没有调试好，这里卡");
-//			debugPrint("[AnalysisUtils.receiverObjectIsComplete]typeBinding为null，应该是eclipse环境下的源码没有调试好，这里不卡");
+//			debugPrint("[AnalysisUtils.receiverObjectIsComplete]初步ast判定可以,这里不卡");
 //			return true;
-		}
-		
-		if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName))) {
-			Future2Completable.canRefactoringNode++;
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]初步ast判定可以,这里不卡");
-			return true;
-		}
-		else if(invocationNode.getName().toString().equals("submit")&&(allSubServiceNames.contains(typeName))) {
-			Future2Completable.canRefactoringNode++;
-			debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定可以,这里不卡");
-			return true;
-		}else if(typeName == "java.lang.Object") {
-			throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
-		}
-		debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
-		Future2Completable.useNotExecutorSubClass++;
-		return false;
-	}
-	
+//		}
+//		else if(invocationNode.getName().toString().equals("submit")&&(allSubServiceNames.contains(typeName))) {
+//			Future2Completable.canRefactoringNode++;
+//			debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定可以,这里不卡");
+//			return true;
+//		}else if(typeName == "java.lang.Object") {
+//			throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
+//		}
+//		debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
+//		Future2Completable.useNotExecutorSubClass++;
+//		return false;
+//	}
+//	
 	
 	
 	public static void debugPrint(String message) {

@@ -36,9 +36,7 @@ import soot.toolkits.scalar.LocalDefs;
 public class Cancel {
 	private static List <Local> invocCancelLocals;
 	
-	public static boolean debug_UseDefRech;
 	public static boolean initStaticField() {
-		debug_UseDefRech = true;
 		invocCancelLocals = new ArrayList<Local>();
 		return true;
 	}
@@ -89,38 +87,13 @@ public class Cancel {
 					if(invocStmt == null) {
 						continue; 
 					}
-					//得到invocationNode所在类
-					//得到invocationNode所在方法
-					SootMethod sootMethod = AdaptAst.getSootMethod4invocNode(invocationNode);
-					if(AdaptAst.invocInLambda(invocationNode)>0) {
-						sootMethod = AdaptAst.getSootRealFunction4InLambda(invocationNode);
-					}
-					
-					//得到对应的soot方法的body。
-					Body body = sootMethod.retrieveActiveBody();
-					LocalDefs ld = G.v().soot_toolkits_scalar_LocalDefsFactory().newLocalDefs(body);
-					//使用local和unit，得到定义的unit。
 					//得到定义的unit中的Local，并加入待分析里面。
 					List<ValueBox> lvbs = invocStmt.getUseBoxes();
 					for(ValueBox vb : lvbs) {
 						if(vb instanceof JimpleLocalBox) {
 							JimpleLocalBox jlb = (JimpleLocalBox) vb;
 							Local futureLocal = (Local)jlb.getValue();
-							if(debug_UseDefRech) {
-								List<Unit> units = ld.getDefsOfAt(futureLocal, invocStmt);
-								for (Unit defUnit : units) {
-									List<ValueBox> dfbs = defUnit.getDefBoxes();
-									for(ValueBox vdb : dfbs) {
-										if(vdb instanceof LinkedVariableBox) {
-											Local futureDefLocal = (Local) vdb.getValue();
-											invocCancelLocals.add(futureDefLocal);
-										}
-									}
-								}
-							}else {
-								invocCancelLocals.add(futureLocal);
-							}
-							
+							invocCancelLocals.add(futureLocal);
 						}
 					}
 				}
@@ -143,6 +116,9 @@ public class Cancel {
 			Local futureLocal = (Local) defBox.get(0).getValue();
 			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
 			PointsToSet futureLocalSet = pa.reachingObjects(futureLocal);
+			if(futureLocalSet.isEmpty()) {
+				System.out.println("分析是否和调用cancel的变量为别名时，无法得到分配点");
+			}
 			for(Local cancelLocal: invocCancelLocals) {
 				PointsToSet cancelLocalSet = pa.reachingObjects(cancelLocal);
 				if(futureLocalSet.hasNonEmptyIntersection(cancelLocalSet)) {

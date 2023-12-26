@@ -64,9 +64,13 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		GridData gdBtnCheck4 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck4.setLayoutData(gdBtnCheck4);
 
-		btnCheck5 = new Button(composite, SWT.CHECK);
-		btnCheck5.setText("调试用，关闭DefRech");
+		btnCheck5 = new Button(composite, SWT.PUSH);
+		btnCheck5.setText("重新构建调用图");
 		GridData gdBtnCheck5 = new GridData(SWT.FILL, SWT.CENTER, true, false);
+		gdBtnCheck5.horizontalAlignment = GridData.END;
+        gdBtnCheck5.verticalAlignment = GridData.END;
+        gdBtnCheck5.grabExcessHorizontalSpace = true;
+        gdBtnCheck5.grabExcessVerticalSpace = true;
 		btnCheck5.setLayoutData(gdBtnCheck5);
 
 		Label label1 = new Label(composite, SWT.NONE);
@@ -84,7 +88,6 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		textField3 = new Text(composite, SWT.BORDER);
 		textField3.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 		
-		// Add listeners and other necessary code
 		// add listener
 		defineListener();
 		// 将 composite 纳入框架的控制
@@ -92,15 +95,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 
 		Dialog.applyDialogFont(composite);
 
-//		notifyStatus(true, "refactoring finished");
 	}
-	
-	private void notifyStatus(boolean valid, String message) { 
-		 // 设置错误信息
-		 setErrorMessage(message); 
-		 // 设置页面完成状态
-		 setPageComplete(valid); 
-	 }
 	
 	/**
 	 * define the action listener
@@ -172,17 +167,12 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		
 		btnCheck5.addSelectionListener(new SelectionListener(){
 			@Override
-			public void widgetDefaultSelected(SelectionEvent arg0) {
-				btnCheck5.setEnabled(false);
+			public void widgetSelected(SelectionEvent se) {
+					RefutureRefactoring.time = 0;
 			}
 
 			@Override
-			public void widgetSelected(SelectionEvent se) {
-				if(btnCheck5.getEnabled()){
-					Cancel.debug_UseDefRech = false;
-				}else{
-					Cancel.debug_UseDefRech = true;
-				}
+			public void widgetDefaultSelected(SelectionEvent e) {
 			}
 		});
 		

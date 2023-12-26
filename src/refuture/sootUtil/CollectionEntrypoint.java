@@ -1,6 +1,7 @@
 package refuture.sootUtil;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,15 +24,18 @@ import refuture.refactoring.RefutureException;
 import soot.SootMethod;
 
 public class CollectionEntrypoint {
-	public static List<SootMethod> entryPointList;
+	public static Set<SootMethod> entryPointSet;
+	public static HashMap<ICompilationUnit,List<MethodInvocation>> invocNodeMap;
 	public static void initStaticField() {
-		entryPointList = new ArrayList<SootMethod>();
+		entryPointSet = new HashSet<>();
+		invocNodeMap =  new HashMap<>();
 	}
 	public static void entryPointInit(List<ICompilationUnit> allJavaFiles){
-		List<MethodInvocation> taskPointList = new ArrayList<MethodInvocation>();
+		List<MethodInvocation> allTaskPointList = new ArrayList<MethodInvocation>();
 		//调用cancel的方法定义(可选）
 		//调用submit/execute的方法定义|submit得到的定义变量可替代cancel的方法定义。
 		for(ICompilationUnit cu : allJavaFiles) {
+			List<MethodInvocation> taskPointList = new ArrayList<MethodInvocation>();
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
 			parser.setResolveBindings(true);
 			parser.setStatementsRecovery(true);
@@ -97,7 +101,6 @@ public class CollectionEntrypoint {
 						throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
 					}else {
 						Future2Completable.useNotExecutorSubClass++;
-						continue;
 					}
 					continue;
 				}
@@ -116,18 +119,18 @@ public class CollectionEntrypoint {
 					taskPointList.add(invocationNode);
 				}else if(typeName == "java.lang.Object") {
 					throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
+				}else{
+					AnalysisUtils.debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
+					Future2Completable.useNotExecutorSubClass++;
 				}
-				AnalysisUtils.debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
-				Future2Completable.useNotExecutorSubClass++;
-				continue;
 			}
+		invocNodeMap.put(cu, taskPointList);
+		 allTaskPointList.addAll(taskPointList);
 		}
-		Set<SootMethod> entryPointSet = new HashSet<>();
-		for(MethodInvocation node:taskPointList) {
+		for(MethodInvocation node:allTaskPointList) {
 			SootMethod sm = AdaptAst.getSootMethod4invocNode(node);
 			entryPointSet.add(sm);
 		}
-		entryPointList = new ArrayList<>(entryPointSet);
 	}
 
 		

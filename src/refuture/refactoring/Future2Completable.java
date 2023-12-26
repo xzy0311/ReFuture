@@ -48,6 +48,7 @@ import org.eclipse.text.edits.TextEdit;
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.sootUtil.AdaptAst;
 import refuture.sootUtil.Cancel;
+import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
 import soot.SootClass;
 import soot.jimple.Stmt;
@@ -90,7 +91,7 @@ public class Future2Completable {
 		return true;
 	}
 	
-	public static void refactor(List<ICompilationUnit> allJavaFiles) throws JavaModelException {
+	public static void refactor() throws JavaModelException {
 		int i = 1;
 		int j = 1;
 		int illExecutor = 0;
@@ -100,7 +101,8 @@ public class Future2Completable {
 		flagMap.put("SubmitCallable", 0);
 		flagMap.put("SubmitRunnable", 0);
 		flagMap.put("SubmitRunnableNValue", 0);
-		for(ICompilationUnit cu : allJavaFiles) {
+		HashMap<ICompilationUnit,List<MethodInvocation>> invocNodeMap = CollectionEntrypoint.invocNodeMap;
+		for(ICompilationUnit cu : invocNodeMap.keySet()) {
 			int invocNum = 1;
 			int[] invocSubmitNum = {1};
 			boolean printClassFlag = false;
@@ -109,20 +111,9 @@ public class Future2Completable {
 			if(!fineRefactoring) {
 				classChange= new TextFileChange(cu.getElementName(),source);
 			}
-			ASTParser parser = ASTParser.newParser(AST.JLS11);
-			parser.setResolveBindings(true);
-			parser.setStatementsRecovery(true);
-			parser.setBindingsRecovery(true);
-			parser.setSource(cu);
-			CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
-			
-			MethodInvocationVisiter miv = new MethodInvocationVisiter();
-			astUnit.accept(miv);
-			ICompilationUnit ic = (ICompilationUnit) astUnit.getTypeRoot();
-			
-			List<MethodInvocation> invocationNodes = miv.getResult();
 			boolean scClassflag = false;
-			for(MethodInvocation invocationNode:invocationNodes) {
+			for(MethodInvocation invocationNode:invocNodeMap.get(cu)) {
+				CompilationUnit astUnit = (CompilationUnit)invocationNode.getRoot();
 				int lineNumber = astUnit.getLineNumber(invocationNode.getStartPosition());
 				if((lineNumber == debugLineNumber)&&(cu.getElementName().equals(debugClassName))&&(debugMethodName.equals(AnalysisUtils.getMethodDeclaration4node(invocationNode).getName().toString()))) {
 					System.out.println("已到达指定位置");
@@ -133,24 +124,17 @@ public class Future2Completable {
 				}else {
 					change = classChange;
 				}
-				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;
-				
-				if(!printClassFlag) {
+				if(!printClassFlag&&AnalysisUtils.debugFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
 					AnalysisUtils.debugPrint("--第"+j+"个包含可能调用的类："+sc.getName()+"分析开始------------------------------%n");
 					printClassFlag =true;
 					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
 				}
 				AnalysisUtils.debugPrint("**第"+invocNum+"个{execute或submit}调用分析开始**********************************************************%n");
-				
-
-				if(!AnalysisUtils.receiverObjectIsComplete(invocationNode)) {
-					AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
-					continue;
-				}
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
 				
 				boolean returnValue;
+				int tempNum = debugUsePoint2num;
 				if(invocationNode.getName().toString().equals("execute")) {
 					returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,false);
 				}else {
@@ -211,14 +195,14 @@ public class Future2Completable {
 					if(outMD != null) {
 						ASTNode outTD = outMD.getParent();
 						if(outTD instanceof AnonymousClassDeclaration) {
-							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber);
+							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d,Points未命中:%d%n",i,((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber,debugUsePoint2num-tempNum);
 						}else {
-							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d%n",i,((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber);
+							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d,Points未命中:%d%n",i,((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber,debugUsePoint2num-tempNum);
 						}
 					}else {
 						TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
 						if(outTD == null) {throw new NullPointerException();}
-						System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：字段或者初始化块,行号：%d%n",i,outTD.resolveBinding().getQualifiedName(),lineNumber);
+						System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：字段或者初始化块,行号：%d,Points未命中:%d%n",i,outTD.resolveBinding().getQualifiedName(),lineNumber,debugUsePoint2num-tempNum);
 					}
 					i = i+1;
 				}else {
@@ -260,7 +244,7 @@ public class Future2Completable {
 		
 		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    重载后的execute方法"+executeOverload+"个；     因执行器类型不安全，不能重构"+illExecutor
 				+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
-		System.out.println("Pointo命中："+debugUsePoint2num);
+		System.out.println("Pointo未命中："+debugUsePoint2num);
 	}
 	
 
