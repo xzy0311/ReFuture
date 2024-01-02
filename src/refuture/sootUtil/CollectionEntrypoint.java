@@ -129,6 +129,9 @@ public class CollectionEntrypoint {
 		}
 		for(MethodInvocation node:allTaskPointList) {
 			SootMethod sm = AdaptAst.getSootMethod4invocNode(node);
+			if(AdaptAst.invocInLambda(node)>0) {
+				sm = AdaptAst.getSootRealFunction4InLambda(node);
+			}
 			entryPointSet.add(sm);
 		}
 	}

@@ -88,6 +88,11 @@ public class RefutureRefactoring extends Refactoring {
 			System.out.println("hello xzy ,this is "+ time++ +" times run this model.");
 			if(time == 1) {
 				SootConfig.setupSoot(allJavaFiles);//配置初始化soot,用来分析类层次结构
+			}else {
+				ExecutorSubclass.taskTypeAnalysis();
+		        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
+		        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
+				CollectionEntrypoint.entryPointInit(allJavaFiles);
 			}
 	        if(!this.disableCancelPattern) {
 		        Cancel.initCancel(allJavaFiles);

@@ -132,7 +132,6 @@ public class Future2Completable {
 				}
 				AnalysisUtils.debugPrint("**第"+invocNum+"个{execute或submit}调用分析开始**********************************************************%n");
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
-				
 				boolean returnValue;
 				int tempNum = debugUsePoint2num;
 				if(invocationNode.getName().toString().equals("execute")) {
