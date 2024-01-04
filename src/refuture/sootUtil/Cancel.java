@@ -64,13 +64,7 @@ public class Cancel {
 	
 	public static void initCancel(List<ICompilationUnit> allJavaFiles) {
 		Set<String> allFutureAndsubName = getAllFutureAndsubName();
-		for(ICompilationUnit cu : allJavaFiles) {
-			ASTParser parser = ASTParser.newParser(AST.JLS11);
-			parser.setResolveBindings(true);
-			parser.setStatementsRecovery(true);
-			parser.setBindingsRecovery(true);
-			parser.setSource(cu);
-			CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
+		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();

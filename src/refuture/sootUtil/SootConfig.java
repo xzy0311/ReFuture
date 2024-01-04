@@ -6,13 +6,17 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 
 import refuture.refactoring.AnalysisUtils;
+import soot.Hierarchy;
 import soot.PackManager;
 import soot.Scene;
+import soot.SceneTransformer;
+import soot.SootClass;
 import soot.SootMethod;
 import soot.options.Options;
 
@@ -33,6 +37,7 @@ public class SootConfig {
         Scene.v().loadNecessaryClasses();
         System.out.println("[setupSoot]:加载必要类完毕！");
 		ExecutorSubclass.taskTypeAnalysis();
+		ExecutorSubclass.executorSubClassAnalysis();
         ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
         ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
 		CollectionEntrypoint.entryPointInit(allJavaFiles);
@@ -109,4 +114,5 @@ public class SootConfig {
         	return null;
     	}
     }
+    
 }

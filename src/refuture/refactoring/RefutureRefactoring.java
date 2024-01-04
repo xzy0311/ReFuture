@@ -10,6 +10,10 @@ import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.CompositeChange;
 import org.eclipse.ltk.core.refactoring.Refactoring;
@@ -34,10 +38,6 @@ public class RefutureRefactoring extends Refactoring {
 	// 项目所有的java文件,将IJavaElement改成了IcompilationUnit,这是由它的初始化过程决定的。
 	List<ICompilationUnit> allJavaFiles;
 	
-	/** The potential java files. */
-	// 包含异步任务的定义
-	List<IJavaElement> potentialJavaFiles;
-	
 	int refactorPattern;
 
 	boolean disableCancelPattern;
@@ -50,7 +50,6 @@ public class RefutureRefactoring extends Refactoring {
 	public RefutureRefactoring(IJavaProject selectProject) {		
 		allJavaFiles = AnalysisUtils.collectFromSelect(selectProject);
 		allChanges = new ArrayList<Change>();
-		potentialJavaFiles = new ArrayList<IJavaElement>();
 		InitAllStaticfield.init();//初始化所有的静态字段。
 		this.refactorPattern = 1;
 		this.disableCancelPattern = false;
@@ -77,6 +76,17 @@ public class RefutureRefactoring extends Refactoring {
 		if (allJavaFiles.isEmpty()) {
 			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		}
+		AnalysisUtils.allAST = new ArrayList<>();
+		for(ICompilationUnit cu : allJavaFiles) {
+			ASTParser parser = ASTParser.newParser(AST.JLS11);
+			parser.setResolveBindings(true);
+			parser.setStatementsRecovery(true);
+			parser.setBindingsRecovery(true);
+			parser.setSource(cu);
+			CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
+			AnalysisUtils.allAST.add(astUnit);
+		}
+		
 		return RefactoringStatus.createInfoStatus("Ininal condition has been checked");
 	}
 
@@ -90,6 +100,7 @@ public class RefutureRefactoring extends Refactoring {
 				SootConfig.setupSoot(allJavaFiles);//配置初始化soot,用来分析类层次结构
 			}else {
 				ExecutorSubclass.taskTypeAnalysis();
+				ExecutorSubclass.executorSubClassAnalysis();
 		        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
 		        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
 				CollectionEntrypoint.entryPointInit(allJavaFiles);

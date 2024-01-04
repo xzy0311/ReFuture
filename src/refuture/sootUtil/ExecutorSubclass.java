@@ -7,11 +7,14 @@ import java.util.Set;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.InstanceofExpression;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
+import refuture.astvisitor.InstanceofVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
@@ -22,12 +25,11 @@ import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
 import soot.Type;
-import soot.Value;
 import soot.ValueBox;
-import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
+import soot.jimple.internal.ImmediateBox;
+import soot.jimple.internal.JimpleLocal;
 import soot.jimple.internal.JimpleLocalBox;
-// TODO: Auto-generated Javadoc
 /**
  * The Class ExecutorSubclass.
  */
@@ -42,6 +44,8 @@ public class ExecutorSubclass {
 	private static Set<SootClass>allExecutorServiceSubClasses;
 	
 	private static Set<SootClass>allExecutorSubClasses;
+	
+	public static Set<PointsToSet> useInstanceofExecutorP2Set;
 	
 	/** 包含我手动添加的jdk中自带的执行器类型,以及完全没有重写关键方法子类. */
 	private static Set<SootClass>mayCompleteExecutorSubClasses;//存入可能可以重构的类型以及包装类。
@@ -68,6 +72,7 @@ public class ExecutorSubclass {
 		allAdditionalClasses = new HashSet<SootClass>();
 		allExecutorServiceSubClasses= new HashSet<SootClass>();
 		allExecutorSubClasses = new HashSet<SootClass>();
+		useInstanceofExecutorP2Set = new HashSet<PointsToSet>();
 		callableSubClasses = new HashSet<String>();
 		runnablesubClasses = new HashSet<String>();
 		return true;
@@ -99,6 +104,33 @@ public class ExecutorSubclass {
 		AnalysisUtils.debugPrint("RunnableSubClasses:"+runnablesubClasses.toString());
 	}
 
+	public static void executorSubClassAnalysis() {
+		SootClass executorClass = Scene.v().getSootClass("java.util.concurrent.Executor");
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
+		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
+		Set<String> allExecutorSubClassNames = getAllExecutorServiceSubClassesName();
+		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
+			InstanceofVisiter insOf = new InstanceofVisiter();
+			astUnit.accept(insOf);
+			List<InstanceofExpression> insOfNodes = insOf.getResult();
+			for(InstanceofExpression insOfNode:insOfNodes) {
+				if(allExecutorSubClassNames.contains(insOfNode.getRightOperand().resolveBinding().getQualifiedName())) {
+					Stmt stmt = AdaptAst.getJimpleInvocStmt(insOfNode);
+					List<ValueBox> boxes = stmt.getUseBoxes();
+					for(ValueBox box : boxes) {
+						if(box instanceof ImmediateBox) {
+							JimpleLocal local = (JimpleLocal)box.getValue();
+							PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+		        			PointsToSet ptset = pa.reachingObjects(local);
+		        			useInstanceofExecutorP2Set.add(ptset);
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	/**
 	 *
 	 *5.12尝试完善。
@@ -108,7 +140,7 @@ public class ExecutorSubclass {
 	 */
 	public static void threadPoolExecutorSubClassAnalysis() {
 		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
-		SootClass executorClass = Scene.v().getSootClass("java.util.concurrent.Executor");
+		
 //		mayCompleteExecutorSubClasses.add(executorServiceClass);//不是安全的。
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
@@ -118,8 +150,6 @@ public class ExecutorSubclass {
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
-		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
 		List<SootClass> serviceSubImplementers = hierarchy.getImplementersOf(executorServiceClass);
 		allExecutorServiceSubClasses.addAll(serviceSubImplementers);
 		List<SootClass> serviceSubInterfaces = hierarchy.getSubinterfacesOfIncluding(executorServiceClass);
@@ -129,18 +159,6 @@ public class ExecutorSubclass {
 			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
 				continue;
 			}
-			
-//			// 首先判定它继承的父类，有没有污染类
-//			List<SootClass> superClasses = hierarchy.getSuperclassesOfIncluding(tPESubClass);
-//			boolean isDirty = false;
-//			for(SootClass superClass : superClasses) {
-//				if(allDirtyClasses.contains(superClass)){
-//					allDirtyClasses.add(tPESubClass);
-//					isDirty = true;
-//					break;
-//				}
-//			}
-//			if(isDirty) {continue;}
 			//判断是否是dirtyClass
 			boolean flag1 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
 			boolean flag2 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)");
@@ -162,8 +180,6 @@ public class ExecutorSubclass {
 		}
 		AnalysisUtils.debugPrint("mayCompleteExecutorSubClasses:"+mayCompleteExecutorSubClasses.toString());
 		AnalysisUtils.debugPrint("allDirtyClasses:"+allDirtyClasses.toString());
-//		System.out.println("mayCompleteExecutorSubClasses:"+mayCompleteExecutorSubClasses.toString());
-//		System.out.println("allDirtyClasses:"+allDirtyClasses.toString());
 	}
 
 	/**
@@ -216,6 +232,11 @@ public class ExecutorSubclass {
         			if(isSubmit) {
         				completeSetTypeStrings = getCompleteExecutorSubClassesName();
         			}else {
+        				for(PointsToSet p2s:useInstanceofExecutorP2Set) {
+        					if(ptset.hasNonEmptyIntersection(p2s)) {
+        						return false;
+        					}
+        				}
         				completeSetTypeStrings = getAllExecutorSubClassesName();
         			}
         			if(!typeSetStrings.isEmpty()) {

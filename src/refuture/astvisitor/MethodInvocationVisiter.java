@@ -24,8 +24,6 @@ public class MethodInvocationVisiter extends ASTVisitor {
 	}
 	@Override
 	public boolean visit(MethodInvocation node) {
-		
-
 		invocationNodes.add(node);
 		return true;
 	}

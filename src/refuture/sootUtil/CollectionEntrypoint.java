@@ -34,14 +34,9 @@ public class CollectionEntrypoint {
 		List<MethodInvocation> allTaskPointList = new ArrayList<MethodInvocation>();
 		//调用cancel的方法定义(可选）
 		//调用submit/execute的方法定义|submit得到的定义变量可替代cancel的方法定义。
-		for(ICompilationUnit cu : allJavaFiles) {
+		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
 			List<MethodInvocation> taskPointList = new ArrayList<MethodInvocation>();
-			ASTParser parser = ASTParser.newParser(AST.JLS11);
-			parser.setResolveBindings(true);
-			parser.setStatementsRecovery(true);
-			parser.setBindingsRecovery(true);
-			parser.setSource(cu);
-			CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
+			ICompilationUnit cu = (ICompilationUnit) astUnit.getJavaElement();
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);
 			List<MethodInvocation> invocationNodes = miv.getResult();

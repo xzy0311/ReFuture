@@ -44,6 +44,8 @@ public class AnalysisUtils {
 
 	/** 输出调试信息标志 */
 	public static boolean debugFlag = false;
+	
+	public static List<CompilationUnit> allAST;
 
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();
@@ -444,12 +446,12 @@ public class AnalysisUtils {
 			System.out.println(message);
 		}
 	}
-	public static String invocNodeInfo(MethodInvocation invocationNode) {
+	public static String invocNodeInfo(Expression expNode) {
 		StringBuilder message = new StringBuilder();
-    	message.append("所在类为"+getTypeDeclaration4node(invocationNode).getName()+";");
-    	message.append("所在方法为"+getMethodNameNArgusofSoot(invocationNode)+";");
-    	CompilationUnit astUnit = (CompilationUnit)invocationNode.getRoot();
-    	message.append("行号为"+astUnit.getColumnNumber(invocationNode.getStartPosition())+";");
+    	message.append("所在类为"+getTypeDeclaration4node(expNode).getName()+";");
+    	message.append("所在方法为"+getMethodNameNArgusofSoot(expNode)+";");
+    	CompilationUnit astUnit = (CompilationUnit)expNode.getRoot();
+    	message.append("行号为"+astUnit.getColumnNumber(expNode.getStartPosition())+";");
     	return message.toString();
 	}
 	

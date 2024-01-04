@@ -2,10 +2,8 @@ package refuture.sootUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
@@ -13,9 +11,11 @@ import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.InstanceofExpression;
 import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import refuture.refactoring.AnalysisUtils;
@@ -24,17 +24,13 @@ import soot.AmbiguousMethodException;
 import soot.Body;
 import soot.G;
 import soot.Local;
-import soot.PointsToAnalysis;
-import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
-import soot.Type;
 import soot.Unit;
 import soot.ValueBox;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
-import soot.jimple.internal.JimpleLocalBox;
 import soot.toolkits.scalar.LocalDefs;
 
 
@@ -49,15 +45,23 @@ public class AdaptAst {
 	 * @param miv the miv
 	 * @return the jimple invoc stmt
 	 */
-	public static Stmt getJimpleInvocStmt(MethodInvocation miv) {
-		CompilationUnit cu = (CompilationUnit)miv.getRoot();
-		int lineNumber = cu.getLineNumber(miv.getStartPosition());//行号
-		String ivcMethodName = miv.getName().toString();//调用的方法的名称，只包含名称
-		SootClass sc = getSootClass4InvocNode(miv);
+	public static Stmt getJimpleInvocStmt(Expression exp) {
+		CompilationUnit cu = (CompilationUnit)exp.getRoot();
+		int lineNumber = cu.getLineNumber(exp.getStartPosition());//行号
+		String expName;
+		if(exp instanceof InstanceofExpression) {
+			expName = "instanceof";
+		}else if(exp instanceof MethodInvocation) {
+			MethodInvocation miv = (MethodInvocation)exp;
+			expName = miv.getName().toString();//调用的方法的名称，只包含名称
+		}else {
+			throw new RefutureException(exp);
+		}
+		SootClass sc = getSootClass4InvocNode(exp);
 //		if(sc == null) {
 //			return null;
 //		}
-		SootMethod sm = getSootMethod4invocNode(miv);
+		SootMethod sm = getSootMethod4invocNode(exp);
 		if(!AnalysisUtils.skipMethodName.isEmpty()) {
 			if (AnalysisUtils.skipMethodName.contains(sm.getSignature())) {
 				return null;
@@ -75,7 +79,7 @@ public class AdaptAst {
         while(i.hasNext())
         {
             Stmt stmt=(Stmt) i.next();
-            if(stmt.toString().contains(ivcMethodName)) {
+            if(stmt.toString().contains(expName)) {
             	notLocalFlag =true;
             	containTargetNum ++;
             	if(containTargetNum == 1) {
@@ -97,40 +101,50 @@ public class AdaptAst {
         +sm.getSignature()+"ASTLineNumber:"+lineNumber+"JimLineNumber:"+jimpleLineNumber);
         }
 		//从这里开始分出lambda的处理
-		if(AdaptAst.invocInLambda(miv)>0) {
-			return getJimpleInvocStmtInLambda(miv);
+		if(AdaptAst.invocInLambda(exp)>0) {
+			return getJimpleInvocStmtInLambda(exp);
 		}
-		throw new RefutureException(miv,"排查错误原因。");
+		throw new RefutureException(exp,"排查错误原因。");
 //        return null;
 		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
 		//也就是说正常情况下不应该出错。
 	}
-	private static Stmt getJimpleInvocStmtInLambda(MethodInvocation miv) {
-		CompilationUnit cu = (CompilationUnit)miv.getRoot();
+	private static Stmt getJimpleInvocStmtInLambda(Expression exp) {
+		CompilationUnit cu = (CompilationUnit)exp.getRoot();
         //在主类的方法中得到想要的方法调用的Stmt.
-		SootMethod mainMethod = getSootRealFunction4InLambda(miv);
+		SootMethod mainMethod = getSootRealFunction4InLambda(exp);
 //        for(SootMethod mainMethod : mainClassMethodList) {
     	Iterator<Unit> mainMethodIterator = mainMethod.retrieveActiveBody().getUnits().snapshotIterator();
+    	String expName;
+		if(exp instanceof InstanceofExpression) {
+			expName = "instanceof";
+		}else if(exp instanceof MethodInvocation) {
+			MethodInvocation miv = (MethodInvocation)exp;
+			expName = miv.getName().toString();//调用的方法的名称，只包含名称
+		}else {
+			throw new RefutureException(exp);
+		}
+    	
     	while(mainMethodIterator.hasNext()) {
     		Stmt stmt3=(Stmt) mainMethodIterator.next();
-    		if(stmt3.containsInvokeExpr()&&stmt3.toString().contains(miv.getName().toString())
-    				&&stmt3.getJavaSourceStartLineNumber() == cu.getLineNumber(miv.getStartPosition())){
+    		if(stmt3.containsInvokeExpr()&&stmt3.toString().contains(expName)
+    				&&stmt3.getJavaSourceStartLineNumber() == cu.getLineNumber(exp.getStartPosition())){
     			return stmt3;
     		}
     	}
 //        }
-        throw new RefutureException(miv);
+        throw new RefutureException(exp);
 	}
 	//若MIV存在于Lambda表达式,则得到实际MIV所在的SootMethod,也就是存在于主SootClass中的实际Lambda表达式内容的方法的SootMethod.
-	public static SootMethod getSootRealFunction4InLambda(MethodInvocation miv) {
-		int deep = invocInLambda(miv);
+	public static SootMethod getSootRealFunction4InLambda(Expression exp) {
+		int deep = invocInLambda(exp);
 		//得到通过AST得到的方法名称，类名称，调用的行号。
 		//得到lambda外的函数调用的名称
 		//12.19修改,得到SootMethod下的第一层lambda外的methodInvocation.并获得总共的层数.若外层不是方法调用,而是变量定义语句,则应该会报错,报错的时候再解决.
-		List<Expression> InvocLambdaMethodList = AdaptAst.getInvocLambdaMethod2Delcaration(miv,deep);
+		List<Expression> InvocLambdaMethodList = AdaptAst.getInvocLambdaMethod2Delcaration(exp,deep);
 		
-		SootClass sc = getSootClass4InvocNode(miv);
-		SootMethod sm =getSootMethod4invocNode(miv);
+		SootClass sc = getSootClass4InvocNode(exp);
+		SootMethod sm =getSootMethod4invocNode(exp);
 		SootMethod mainMethod = sm;
 		//得到lambda的SootClass,通过调用Lambda的MIV所在的Body和Stmt.
 		for(int i = 0 ;i < InvocLambdaMethodList.size();i++) {
@@ -260,9 +274,9 @@ public class AdaptAst {
 	}
 	//得到存在链式调用Lambda表达式嵌套的情况下,调用Labmda表达式的方法由MethodDeclaration到MIV的所有调用Lambda的MethodInvocation列表
 	//因为JDT对于构造方法调用，不是MethodInvocation，所有这里加入构造方法调用支持。
-	private static List<Expression> getInvocLambdaMethod2Delcaration(MethodInvocation miv,int deep) {
+	private static List<Expression> getInvocLambdaMethod2Delcaration(Expression exp,int deep) {
 		List<Expression> methodInvocList = new ArrayList<>() ;
-		ASTNode node = miv;
+		ASTNode node = exp;
 		for(;deep>0;deep--) {
 			do {
 				node = node.getParent();
@@ -271,7 +285,7 @@ public class AdaptAst {
 			while(!(node instanceof MethodInvocation)&&!(node instanceof ClassInstanceCreation)) {
 				node = node.getParent();
 				if (node instanceof MethodDeclaration) {
-					throw new RefutureException(miv);
+					throw new RefutureException(exp);
 				}
 			}
 			methodInvocList.add((Expression) node);
@@ -280,10 +294,10 @@ public class AdaptAst {
 		return methodInvocList;
 	}
 	//返回当前MIV是否在Lambda表达式中,在的话若存在嵌套方法调用Lambda,则计算距离MethodDelaration深度.返回值大于0代表存在.
-	public static int invocInLambda(MethodInvocation miv) {
+	public static int invocInLambda(Expression exp) {
 		int deep = 0;
-		ASTNode node = (ASTNode) miv;
-		MethodDeclaration method = AnalysisUtils.getMethodDeclaration4node(miv);
+		ASTNode node = (ASTNode) exp;
+		MethodDeclaration method = AnalysisUtils.getMethodDeclaration4node(exp);
 		if(method != null) {
 			while(!node.equals(method)) {
 				if(node instanceof LambdaExpression) {
@@ -292,7 +306,7 @@ public class AdaptAst {
 				node = node.getParent();
 			}
 		}else {
-			TypeDeclaration type = AnalysisUtils.getTypeDeclaration4node(miv);
+			TypeDeclaration type = AnalysisUtils.getTypeDeclaration4node(exp);
 			while(!node.equals(type)) {
 				if(node instanceof LambdaExpression) {
 					deep++;
@@ -303,13 +317,13 @@ public class AdaptAst {
 		return deep;
 	}
 
-	public static SootClass getSootClass4InvocNode(MethodInvocation incovNode) {
+	public static SootClass getSootClass4InvocNode(Expression expNode) {
 		ITypeBinding itb;
 		String typeFullName;
-		ASTNode astNode = AnalysisUtils.getMethodDeclaration4node(incovNode);
+		ASTNode astNode = AnalysisUtils.getMethodDeclaration4node(expNode);
 		if(astNode == null) {//说明没有在方法内部
-			TypeDeclaration td = AnalysisUtils.getTypeDeclaration4node(incovNode);
-			if(td == null) {throw new RefutureException(incovNode,"这个文件主类型可能为枚举类型");}
+			TypeDeclaration td = AnalysisUtils.getTypeDeclaration4node(expNode);
+			if(td == null) {throw new RefutureException(expNode,"这个文件主类型可能为枚举类型");}
 			itb = td.resolveBinding();
 		}else if(astNode.getParent() instanceof AnonymousClassDeclaration) {
 			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)astNode.getParent();
@@ -326,25 +340,36 @@ public class AdaptAst {
 		// maybe null
 		if(typeFullName == null){
 			System.out.println("@error[AdaptAst.getSootClass4InvocNode]:因为获取绑定信息中的名称出错,未获取成功,所以得不到类型名");
-			throw new RefutureException(incovNode,"@error[AdaptAst.getSootClass4InvocNode]:因为获取绑定信息中的名称出错,未获取成功,所以得不到类型名");
+			throw new RefutureException(expNode,"@error[AdaptAst.getSootClass4InvocNode]:因为获取绑定信息中的名称出错,未获取成功,所以得不到类型名");
 //			return null;
 			}
 		SootClass sc = Scene.v().getSootClass(typeFullName);
 		if(sc.isPhantom()) {
 //			return null;
-			throw new RefutureException(incovNode,"@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
+			throw new RefutureException(expNode,"@error[AdaptAst.getSootClass4InvocNode]:调用了虚幻类，请检查soot ClassPath,虚幻类类名为:"+typeFullName);
 		}
 		return sc;
 	}
 
-	public static SootMethod getSootMethod4invocNode(MethodInvocation invocationNode) {
+	public static SootMethod getSootMethod4invocNode(Expression expNode) {
 		SootMethod sm;
-		SootClass sc = getSootClass4InvocNode(invocationNode);
+		SootClass sc = getSootClass4InvocNode(expNode);
 		try{
-			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(invocationNode));
+			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(expNode));
 		}catch(AmbiguousMethodException e) {
-			sm = sc.getMethod(AnalysisUtils.getMethodNameNArgusofSoot(invocationNode));
+			sm = sc.getMethod(AnalysisUtils.getMethodNameNArgusofSoot(expNode));
 		}
 		return sm;
 	}
+	
+	public static Statement getASTStmt4SootStmt(Stmt sootStmt,SootClass sootClass) {
+		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
+			
+			
+		}
+		return null;
+		
+	}
+	
+	
 }
