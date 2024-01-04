@@ -1,13 +1,11 @@
 package refuture.sootUtil;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.ArrayList;
 
 import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -16,20 +14,14 @@ import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.ForTask;
 import refuture.refactoring.RefutureException;
-import soot.Body;
-import soot.G;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
-import soot.SootMethod;
-import soot.Unit;
 import soot.ValueBox;
 import soot.jimple.Stmt;
-import soot.jimple.internal.JAssignStmt.LinkedVariableBox;
 import soot.jimple.internal.JimpleLocalBox;
-import soot.toolkits.scalar.LocalDefs;
 
 // 这个类就像ExecutorSubclass一样，在最开始初始化一次。找到所有的调用future.cancel()的local。
 // 然后通过一个方法，能够得到当前输入的invocstmt 左值的local是否可能指向同一个对象，就行了。
@@ -92,7 +84,7 @@ public class Cancel {
 					}
 				}
 				else if(typeName == "java.lang.Object") {
-					System.out.println("||||||||||||||||||||||||||||||||||可能需要精确度更高的分析取代ASTBinding");
+					System.out.println("||可能需要精确度更高的分析取代ASTBinding||");
 				}
 			}
 		}

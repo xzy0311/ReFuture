@@ -9,13 +9,12 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
 
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
 import refuture.refactoring.RefutureRefactoring;
-import refuture.sootUtil.Cancel;
 import refuture.sootUtil.SootConfig;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {

@@ -45,7 +45,7 @@ public class ExecutorSubclass {
 	
 	private static Set<SootClass>allExecutorSubClasses;
 	
-	public static Set<PointsToSet> useInstanceofExecutorP2Set;
+	public static Set<JimpleLocal> useInstanceofExecutorLocal;
 	
 	/** 包含我手动添加的jdk中自带的执行器类型,以及完全没有重写关键方法子类. */
 	private static Set<SootClass>mayCompleteExecutorSubClasses;//存入可能可以重构的类型以及包装类。
@@ -72,7 +72,7 @@ public class ExecutorSubclass {
 		allAdditionalClasses = new HashSet<SootClass>();
 		allExecutorServiceSubClasses= new HashSet<SootClass>();
 		allExecutorSubClasses = new HashSet<SootClass>();
-		useInstanceofExecutorP2Set = new HashSet<PointsToSet>();
+		useInstanceofExecutorLocal = new HashSet<JimpleLocal>();
 		callableSubClasses = new HashSet<String>();
 		runnablesubClasses = new HashSet<String>();
 		return true;
@@ -121,9 +121,7 @@ public class ExecutorSubclass {
 					for(ValueBox box : boxes) {
 						if(box instanceof ImmediateBox) {
 							JimpleLocal local = (JimpleLocal)box.getValue();
-							PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-		        			PointsToSet ptset = pa.reachingObjects(local);
-		        			useInstanceofExecutorP2Set.add(ptset);
+							useInstanceofExecutorLocal.add(local);
 						}
 					}
 				}
@@ -232,8 +230,8 @@ public class ExecutorSubclass {
         			if(isSubmit) {
         				completeSetTypeStrings = getCompleteExecutorSubClassesName();
         			}else {
-        				for(PointsToSet p2s:useInstanceofExecutorP2Set) {
-        					if(ptset.hasNonEmptyIntersection(p2s)) {
+        				for(JimpleLocal ioLocal:useInstanceofExecutorLocal) {
+        					if(ptset.hasNonEmptyIntersection(pa.reachingObjects(ioLocal))) {
         						return false;
         					}
         				}

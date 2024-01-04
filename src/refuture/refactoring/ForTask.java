@@ -1,33 +1,13 @@
 package refuture.refactoring;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.ArrayList;
-import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.TypeDeclaration;
+import java.util.List;
+
 import org.eclipse.ltk.core.refactoring.Change;
-import org.eclipse.ltk.core.refactoring.TextFileChange;
-
-import refuture.astvisitor.MethodInvocationVisiter;
-import refuture.sootUtil.AdaptAst;
-import refuture.sootUtil.ExecutorSubclass;
-
-import org.eclipse.core.resources.IFile;
-import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
-import org.eclipse.jdt.core.dom.Block;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.Expression;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.LambdaExpression;
 
 import soot.Hierarchy;
 import soot.Scene;
 import soot.SootClass;
-import soot.jimple.Stmt;
 
 //第二阶段实验，开始。0706
 // 待添加，增加一个get是否在callable或者Runnable中。

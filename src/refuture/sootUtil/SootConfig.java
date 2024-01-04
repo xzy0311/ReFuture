@@ -6,17 +6,13 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 
 import refuture.refactoring.AnalysisUtils;
-import soot.Hierarchy;
 import soot.PackManager;
 import soot.Scene;
-import soot.SceneTransformer;
-import soot.SootClass;
 import soot.SootMethod;
 import soot.options.Options;
 
