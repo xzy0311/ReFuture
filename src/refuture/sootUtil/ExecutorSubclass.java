@@ -24,6 +24,7 @@ import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
+import soot.SootField;
 import soot.Type;
 import soot.Value;
 import soot.ValueBox;
@@ -52,6 +53,8 @@ public class ExecutorSubclass {
 	/** 包含我手动添加的jdk中自带的执行器类型,以及完全没有重写关键方法子类. */
 	private static Set<SootClass>mayCompleteExecutorSubClasses;//存入可能可以重构的类型以及包装类。
 	
+	private static Set<SootClass>wrapperClass;
+	
 	/** The all dirty classes. */
 	private static Set<SootClass>allDirtyClasses;
 	
@@ -70,6 +73,7 @@ public class ExecutorSubclass {
 	 */
 	public static boolean initStaticField() {
 		mayCompleteExecutorSubClasses = new HashSet<SootClass>();
+		wrapperClass = new HashSet<SootClass>();
 		allDirtyClasses = new HashSet<SootClass>();
 		allAdditionalClasses = new HashSet<SootClass>();
 		allExecutorServiceSubClasses= new HashSet<SootClass>();
@@ -152,6 +156,9 @@ public class ExecutorSubclass {
 //		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
+		wrapperClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
+		wrapperClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
+		
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		List<SootClass> serviceSubImplementers = hierarchy.getImplementersOf(executorServiceClass);
 		allExecutorServiceSubClasses.addAll(serviceSubImplementers);
@@ -159,7 +166,7 @@ public class ExecutorSubclass {
 		allExecutorServiceSubClasses.addAll(serviceSubInterfaces);
 		
 		for(SootClass tPESubClass : serviceSubImplementers) {
-			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
+			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)||wrapperClass.contains(tPESubClass)) {
 				continue;
 			}
 			//判断是否是dirtyClass
@@ -217,8 +224,10 @@ public class ExecutorSubclass {
 	public static boolean canRefactor(MethodInvocation mInvocation,Stmt invocStmt , boolean isSubmit) {
 		if(invocStmt == null) return false;
 		Set<String> completeSetTypeStrings;
+		Set<String> wrapperClassesStrings = null;
 		if(isSubmit) {
 			completeSetTypeStrings = getCompleteExecutorSubClassesName();
+			wrapperClassesStrings = getwrapperClassesName();
 		}else {
 			completeSetTypeStrings = getAllExecutorSubClassesName();
 		}
@@ -237,6 +246,21 @@ public class ExecutorSubclass {
     			for (Type obj : typeSet) {
     				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
     			}
+    			if(wrapperClassesStrings != null && wrapperClassesStrings.containsAll(typeSetStrings)) {
+    				Set<String> tempStrings = new HashSet<>(typeSetStrings);
+    				typeSetStrings.clear();
+    				for(String typeName: tempStrings) {
+    					SootClass wc = Scene.v().getSootClass(typeName);
+    					SootField innerE = wc.getFields().getFirst();
+    					PointsToSet leftESet = pa.reachingObjects(ptset,innerE);
+    					Set<Type> realTypeSet = leftESet.possibleTypes();
+    					for (Type obj : realTypeSet) {
+    	    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
+    	    			}
+    				}
+    				
+    			}
+    			
     		}	
     	}
 		if(!typeSetStrings.isEmpty()) {
@@ -509,6 +533,14 @@ public class ExecutorSubclass {
 			completeSetTypeStrings.add(completeSC.getName());
 		}
 		return completeSetTypeStrings;
+	}
+	
+	public static Set<String> getwrapperClassesName(){
+		Set<String> wrapperClassesStrings = new HashSet<>();
+		for(SootClass completeSC:wrapperClass) {
+			wrapperClassesStrings.add(completeSC.getName());
+		}
+		return wrapperClassesStrings;
 	}
 
 	public static Set<String> getAllDirtyExecutorSubClassName(){
