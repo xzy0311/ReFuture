@@ -58,9 +58,6 @@ public class AdaptAst {
 			throw new RefutureException(exp);
 		}
 		SootClass sc = getSootClass4InvocNode(exp);
-//		if(sc == null) {
-//			return null;
-//		}
 		SootMethod sm = getSootMethod4invocNode(exp);
 		if(!AnalysisUtils.skipMethodName.isEmpty()) {
 			if (AnalysisUtils.skipMethodName.contains(sm.getSignature())) {
@@ -127,7 +124,8 @@ public class AdaptAst {
     	
     	while(mainMethodIterator.hasNext()) {
     		Stmt stmt3=(Stmt) mainMethodIterator.next();
-    		if(stmt3.containsInvokeExpr()&&stmt3.toString().contains(expName)
+//    		if(stmt3.containsInvokeExpr()&&stmt3.toString().contains(expName)
+    		if(stmt3.toString().contains(expName)
     				&&stmt3.getJavaSourceStartLineNumber() == cu.getLineNumber(exp.getStartPosition())){
     			return stmt3;
     		}

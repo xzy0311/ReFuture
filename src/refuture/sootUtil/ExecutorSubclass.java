@@ -25,7 +25,9 @@ import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
 import soot.Type;
+import soot.Value;
 import soot.ValueBox;
+import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
 import soot.jimple.internal.JimpleLocal;
@@ -109,19 +111,22 @@ public class ExecutorSubclass {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
 		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
-		Set<String> allExecutorSubClassNames = getAllExecutorServiceSubClassesName();
 		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
 			InstanceofVisiter insOf = new InstanceofVisiter();
 			astUnit.accept(insOf);
 			List<InstanceofExpression> insOfNodes = insOf.getResult();
 			for(InstanceofExpression insOfNode:insOfNodes) {
-				if(allExecutorSubClassNames.contains(insOfNode.getRightOperand().resolveBinding().getQualifiedName())) {
+				String qName = insOfNode.getRightOperand().resolveBinding().getQualifiedName();
+				if(runnablesubClasses.contains(qName)&&!qName.equals("java.lang.Runnable")) {
 					Stmt stmt = AdaptAst.getJimpleInvocStmt(insOfNode);
 					List<ValueBox> boxes = stmt.getUseBoxes();
 					for(ValueBox box : boxes) {
 						if(box instanceof ImmediateBox) {
 							JimpleLocal local = (JimpleLocal)box.getValue();
 							useInstanceofExecutorLocal.add(local);
+							if(SootConfig.extremeSpeedModel) {
+								CollectionEntrypoint.entryPointSet.add(AdaptAst.getSootMethod4invocNode(insOfNode));
+							}
 						}
 					}
 				}
@@ -140,11 +145,11 @@ public class ExecutorSubclass {
 		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
 		
 //		mayCompleteExecutorSubClasses.add(executorServiceClass);//不是安全的。
-		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
+//		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService"));
-		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
+//		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
@@ -211,101 +216,99 @@ public class ExecutorSubclass {
 	 */
 	public static boolean canRefactor(MethodInvocation mInvocation,Stmt invocStmt , boolean isSubmit) {
 		if(invocStmt == null) return false;
+		Set<String> completeSetTypeStrings;
+		if(isSubmit) {
+			completeSetTypeStrings = getCompleteExecutorSubClassesName();
+		}else {
+			completeSetTypeStrings = getAllExecutorSubClassesName();
+		}
+		Set<String> typeSetStrings = new HashSet<>();
 		List<ValueBox> lvbs = invocStmt.getUseBoxes();
-			Iterator<ValueBox> it =lvbs.iterator();
-        	while(it.hasNext()) {
-        		Object o = it.next();
-        		if (o instanceof JimpleLocalBox) {
-        			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
-        			JimpleLocalBox jlb = (JimpleLocalBox) o;
-        			Local local = (Local)jlb.getValue();
-        			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-        			PointsToSet ptset = pa.reachingObjects(local);
-        			Set<Type> typeSet = ptset.possibleTypes();
-        			Set<String> typeSetStrings = new HashSet<>();
-        			for (Type obj : typeSet) {
-        				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
-        			}
-        			Set<String> completeSetTypeStrings;
-        			if(isSubmit) {
-        				completeSetTypeStrings = getCompleteExecutorSubClassesName();
-        			}else {
-        				for(JimpleLocal ioLocal:useInstanceofExecutorLocal) {
-        					if(ptset.hasNonEmptyIntersection(pa.reachingObjects(ioLocal))) {
-        						return false;
-        					}
-        				}
-        				completeSetTypeStrings = getAllExecutorSubClassesName();
-        			}
-        			if(!typeSetStrings.isEmpty()) {
-        				if(completeSetTypeStrings.containsAll(typeSetStrings)) {
-            				//是安全重构的子集，就可以进行重构了。
-            				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构");
-            				return true;
-        				}
-        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 进行排除");
-        				return false;
-        			}else  {
-        				Future2Completable.debugUsePoint2num++;
-        				//说明没有被访问到，可以进行AST判断
-        				Expression exp = mInvocation.getExpression();
-        				String typeName = null;
-        				if (exp == null) {
-        					ASTNode aboutTypeDeclaration = (ASTNode) mInvocation;
-        					while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
-        						aboutTypeDeclaration = aboutTypeDeclaration.getParent();
-        					}
-        					if(aboutTypeDeclaration instanceof TypeDeclaration) {
-        						TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
-        						ITypeBinding tdBinding = td.resolveBinding();
-        						typeName = tdBinding.getQualifiedName();
-        						if(tdBinding.isNested()) {
-        							typeName = tdBinding.getBinaryName();
-        						}
-        					}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
-        						AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
-        						ITypeBinding tdBinding = acd.resolveBinding();
-        						typeName = tdBinding.getQualifiedName();
-        						if(tdBinding.isNested()) {
-        							typeName = tdBinding.getBinaryName();
-        						}
-        					}else {
-        						throw new RefutureException(mInvocation,"迭代,未得到类型定义或者匿名类定义");
-        					}
-        					typeName = typeName.replaceAll("<[^>]*>", "");
-        					if(completeSetTypeStrings.contains(typeName)) {
-        						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
-        						return true;
-        					}
-        				}else {
-        					typeName = AnalysisUtils.getTypeName4Exp(exp);
-        					SootClass sc = Scene.v().getSootClass(typeName);
-        					if(sc.isInterface()) {
-        						Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-        						List<SootClass> allImplementers = hierarchy.getImplementersOf(sc);
-        						for(SootClass implementer : allImplementers) {
-        							if(allDirtyClasses.contains(implementer)) {
-        								return false;
-        							}
-        						}
-        						return true;
-        					}else {
-        						if(completeSetTypeStrings.contains(typeName)) {
-        							//不再判断子类是否都满足，虽然AST的精度不够。
-        							AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
-        							return true;
-        						}else {
-        							return false;
-        						}
-        					}
-        					
-        				}
-        				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]程序中没有访问到,通过AST进一步判断,类型为："+typeName);
-        			}
-        		}	
-        	}
-        	AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]在Stmt中的receiverobject有问题，进行排除");
-        	return false;
+		Iterator<ValueBox> it =lvbs.iterator();
+        while(it.hasNext()) {
+        	Object o = it.next();
+        	if (o instanceof JimpleLocalBox) {
+    			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
+    			JimpleLocalBox jlb = (JimpleLocalBox) o;
+    			Local local = (Local)jlb.getValue();
+    			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+    			PointsToSet ptset = pa.reachingObjects(local);
+    			Set<Type> typeSet = ptset.possibleTypes();
+    			for (Type obj : typeSet) {
+    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
+    			}
+    		}	
+    	}
+		if(!typeSetStrings.isEmpty()) {
+			if(completeSetTypeStrings.containsAll(typeSetStrings)) {
+				//是安全重构的子集，就可以进行重构了。
+				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构");
+				return true;
+			}
+			AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 进行排除,typeName为："+typeSetStrings);
+			return false;
+		}else  {
+			Future2Completable.debugUsePoint2num++;
+			//说明没有被访问到，可以进行AST判断
+			Expression exp = mInvocation.getExpression();
+			String typeName = null;
+			if (exp == null) {//对应this情况
+				ASTNode aboutTypeDeclaration = (ASTNode) mInvocation;
+				while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
+					aboutTypeDeclaration = aboutTypeDeclaration.getParent();
+				}
+				if(aboutTypeDeclaration instanceof TypeDeclaration) {
+					TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
+					ITypeBinding tdBinding = td.resolveBinding();
+					typeName = tdBinding.getQualifiedName();
+					if(tdBinding.isNested()) {
+						typeName = tdBinding.getBinaryName();
+					}
+				}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+					AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
+					ITypeBinding tdBinding = acd.resolveBinding();
+					typeName = tdBinding.getQualifiedName();
+					if(tdBinding.isNested()) {
+						typeName = tdBinding.getBinaryName();
+					}
+				}else {
+					throw new RefutureException(mInvocation,"迭代,未得到类型定义或者匿名类定义");
+				}
+				typeName = typeName.replaceAll("<[^>]*>", "");
+				if(completeSetTypeStrings.contains(typeName)) {
+					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
+					return true;
+				}else {
+					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构,typeName为："+typeName);
+					return false;
+				}
+			}else {//对应存在接收器对象却无法得到对象类型的情况。
+				typeName = AnalysisUtils.getTypeName4Exp(exp);
+				SootClass sc = Scene.v().getSootClass(typeName);
+				if(sc.isInterface()) {//获取绑定，如果是接口，就这么做
+					Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+					List<SootClass> allImplementers = hierarchy.getImplementersOf(sc);
+					for(SootClass implementer : allImplementers) {
+						if(allDirtyClasses.contains(implementer)) {
+							AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构,typeName为："+typeName);
+							return false;
+						}
+					}
+					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构");
+					return true;
+				}else {//不是接口，则这么做：
+					if(completeSetTypeStrings.contains(typeName)) {
+						//不再判断子类是否都满足，虽然AST的精度不够。
+						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding ~~~可以重构~~~,typeName为："+typeName);
+						return true;
+					}else {
+						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构");
+						return false;
+					}
+				}
+				
+			}
+		}
 	}
 	
 	/**
@@ -456,30 +459,46 @@ public class ExecutorSubclass {
 			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
 			if(runnablesubClasses.contains(binaryName)) {
 				if(invocName.equals("submit")) {
+					AnalysisUtils.debugPrint("submit(Runnable)模式3");
 					return 3;
-				}else {//上下文已限制为submit/execute
+				}else {
+					//上下文已限制为submit/execute，所以这里为execute(runnable)
+					PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+					InvokeExpr ivcExp = invocStmt.getInvokeExpr();
+					List<Value> lv =ivcExp.getArgs();
+					if(lv.get(0)instanceof Local) {
+						Local la1 = (Local) lv.get(0);
+						PointsToSet ptset = pa.reachingObjects(la1);
+						for(JimpleLocal ioLocal:useInstanceofExecutorLocal) {
+	    					if(ptset.hasNonEmptyIntersection(pa.reachingObjects(ioLocal))) {
+	    						Future2Completable.useInstanceof++;
+	    						AnalysisUtils.debugPrint("因使用 instanceof而被排除");
+	    						return -1;
+	    					}
+	    				}
+					}
+					AnalysisUtils.debugPrint("execute(runnable)模式1");
 					return 1;
 				}
 				
 			}else if(callableSubClasses.contains(binaryName)&&invocName.equals("submit")){
+				AnalysisUtils.debugPrint("submit(Callable)模式2");
 				return 2;
 			}else {
-				System.out.println("￥￥￥￥￥￥￥￥￥￥￥￥￥1"+binaryName);
+				throw new RefutureException(invocationNode,"binaryName"+binaryName);
 			}
 		}
 		else if(invocationNode.arguments().size() == 2 && invocName.equals("submit")) {
 			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
 			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
 			if(runnablesubClasses.contains(binaryName)) {
+				AnalysisUtils.debugPrint("submit(Runnable,Value)模式4");
 				return 4;
 			}else {
-				System.out.println("￥￥￥￥￥￥￥￥￥￥￥￥2"+binaryName);
+				throw new RefutureException(invocationNode,"binaryName"+binaryName);
 			}
 		}
-		AnalysisUtils.debugPrint("[ExecutorSubclass.arguModel]:参数个数为0或大于2，或者execute的参数不为1排除");
-		Future2Completable.executeOverload++;
-		return -1;
-		
+		throw new RefutureException(invocationNode,"参数有问题，请检查");
 	}
 	
 	

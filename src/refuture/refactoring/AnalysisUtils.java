@@ -43,7 +43,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	public static boolean debugFlag = false;
+	public static boolean debugFlag = true;
 	
 	public static List<CompilationUnit> allAST;
 
@@ -109,8 +109,8 @@ public class AnalysisUtils {
 			for (IJavaElement element : project.getChildren()) {
 			//2 对源码包的过滤选项。
 				//2.1jGroups，cassandra, lucene-solr 使用
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-//				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");// xml,flume,jenkins
+//				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
+				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");// xml,flume,jenkins
 //				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");// tomcat
 //				boolean javaFolder = element.toString().startsWith("src");// Jailer   SPECjbb
 //				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。

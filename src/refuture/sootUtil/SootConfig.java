@@ -1,12 +1,12 @@
 package refuture.sootUtil;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 
@@ -14,6 +14,7 @@ import refuture.refactoring.AnalysisUtils;
 import soot.PackManager;
 import soot.Scene;
 import soot.SootMethod;
+import soot.jimple.toolkits.callgraph.CHATransformer;
 import soot.options.Options;
 
 public class SootConfig {
@@ -40,6 +41,15 @@ public class SootConfig {
         CGPhaseOptions();//启用Spark
         PackManager.v().runPacks();
         System.out.println("[setupSoot]:Soot配置完毕。");
+        String filePath = "output.txt"; // 指定输出文件的路径
+        try {
+            FileWriter fileWriter = new FileWriter(filePath);
+            fileWriter.write(Scene.v().getEntryPoints().toString());
+            fileWriter.close();
+            System.out.println("字符串已成功输出到文件。");
+        } catch (IOException e) {
+            System.out.println("发生错误：" + e.getMessage());
+        }
         Date currentTime = new Date();
         System.out.println("soot配置完毕的时间"+"The current start time is "+ currentTime+"已花费:"+((currentTime.getTime()-startTime.getTime())/1000)+"s");
     }
@@ -79,24 +89,20 @@ public class SootConfig {
      * 除"cg.spark"之外，soot 还支持"cg.cha"（使用CHA算法创建Call Graph）、"cg.paddle"（paddle框架创建）、"CG" （分析整个源代码，包括JDK部分）
      */
     public static void CGPhaseOptions(){
-    	//兼容多个main函数，并且不可抵达的方法也会进行分析。
+    	 // 开启创建CG
+        Options.v().setPhaseOption("cg.spark","enabled:true");
         if(!extremeSpeedModel) {
         	System.out.println("[CGPhaseOptions]:当前非快速模式");
+        	//兼容多个main函数，并且不可抵达的方法也会进行分析。
         	Options.v().setPhaseOption("cg", "all-reachable:true");
         }else {
-        	List<SootMethod> entryList = Scene.v().getEntryPoints();
-        	System.out.println("[CGPhaseOptions]:当前快速模式，初始的entryPoints为："+entryList);
-        	Set<SootMethod> tempSet = new HashSet<>(CollectionEntrypoint.entryPointSet);
-        	System.out.println("[CGPhaseOptions]:当前快速模式，符合条件的entryPoints为："+tempSet);
-        	tempSet.addAll(entryList);
-        	entryList = new ArrayList<SootMethod>(tempSet);
-        	Scene.v().setEntryPoints(entryList);
-        	System.out.println("[CGPhaseOptions]:当前快速模式，设置的entryPoints为："+entryList);
+        	Options.v().setPhaseOption("cg", "all-reachable:true");
+        	CHATransformer.v().transform();
+        	System.out.println("cha CallGraph build success");
+        	Options.v().setPhaseOption("cg", "all-reachable:false");
+        	Scene.v().setEntryPoints(new ArrayList<SootMethod>(CollectionEntrypoint.getSetEntryPoint()));
+        	System.out.println("设置入口点完成：");
         }
-    	
-        // 开启创建CG
-        Options.v().setPhaseOption("cg.spark","enabled:true");
-        // 同 BasicOptions 中的 verbose
         // 一种复杂的分析方法，能够题升精度，同时会消耗大量时间。
         Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
     }
@@ -110,5 +116,6 @@ public class SootConfig {
         	return null;
     	}
     }
+    
     
 }

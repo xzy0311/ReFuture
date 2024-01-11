@@ -70,6 +70,8 @@ public class Future2Completable {
 	
 	public static int executeOverload;
 	
+	public static int useInstanceof;
+	
 	public static boolean fineRefactoring;
 	public static String debugClassName;
 	public static String debugMethodName;
@@ -84,6 +86,7 @@ public class Future2Completable {
 		maybeRefactoringNode =0;
 		fineRefactoring = false;
 		executeOverload = 0;
+		useInstanceof = 0;
 		debugUsePoint2num = 0;
 		return true;
 	}
@@ -238,8 +241,8 @@ public class Future2Completable {
 		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
 		flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点;" + "疑似有"+maybeRefactoringNode+"个提交点。");
 		
-		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    重载后的execute方法"+executeOverload+"个；     因执行器类型不安全，不能重构"+illExecutor
-				+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
+		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    方法参数个数不对："+executeOverload+"个；    execute使用instanceof："+useInstanceof
+				+"个；     因执行器类型不安全，不能重构"+illExecutor+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
 		System.out.println("Pointo未命中："+debugUsePoint2num);
 	}
 	

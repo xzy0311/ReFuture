@@ -3,7 +3,10 @@ package refuture.sootUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -19,7 +22,11 @@ import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
+import soot.MethodOrMethodContext;
+import soot.Scene;
 import soot.SootMethod;
+import soot.jimple.toolkits.callgraph.CallGraph;
+import soot.jimple.toolkits.callgraph.Edge;
 
 public class CollectionEntrypoint {
 	public static Set<SootMethod> entryPointSet;
@@ -41,7 +48,6 @@ public class CollectionEntrypoint {
 			for(MethodInvocation invocationNode:invocationNodes) {
 				List<Expression> arguExps =  invocationNode.arguments();
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;
-				if(arguExps.size() == 0) continue;
 				boolean isTask = false;
 				for(Expression arguExp : arguExps) {
 					String arguTypeName =AnalysisUtils.getTypeName4Exp(arguExp);
@@ -53,14 +59,18 @@ public class CollectionEntrypoint {
 					}
 				}
 				if(isTask) {Future2Completable.maybeRefactoringNode++;}else {continue;}
-				
+				if(arguExps.size() == 0||arguExps.size()>2) {
+					AnalysisUtils.debugPrint("[entryPointInit]:参数个数为0或大于2，或者execute的参数不为1排除");
+					Future2Completable.executeOverload++;
+					continue;
+				}
 				//到这里,invocation是submit/execute(task...);
 				Expression exp = invocationNode.getExpression();
 				Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
 				Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
 				if(exp==null){
-					AnalysisUtils.debugPrint("[AnalysisUtils.receiverObjectIsComplete]receiverObject为this，继续重构。");
 					// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
+					AnalysisUtils.debugPrint("[entryPointInit]receiverObject为this，继续判断");
 					ASTNode aboutTypeDeclaration = (ASTNode) invocationNode;
 					while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
 						aboutTypeDeclaration = aboutTypeDeclaration.getParent();
@@ -94,6 +104,7 @@ public class CollectionEntrypoint {
 						throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
 					}else {
 						Future2Completable.useNotExecutorSubClass++;
+						AnalysisUtils.debugPrint("[entryPointInit]receiverObject为this，判断失败，当前类不是子类。typename:"+typeName);
 					}
 					continue;
 				}
@@ -103,31 +114,56 @@ public class CollectionEntrypoint {
 				}
 				if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName))) {
 					Future2Completable.canRefactoringNode++;
-					AnalysisUtils.debugPrint("[AnalysisUtils.receiverObjectIsComplete]初步ast判定可以,这里不卡");
+					AnalysisUtils.debugPrint("[entryPointInit]初步ast判定可以,这里不卡");
 					taskPointList.add(invocationNode);
 				}
 				else if(invocationNode.getName().toString().equals("submit")&&(allSubServiceNames.contains(typeName))) {
 					Future2Completable.canRefactoringNode++;
-					AnalysisUtils.debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定可以,这里不卡");
+					AnalysisUtils.debugPrint("[entryPointInit]ast判定可以,这里不卡");
 					taskPointList.add(invocationNode);
 				}else if(typeName == "java.lang.Object") {
 					throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
 				}else{
-					AnalysisUtils.debugPrint("[AnalysisUtils.receiverObjectIsComplete]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
+					AnalysisUtils.debugPrint("[entryPointInite]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
 					Future2Completable.useNotExecutorSubClass++;
 				}
 			}
 		invocNodeMap.put(cu, taskPointList);
 		 allTaskPointList.addAll(taskPointList);
 		}
-		for(MethodInvocation node:allTaskPointList) {
-			SootMethod sm = AdaptAst.getSootMethod4invocNode(node);
-			if(AdaptAst.invocInLambda(node)>0) {
-				sm = AdaptAst.getSootRealFunction4InLambda(node);
+		if(SootConfig.extremeSpeedModel) {
+			for(MethodInvocation node:allTaskPointList) {
+				SootMethod sm = AdaptAst.getSootMethod4invocNode(node);
+				if(AdaptAst.invocInLambda(node)>0) {
+					sm = AdaptAst.getSootRealFunction4InLambda(node);
+				}
+				entryPointSet.add(sm);
 			}
-			entryPointSet.add(sm);
 		}
 	}
+	
+	//假设 entryPointSet中都是准备好了的入口方法。
+    public static Set<SootMethod> getSetEntryPoint(){
+    	CallGraph cg = Scene.v().getCallGraph();
+    	Set<SootMethod> processedSet = new HashSet<>();//初始化为默认的入口点。
+    	Queue<SootMethod> workList = new LinkedList<>(entryPointSet);//初始化为我可能进行指向分析的方法。
+    	while(!workList.isEmpty()) {
+    		SootMethod currentMethod = workList.poll();
+    		if(processedSet.add(currentMethod)) {
+        		Iterator it2 = cg.edgesInto(currentMethod);
+        		while(it2.hasNext()) {
+        			Edge e = (Edge) it2.next();
+        			MethodOrMethodContext mayMethod = e.getSrc();
+        			if(mayMethod instanceof SootMethod) {
+        				SootMethod mayMethodTemp = (SootMethod) mayMethod;
+        				workList.offer(mayMethodTemp);
+        			}
+        		}
+    		}
+    	}
+    	processedSet.addAll(Scene.v().getEntryPoints());
+    	return processedSet;
+    }
 
 		
 		

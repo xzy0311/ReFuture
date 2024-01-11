@@ -80,6 +80,10 @@ public class Cancel {
 							JimpleLocalBox jlb = (JimpleLocalBox) vb;
 							Local futureLocal = (Local)jlb.getValue();
 							invocCancelLocals.add(futureLocal);
+							//将所在的方法加入entryPoints。
+							if(SootConfig.extremeSpeedModel) {
+								CollectionEntrypoint.entryPointSet.add(AdaptAst.getSootMethod4invocNode(invocationNode));
+							}
 						}
 					}
 				}
