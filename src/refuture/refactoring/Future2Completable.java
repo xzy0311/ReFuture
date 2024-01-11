@@ -101,6 +101,13 @@ public class Future2Completable {
 		flagMap.put("SubmitCallable", 0);
 		flagMap.put("SubmitRunnable", 0);
 		flagMap.put("SubmitRunnableNValue", 0);
+		HashMap<String,Integer> flagMaybeMap = new HashMap<String,Integer>();
+		flagMaybeMap.put("ExecuteRunnable", 0);
+		flagMaybeMap.put("SubmitCallable", 0);
+		flagMaybeMap.put("SubmitRunnable", 0);
+		flagMaybeMap.put("SubmitRunnableNValue", 0);
+		
+		
 		HashMap<ICompilationUnit,List<MethodInvocation>> invocNodeMap = CollectionEntrypoint.invocNodeMap;
 		for(ICompilationUnit cu : invocNodeMap.keySet()) {
 			int invocNum = 1;
@@ -134,40 +141,69 @@ public class Future2Completable {
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
 				boolean returnValue;
 				int tempNum = debugUsePoint2num;
-				if(invocationNode.getName().toString().equals("execute")) {
-					returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,false);
-				}else {
-					returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
-				}
-				if(returnValue == false) {
-					//因执行器类型不安全，不能重构。
-					illExecutor++;
-					AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
-					continue;
-				}
-		        if (Cancel.futureUseCancelTure(invocationNode, invocStmt)) {
-		            useCancelTrue++;
-		            continue;
-		        }
 				int refactorMode = ExecutorSubclass.arguModel(invocationNode,invocStmt);
 				boolean flag = true;
 				boolean scflag = false;
 				switch (refactorMode) {
 			    case 1:
+			    	flagMap.put("ExecuteRunnable",flagMap.get("ExecuteRunnable")+1 );
+			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,false);
+					if(returnValue == false) {
+						//因执行器类型不安全，不能重构。
+						illExecutor++;
+						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
+						continue;
+					}
 			    	refactorExecuteRunnable(invocStmt, invocationNode, change, cu);
 			    	flagMap.put("ExecuteRunnable",flagMap.get("ExecuteRunnable")+1 );
 			        break;
 			    case 2:
+			    	flagMap.put("SubmitCallable",flagMap.get("SubmitCallable")+1 );
+			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
+					if(returnValue == false) {
+						//因执行器类型不安全，不能重构。
+						illExecutor++;
+						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
+						continue;
+					}
+					if (Cancel.futureUseCancelTure(invocationNode, invocStmt)) {
+			            useCancelTrue++;
+			            continue;
+			        }
 			    	refactorffSubmitCallable(invocStmt, invocationNode, change, cu, invocSubmitNum);
 			    	flagMap.put("SubmitCallable",flagMap.get("SubmitCallable")+1 );
 			    	scflag = true;
 			    	scClassflag = true;
 			        break;
 			    case 3:
+			    	flagMap.put("SubmitRunnable",flagMap.get("SubmitRunnable")+1 );
+			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
+					if(returnValue == false) {
+						//因执行器类型不安全，不能重构。
+						illExecutor++;
+						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
+						continue;
+					}
+					if (Cancel.futureUseCancelTure(invocationNode, invocStmt)) {
+			            useCancelTrue++;
+			            continue;
+			        }
 			    	refactorSubmitRunnable(invocStmt, invocationNode, change, cu);
 			    	flagMap.put("SubmitRunnable",flagMap.get("SubmitRunnable")+1 );
 			        break;
 			    case 4:
+			    	flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
+			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
+					if(returnValue == false) {
+						//因执行器类型不安全，不能重构。
+						illExecutor++;
+						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
+						continue;
+					}
+					if (Cancel.futureUseCancelTure(invocationNode, invocStmt)) {
+			            useCancelTrue++;
+			            continue;
+			        }
 			    	refactorSubmitRunnableNValue(invocStmt, invocationNode, change, cu);
 			    	flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
 			        break;
