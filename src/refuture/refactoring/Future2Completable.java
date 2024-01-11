@@ -274,8 +274,11 @@ public class Future2Completable {
 			if(printClassFlag) {AnalysisUtils.debugPrint("--第"+j+++"个可能包含调用的类分析完毕-----------------------------%n");}
 		}//所有的类分析完毕
 		
-		System.out.println("其中，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
-		flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点;" + "疑似有"+maybeRefactoringNode+"个提交点。");
+		System.out.println("其中，ExecuteRunnable:"+flagMaybeMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMaybeMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
+				flagMaybeMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMaybeMap.get("SubmitRunnableNValue")+"总共有"+canRefactoringNode+"个提交点;" + "疑似有"+maybeRefactoringNode+"个提交点。");
+		
+		System.out.println("其中重构成功，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
+				flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue"));
 		
 		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；    方法参数个数不对："+executeOverload+"个；    execute使用instanceof："+useInstanceof
 				+"个；     因执行器类型不安全，不能重构"+illExecutor+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
