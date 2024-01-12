@@ -141,12 +141,12 @@ public class Future2Completable {
 				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
 				boolean returnValue;
 				int tempNum = debugUsePoint2num;
-				int refactorMode = ExecutorSubclass.arguModel(invocationNode,invocStmt);
+				int refactorMode = ExecutorSubclass.arguModel(invocationNode);
 				boolean flag = true;
 				boolean scflag = false;
 				switch (refactorMode) {
 			    case 1:
-			    	flagMap.put("ExecuteRunnable",flagMap.get("ExecuteRunnable")+1 );
+			    	flagMaybeMap.put("ExecuteRunnable",flagMaybeMap.get("ExecuteRunnable")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,false);
 					if(returnValue == false) {
 						//因执行器类型不安全，不能重构。
@@ -158,7 +158,7 @@ public class Future2Completable {
 			    	flagMap.put("ExecuteRunnable",flagMap.get("ExecuteRunnable")+1 );
 			        break;
 			    case 2:
-			    	flagMap.put("SubmitCallable",flagMap.get("SubmitCallable")+1 );
+			    	flagMaybeMap.put("SubmitCallable",flagMaybeMap.get("SubmitCallable")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
 					if(returnValue == false) {
 						//因执行器类型不安全，不能重构。
@@ -176,7 +176,7 @@ public class Future2Completable {
 			    	scClassflag = true;
 			        break;
 			    case 3:
-			    	flagMap.put("SubmitRunnable",flagMap.get("SubmitRunnable")+1 );
+			    	flagMaybeMap.put("SubmitRunnable",flagMaybeMap.get("SubmitRunnable")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
 					if(returnValue == false) {
 						//因执行器类型不安全，不能重构。
@@ -192,7 +192,7 @@ public class Future2Completable {
 			    	flagMap.put("SubmitRunnable",flagMap.get("SubmitRunnable")+1 );
 			        break;
 			    case 4:
-			    	flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
+			    	flagMaybeMap.put("SubmitRunnableNValue",flagMaybeMap.get("SubmitRunnableNValue")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
 					if(returnValue == false) {
 						//因执行器类型不安全，不能重构。

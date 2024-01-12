@@ -105,6 +105,8 @@ public class SootConfig {
         }
         // 一种复杂的分析方法，能够题升精度，同时会消耗大量时间。
         Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
+//        Options.v().setPhaseOption("cg.spark","apponly:true");
+        
     }
 
     private static List<String> getJarFolderPath() {
