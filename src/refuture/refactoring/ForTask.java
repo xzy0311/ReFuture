@@ -12,12 +12,13 @@ import soot.SootClass;
 //第二阶段实验，开始。0706
 // 待添加，增加一个get是否在callable或者Runnable中。
 // 11.16主要逻辑已废弃，有一些辅助方法被其他类调用。
+@Deprecated
 public class ForTask {
-	private static List<Change> allChanges;
-	public static boolean initStaticField() {
-		allChanges = new ArrayList<Change>();
-		return true;
-	}
+//	private static List<Change> allChanges;
+//	public static boolean initStaticField() {
+//		allChanges = new ArrayList<Change>();
+//		return true;
+//	}
 //	public static void refactor(List<ICompilationUnit> allJavaFiles) {
 //		List<SootClass> allFutureSubClasses = ForTask.getAllFutureAndItsSubClasses();
 //		System.out.println("【所有Future实现类及其子类：】"+allFutureSubClasses);
@@ -241,17 +242,17 @@ public class ForTask {
 //		return false;
 //	}
 //	
-	public static List<SootClass> getAllFutureAndItsSubClasses(){
-		SootClass futureSootClass = Scene.v().getSootClass("java.util.concurrent.Future");
-		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-		List<SootClass> futureImpClasses =hierarchy.getImplementersOf(futureSootClass);
-		List<SootClass> allFutureSubclasses = new ArrayList<SootClass>();
-		for(SootClass sc : futureImpClasses) {
-			allFutureSubclasses.addAll(hierarchy.getSubclassesOfIncluding(sc));
-		}
-		allFutureSubclasses.addAll(hierarchy.getSubinterfacesOfIncluding(futureSootClass));
-		return allFutureSubclasses;
-	}
+//	public static List<SootClass> getAllFutureAndItsSubClasses(){
+//		SootClass futureSootClass = Scene.v().getSootClass("java.util.concurrent.Future");
+//		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+//		List<SootClass> futureImpClasses =hierarchy.getImplementersOf(futureSootClass);
+//		List<SootClass> allFutureSubclasses = new ArrayList<SootClass>();
+//		for(SootClass sc : futureImpClasses) {
+//			allFutureSubclasses.addAll(hierarchy.getSubclassesOfIncluding(sc));
+//		}
+//		allFutureSubclasses.addAll(hierarchy.getSubinterfacesOfIncluding(futureSootClass));
+//		return allFutureSubclasses;
+//	}
 //	public static boolean inTasks(ASTNode node) {
 //		//添加lambda表达式判断逻辑
 //		Hierarchy hierarchy = Scene.v().getActiveHierarchy();

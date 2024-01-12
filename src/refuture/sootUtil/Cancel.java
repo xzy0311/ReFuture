@@ -45,17 +45,9 @@ public class Cancel {
 		return false;
 	}
 	
-	public static Set<String> getAllFutureAndsubName(){
-		List<SootClass> allFutureSubClasses = ForTask.getAllFutureAndItsSubClasses();
-		Set<String> allFutureAndsubName = new HashSet<>();
-		for(SootClass allFutureSubClass:allFutureSubClasses) {
-			allFutureAndsubName.add(allFutureSubClass.getName());
-		}
-		return allFutureAndsubName;
-	}
 	
 	public static void initCancel(List<ICompilationUnit> allJavaFiles) {
-		Set<String> allFutureAndsubName = getAllFutureAndsubName();
+		Set<String> allFutureAndsubName = ExecutorSubclass.allFutureSubClasses;
 		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
 			MethodInvocationVisiter miv = new MethodInvocationVisiter();
 			astUnit.accept(miv);

@@ -48,8 +48,6 @@ public class ExecutorSubclass {
 	
 	private static Set<SootClass>allExecutorSubClasses;
 	
-	public static Set<JimpleLocal> useInstanceofExecutorLocal;
-	
 	/** 包含我手动添加的jdk中自带的执行器类型,以及完全没有重写关键方法子类. */
 	private static Set<SootClass>mayCompleteExecutorSubClasses;//存入可能可以重构的类型以及包装类。
 	
@@ -59,13 +57,15 @@ public class ExecutorSubclass {
 	private static Set<SootClass>allDirtyClasses;
 	
 	/** The all appendent classes. */
-	private static Set<SootClass>allAdditionalClasses;
+//	private static Set<SootClass>allAdditionalClasses;
 	
 	/** 包括子接口和所有实现类限定名. */
 	public static Set<String> callableSubClasses;
 	
 	/** 包括子接口和所有实现类限定名. */
 	public static Set<String> runnablesubClasses;
+	
+	public static Set<String>allFutureSubClasses;
 	/**
 	 * Inits the static field.
 	 *
@@ -73,17 +73,30 @@ public class ExecutorSubclass {
 	 */
 	public static boolean initStaticField() {
 		mayCompleteExecutorSubClasses = new HashSet<SootClass>();
+		allFutureSubClasses = new HashSet<String>();
 		wrapperClass = new HashSet<SootClass>();
 		allDirtyClasses = new HashSet<SootClass>();
-		allAdditionalClasses = new HashSet<SootClass>();
+//		allAdditionalClasses = new HashSet<SootClass>();
 		allExecutorServiceSubClasses= new HashSet<SootClass>();
 		allExecutorSubClasses = new HashSet<SootClass>();
-		useInstanceofExecutorLocal = new HashSet<JimpleLocal>();
 		callableSubClasses = new HashSet<String>();
 		runnablesubClasses = new HashSet<String>();
 		return true;
 	}
-	
+	public static void futureAnalysis() {
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		SootClass future = Scene.v().getSootClass("java.util.concurrent.Future");
+		hierarchy.getImplementersOf(future).forEach((e)->{
+			e = (SootClass)e;
+			allFutureSubClasses.add(e.getName());
+			});
+		hierarchy.getSubinterfacesOfIncluding(future).forEach((e)->{
+			e = (SootClass)e;
+			allFutureSubClasses.add(e.getName());
+			});
+		AnalysisUtils.debugPrint("allFutureSubClasses:"+allFutureSubClasses.toString());
+		
+	}
 	
 	public static void taskTypeAnalysis() {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
@@ -107,6 +120,7 @@ public class ExecutorSubclass {
 			});
 		
 		AnalysisUtils.debugPrint("CallableSubClasses:"+callableSubClasses.toString());
+		AnalysisUtils.debugPrint("");
 		AnalysisUtils.debugPrint("RunnableSubClasses:"+runnablesubClasses.toString());
 	}
 
@@ -115,24 +129,6 @@ public class ExecutorSubclass {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
 		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
-		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
-			InstanceofVisiter insOf = new InstanceofVisiter();
-			astUnit.accept(insOf);
-			List<InstanceofExpression> insOfNodes = insOf.getResult();
-			for(InstanceofExpression insOfNode:insOfNodes) {
-				String qName = insOfNode.getRightOperand().resolveBinding().getQualifiedName();
-				if(runnablesubClasses.contains(qName)&&!qName.equals("java.lang.Runnable")) {
-					Stmt stmt = AdaptAst.getJimpleInvocStmt(insOfNode);
-					List<ValueBox> boxes = stmt.getUseBoxes();
-					for(ValueBox box : boxes) {
-						if(box instanceof ImmediateBox) {
-							JimpleLocal local = (JimpleLocal)box.getValue();
-							useInstanceofExecutorLocal.add(local);
-						}
-					}
-				}
-			}
-		}
 	}
 	
 	/**
@@ -193,24 +189,24 @@ public class ExecutorSubclass {
 	/**
 	 * 这个类用来分析额外的ExecutorService子类，这些类不属于JDK，是用户定义的新类，判断这些类是否是包装类。
 	 */
-	public static void additionalExecutorServiceSubClassAnalysis() {
-		Set<SootClass>setExecutorSubClass = new HashSet<SootClass>();
-		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
-		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
-		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
-		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
-		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService"));
-		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
-		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
-		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
-		List<SootClass> executorSubClasses = hierarchy.getImplementersOf(executorServiceClass);
-		for(SootClass executorSubClass:executorSubClasses) {
-			if(!setExecutorSubClass.contains(executorSubClass)) {
-				allAdditionalClasses.add(executorSubClass);
-			}
-		}
-	}
+//	public static void additionalExecutorServiceSubClassAnalysis() {
+//		Set<SootClass>setExecutorSubClass = new HashSet<SootClass>();
+//		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
+//		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
+//		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
+//		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
+//		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService"));
+//		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
+//		setExecutorSubClass.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
+//		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+//		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
+//		List<SootClass> executorSubClasses = hierarchy.getImplementersOf(executorServiceClass);
+//		for(SootClass executorSubClass:executorSubClasses) {
+//			if(!setExecutorSubClass.contains(executorSubClass)) {
+//				allAdditionalClasses.add(executorSubClass);
+//			}
+//		}
+//	}
 	
 	/**
 	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。.
@@ -330,7 +326,7 @@ public class ExecutorSubclass {
 			}
 			
 		}else {//execute()判断
-			if(useInstanceof(invocStmt)) {
+			if(Instanceof.useInstanceofRunnable(invocStmt)) {
 				return false;
 			}else {
 				return true;
@@ -514,27 +510,6 @@ public class ExecutorSubclass {
 		}
 		return -1;
 	}
-
-
-	public static boolean useInstanceof(Stmt invocStmt) {
-		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
-		List<Value> lv =ivcExp.getArgs();
-		if(lv.get(0)instanceof Local) {
-			Local la1 = (Local) lv.get(0);
-			PointsToSet ptset = pa.reachingObjects(la1);
-			for(JimpleLocal ioLocal:useInstanceofExecutorLocal) {
-				if(ptset.hasNonEmptyIntersection(pa.reachingObjects(ioLocal))) {
-					Future2Completable.useInstanceof++;
-					AnalysisUtils.debugPrint("因使用 instanceof而被排除");
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	
 	
 	public static Set<String> getCompleteExecutorSubClassesName(){
 		Set<String> completeSetTypeStrings = new HashSet<>();

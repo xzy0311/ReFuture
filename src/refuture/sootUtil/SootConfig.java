@@ -24,7 +24,7 @@ public class SootConfig {
 		extremeSpeedModel = false;
 	}
 	
-    public static void setupSoot(List<ICompilationUnit> allJavaFiles) {
+    public static void setupSoot() {
     	startTime =new Date();
 		System.out.println("The current start time is "+ startTime);
         soot.G.reset();
@@ -33,23 +33,9 @@ public class SootConfig {
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
         Scene.v().loadNecessaryClasses();
         System.out.println("[setupSoot]:加载必要类完毕！");
-		ExecutorSubclass.taskTypeAnalysis();
-		ExecutorSubclass.executorSubClassAnalysis();
-        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
-        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
-		CollectionEntrypoint.entryPointInit(allJavaFiles);
         CGPhaseOptions();//启用Spark
         PackManager.v().runPacks();
         System.out.println("[setupSoot]:Soot配置完毕。");
-        String filePath = "output.txt"; // 指定输出文件的路径
-        try {
-            FileWriter fileWriter = new FileWriter(filePath);
-            fileWriter.write(Scene.v().getEntryPoints().toString());
-            fileWriter.close();
-            System.out.println("字符串已成功输出到文件。");
-        } catch (IOException e) {
-            System.out.println("发生错误：" + e.getMessage());
-        }
         Date currentTime = new Date();
         System.out.println("soot配置完毕的时间"+"The current start time is "+ currentTime+"已花费:"+((currentTime.getTime()-startTime.getTime())/1000)+"s");
     }

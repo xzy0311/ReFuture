@@ -12,8 +12,7 @@ public class InitAllStaticfield {
 		Cancel.initStaticField();
 		SootConfig.sootConfigStaticInitial();
 		CollectionEntrypoint.initStaticField();
-		boolean status1 = ForTask.initStaticField();
-		return status&&status1;
+		return status;
 	}
 
 }

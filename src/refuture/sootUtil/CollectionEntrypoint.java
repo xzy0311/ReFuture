@@ -2,31 +2,29 @@ package refuture.sootUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 import java.util.Set;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.ExpressionStatement;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
-import soot.MethodOrMethodContext;
-import soot.Scene;
-import soot.SootMethod;
-import soot.jimple.toolkits.callgraph.CallGraph;
-import soot.jimple.toolkits.callgraph.Edge;
+import soot.jimple.Stmt;
 
 public class CollectionEntrypoint {
 	public static HashMap<ICompilationUnit,List<MethodInvocation>> invocNodeMap;
@@ -57,11 +55,22 @@ public class CollectionEntrypoint {
 					}
 				}
 				if(isTask) {Future2Completable.maybeRefactoringNode++;}else {continue;}
-				if(arguExps.size() == 0||arguExps.size()>2) {
-					AnalysisUtils.debugPrint("[entryPointInit]:参数个数为0或大于2，或者execute的参数不为1排除");
-					Future2Completable.executeOverload++;
-					continue;
+				
+				if(invocationNode.getName().toString().equals("execute")) {
+					if(arguExps.size() != 1) {
+						AnalysisUtils.debugPrint("[entryPointInit]:execute的参数不为1排除");
+						Future2Completable.methodOverload++;
+						continue;
+					}
+				}else if(invocationNode.getName().toString().equals("submit")) {
+					if(arguExps.size() == 0||arguExps.size()>2) {
+						AnalysisUtils.debugPrint("[entryPointInit]:参数个数为0或大于2execute的参数不为1排除");
+						Future2Completable.methodOverload++;
+						continue;
+					}
+					if(!futureType(invocationNode)) { continue;}
 				}
+
 				//到这里,invocation是submit/execute(task...);
 				Expression exp = invocationNode.getExpression();
 				Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
@@ -129,7 +138,65 @@ public class CollectionEntrypoint {
 		invocNodeMap.put(cu, taskPointList);
 		 allTaskPointList.addAll(taskPointList);
 		}
-	}
+		}
+		
+	private static boolean futureType(MethodInvocation mInvoc) {
+		ASTNode astNode = (ASTNode) mInvoc;
+		ASTNode parentNode = astNode.getParent();
+		Stmt stmt = AdaptAst.getJimpleInvocStmt(mInvoc);
+		if(parentNode instanceof MethodInvocation) {
+			MethodInvocation parentInvocation = (MethodInvocation)parentNode;
+			if(parentInvocation.getExpression() == mInvoc) {
+				return true;
+			}else if(parentInvocation.arguments().contains(mInvoc)) {
+				for(ITypeBinding paraTypeBinding : parentInvocation.resolveMethodBinding().getParameterTypes()) {
+					if(paraTypeBinding.getErasure().getName().equals("Future")) {
+						if(Instanceof.useInstanceofFuture(stmt)) {
+							return false;
+						}
+						return true;
+					}
+				}
+				return false;
+			}
+		}else if(parentNode instanceof ExpressionStatement) {
+			return true;
+		}else if(parentNode instanceof VariableDeclarationFragment) {
+			VariableDeclarationFragment parentDeclarationFragment = (VariableDeclarationFragment)parentNode;
+			VariableDeclarationStatement parentDeclarationStatement = (VariableDeclarationStatement)parentDeclarationFragment.getParent();
+			if(parentDeclarationStatement.getType().resolveBinding().getErasure().getName().equals("Future")) {
+				if(Instanceof.useInstanceofFuture(stmt)) {
+					return false;
+				}
+				return true;
+			}else {
+				return false;
+			}
+		}else if (parentNode instanceof ReturnStatement ) {
+			MethodDeclaration md = AnalysisUtils.getMethodDeclaration4node(parentNode);
+			if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
+				if(Instanceof.useInstanceofFuture(stmt)) {
+					return false;
+				}
+				return true;
+			}else {
+				return false;
+			}
+		}else if(parentNode instanceof Assignment) {
+			Assignment parentAssignment = (Assignment)parentNode;
+			if(parentAssignment.getLeftHandSide().resolveTypeBinding().getErasure().getName().equals("Future")) {
+				if(Instanceof.useInstanceofFuture(stmt)) {
+					return false;
+				}
+				return true;
+			}else {
+				return false;
+			}
+		}
+		return true;
+	}	
+		
+	
 	
 	
 }

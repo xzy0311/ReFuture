@@ -20,6 +20,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import refuture.sootUtil.Cancel;
 import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
+import refuture.sootUtil.Instanceof;
 import refuture.sootUtil.SootConfig;
 
 
@@ -74,6 +75,12 @@ public class RefutureRefactoring extends Refactoring {
 		if (allJavaFiles.isEmpty()) {
 			return RefactoringStatus.createFatalErrorStatus("Find zero java file");
 		}
+		return RefactoringStatus.createInfoStatus("Ininal condition has been checked");
+	}
+
+	@Override
+	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
+			throws CoreException, OperationCanceledException {
 		AnalysisUtils.allAST = new ArrayList<>();
 		for(ICompilationUnit cu : allJavaFiles) {
 			ASTParser parser = ASTParser.newParser(AST.JLS11);
@@ -84,31 +91,24 @@ public class RefutureRefactoring extends Refactoring {
 			CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
 			AnalysisUtils.allAST.add(astUnit);
 		}
-		
-		return RefactoringStatus.createInfoStatus("Ininal condition has been checked");
-	}
-
-	@Override
-	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
-			throws CoreException, OperationCanceledException {
 		if(refactorPattern ==1) {
 			System.out.println("Future重构模式");
 			System.out.println("hello xzy ,this is "+ time++ +" times run this model.");
 			if(time == 1) {
-				SootConfig.setupSoot(allJavaFiles);//配置初始化soot,用来分析类层次结构
-			}else {
-				ExecutorSubclass.taskTypeAnalysis();
-				ExecutorSubclass.executorSubClassAnalysis();
-		        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
-		        ExecutorSubclass.additionalExecutorServiceSubClassAnalysis();
-				CollectionEntrypoint.entryPointInit(allJavaFiles);
+				SootConfig.setupSoot();//配置初始化soot,用来分析类层次结构
 			}
+			ExecutorSubclass.futureAnalysis();
+			ExecutorSubclass.taskTypeAnalysis();
+			ExecutorSubclass.executorSubClassAnalysis();
+	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
+	        Instanceof.init();
 	        if(!this.disableCancelPattern) {
 		        Cancel.initCancel(allJavaFiles);
 	        }
+	        
+			CollectionEntrypoint.entryPointInit(allJavaFiles);
 			Future2Completable.refactor();
 		}else if(refactorPattern == 2) {
-//			ForTask.refactor(allJavaFiles);   10月11日，暂时取消ForTask尝试。待添加寻找Thread相关代码，以及关闭soot的方法。
 			FindThread.find(allJavaFiles);
 		}
 		Date endTime = new Date();
