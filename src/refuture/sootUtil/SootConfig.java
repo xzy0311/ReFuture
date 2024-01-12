@@ -91,22 +91,13 @@ public class SootConfig {
     public static void CGPhaseOptions(){
     	 // 开启创建CG
         Options.v().setPhaseOption("cg.spark","enabled:true");
-        if(!extremeSpeedModel) {
-        	System.out.println("[CGPhaseOptions]:当前非快速模式");
-        	//兼容多个main函数，并且不可抵达的方法也会进行分析。
-        	Options.v().setPhaseOption("cg", "all-reachable:true");
-        }else {
-        	Options.v().setPhaseOption("cg", "all-reachable:true");
-        	CHATransformer.v().transform();
-        	System.out.println("cha CallGraph build success");
-        	Options.v().setPhaseOption("cg", "all-reachable:false");
-        	Scene.v().setEntryPoints(new ArrayList<SootMethod>(CollectionEntrypoint.getSetEntryPoint()));
-        	System.out.println("设置入口点完成：");
+        if(extremeSpeedModel) {
+        	System.out.println("[CGPhaseOptions]:当前为快速模式");
+        	Options.v().setPhaseOption("cg.spark","apponly:true");
         }
+    	Options.v().setPhaseOption("cg", "all-reachable:true");
         // 一种复杂的分析方法，能够题升精度，同时会消耗大量时间。
         Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
-//        Options.v().setPhaseOption("cg.spark","apponly:true");
-        
     }
 
     private static List<String> getJarFolderPath() {

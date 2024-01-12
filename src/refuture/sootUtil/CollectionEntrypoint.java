@@ -29,10 +29,8 @@ import soot.jimple.toolkits.callgraph.CallGraph;
 import soot.jimple.toolkits.callgraph.Edge;
 
 public class CollectionEntrypoint {
-	public static Set<SootMethod> entryPointSet;
 	public static HashMap<ICompilationUnit,List<MethodInvocation>> invocNodeMap;
 	public static void initStaticField() {
-		entryPointSet = new HashSet<>();
 		invocNodeMap =  new HashMap<>();
 	}
 	public static void entryPointInit(List<ICompilationUnit> allJavaFiles){
@@ -131,42 +129,7 @@ public class CollectionEntrypoint {
 		invocNodeMap.put(cu, taskPointList);
 		 allTaskPointList.addAll(taskPointList);
 		}
-		if(SootConfig.extremeSpeedModel) {
-			for(MethodInvocation node:allTaskPointList) {
-				SootMethod sm = AdaptAst.getSootMethod4invocNode(node);
-				if(AdaptAst.invocInLambda(node)>0) {
-					sm = AdaptAst.getSootRealFunction4InLambda(node);
-				}
-				entryPointSet.add(sm);
-			}
-		}
 	}
-	
-	//假设 entryPointSet中都是准备好了的入口方法。
-    public static Set<SootMethod> getSetEntryPoint(){
-    	CallGraph cg = Scene.v().getCallGraph();
-    	Set<SootMethod> processedSet = new HashSet<>();//初始化为默认的入口点。
-    	Queue<SootMethod> workList = new LinkedList<>(entryPointSet);//初始化为我可能进行指向分析的方法。
-    	while(!workList.isEmpty()) {
-    		SootMethod currentMethod = workList.poll();
-    		if(processedSet.add(currentMethod)) {
-        		Iterator it2 = cg.edgesInto(currentMethod);
-        		while(it2.hasNext()) {
-        			Edge e = (Edge) it2.next();
-        			MethodOrMethodContext mayMethod = e.getSrc();
-        			if(mayMethod instanceof SootMethod) {
-        				SootMethod mayMethodTemp = (SootMethod) mayMethod;
-        				workList.offer(mayMethodTemp);
-        			}
-        		}
-    		}
-    	}
-    	processedSet.addAll(Scene.v().getEntryPoints());
-    	return processedSet;
-    }
-
-		
-		
 	
 	
 }

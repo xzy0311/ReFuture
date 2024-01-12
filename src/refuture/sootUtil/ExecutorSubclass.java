@@ -128,9 +128,6 @@ public class ExecutorSubclass {
 						if(box instanceof ImmediateBox) {
 							JimpleLocal local = (JimpleLocal)box.getValue();
 							useInstanceofExecutorLocal.add(local);
-							if(SootConfig.extremeSpeedModel) {
-								CollectionEntrypoint.entryPointSet.add(AdaptAst.getSootMethod4invocNode(insOfNode));
-							}
 						}
 					}
 				}
