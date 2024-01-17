@@ -1,23 +1,28 @@
 package refuture.sootUtil;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
-import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.InstanceofExpression;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
-import refuture.astvisitor.InstanceofVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
+import soot.Body;
+import soot.G;
 import soot.Hierarchy;
 import soot.Local;
 import soot.PointsToAnalysis;
@@ -25,14 +30,21 @@ import soot.PointsToSet;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootField;
+import soot.SootMethod;
 import soot.Type;
+import soot.Unit;
 import soot.Value;
 import soot.ValueBox;
-import soot.jimple.InvokeExpr;
+import soot.jimple.ReturnStmt;
 import soot.jimple.Stmt;
-import soot.jimple.internal.ImmediateBox;
+import soot.jimple.internal.AbstractDefinitionStmt;
+import soot.jimple.internal.JCastExpr;
+import soot.jimple.internal.JIdentityStmt;
 import soot.jimple.internal.JimpleLocal;
 import soot.jimple.internal.JimpleLocalBox;
+import soot.toolkits.graph.BriefUnitGraph;
+import soot.toolkits.graph.UnitGraph;
+import soot.toolkits.scalar.LocalDefs;
 /**
  * The Class ExecutorSubclass.
  */
@@ -52,6 +64,10 @@ public class ExecutorSubclass {
 	private static Set<SootClass>mayCompleteExecutorSubClasses;//存入可能可以重构的类型以及包装类。
 	
 	private static Set<SootClass>wrapperClass;
+	
+	private static Set<SootClass>proxySubmitRClass;
+	private static Set<SootClass>proxySubmitCClass;
+	private static Set<SootClass>proxySubmitRVClass;
 	
 	/** The all dirty classes. */
 	private static Set<SootClass>allDirtyClasses;
@@ -75,6 +91,9 @@ public class ExecutorSubclass {
 		mayCompleteExecutorSubClasses = new HashSet<SootClass>();
 		allFutureSubClasses = new HashSet<String>();
 		wrapperClass = new HashSet<SootClass>();
+		proxySubmitRClass = new HashSet<SootClass>();
+		proxySubmitCClass = new HashSet<SootClass>();
+		proxySubmitRVClass = new HashSet<SootClass>();
 		allDirtyClasses = new HashSet<SootClass>();
 //		allAdditionalClasses = new HashSet<SootClass>();
 		allExecutorServiceSubClasses= new HashSet<SootClass>();
@@ -207,6 +226,726 @@ public class ExecutorSubclass {
 //			}
 //		}
 //	}
+	public static void wrapperClassAnalysis() {
+		//先通过工作列表算法，找到潜在的代理类。潜在的代理类是指，存在对应的字段和方法调用。但方法expression未判断是否实际指向字段，
+		//因为当类不是完全的类时，可能无法准确判断。
+		Set<SootClass> executors = new HashSet<SootClass>(allExecutorSubClasses);
+		HashMap<SootClass,ClassInfo> resultMap = new HashMap<>();
+		Queue<SootClass> workList = new LinkedList<>();
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		SootClass executorSC = Scene.v().getSootClass("java.util.concurrent.Executor");
+		List<String> allExecutorInterfacesName = new ArrayList<>();
+		hierarchy.getSubinterfacesOfIncluding(executorSC).forEach((e)->{
+			allExecutorInterfacesName.add(e.getName());
+		});
+		workList.add(executorSC); 
+		while(!workList.isEmpty()) {
+			SootClass currentClass = workList.poll();
+			//首先是否包含未处理的Executor继承树上的直接父类。
+			boolean containUnprocessSupClass = false;
+			for(SootClass directSupClass4ExecutorFamily:getDirectSupClasses4ExecutorFamily(currentClass)) {
+					if(!resultMap.containsKey(directSupClass4ExecutorFamily)) {
+						containUnprocessSupClass = true;
+						break;
+					}
+			}
+			if(containUnprocessSupClass) {
+//				workList.add(currentClass); 不需要再添加了，因为有其它父类处理完成时，自然会添加它。
+				continue;
+			}
+			//若未含有未处理的继承树上的直接父类，则开始处理
+			ClassInfo currentClassInfo = null;
+			//1.处理继承问题，将父类的信息继承过来。
+			//1.1 先处理父接口
+			for(SootClass supInterface:getDirectSupInterfaces4ExecutorFamily(currentClass)) {
+				ClassInfo supInterfaceInfo = resultMap.get(supInterface);
+				processSupInterfaceInfo(currentClassInfo,supInterfaceInfo);
+			}
+			//1.2 处理父类
+			SootClass supClass = getDirectSupCommonClass4ExecutorFamily(currentClass);
+			if(supClass != null) {
+				ClassInfo supClassInfo = resultMap.get(supClass);
+				processSupClass(currentClassInfo,supClassInfo);
+			}
+			//2 开始分析当前类定义.
+			if(currentClassInfo == null) currentClassInfo = new ClassInfo();//其实，这个只对应了Executor接口类型分析时，会运行。
+			// 2.1 分析字段
+			for(SootField currentField :currentClass.getFields()) {
+				if(!currentField.isStatic()) {
+					if(allExecutorInterfacesName.contains(currentField.getType().toQuotedString())) {
+						currentClassInfo.declarField = true;
+						currentClassInfo.fieldSignature = currentField.getSignature();
+					}
+				}
+			}
+			// 2.2 分析方法
+			if(currentClass.declaresMethod("void execute(java.lang.Runnable)")) {
+				currentClassInfo.delcarExecute = true;
+				currentClassInfo.executeSignature = null;
+				SootMethod currentMethod = currentClass.getMethod("void execute(java.lang.Runnable)") ;
+				if(currentMethod.isConcrete()) {
+					Body body = currentMethod.retrieveActiveBody();
+					for(Unit e:body.getUnits()) {
+						Stmt stmt = (Stmt) e;
+						if(stmt.containsInvokeExpr()&&stmt.getInvokeExpr().getMethod().getSubSignature().equals("void execute(java.lang.Runnable)")){
+							currentClassInfo.executeSignature = currentMethod.getSignature();
+						}
+					}
+				}
+			}
+			
+			if(currentClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)")){
+				currentClassInfo.declarSubmitC = true;
+				currentClassInfo.submitCSignature = null;
+				SootMethod currentMethod = currentClass.getMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)") ;
+				if(currentMethod.isConcrete()) {
+					Body body = currentMethod.retrieveActiveBody();
+					for(Unit e:body.getUnits()) {
+						Stmt stmt = (Stmt) e;
+						if(stmt.containsInvokeExpr()&&stmt.getInvokeExpr().getMethod().getSubSignature().equals("java.util.concurrent.Future submit(java.util.concurrent.Callable)")){
+							currentClassInfo.submitCSignature = currentMethod.getSignature();
+						}
+					}
+				}
+			
+			}
+			if(currentClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)")) {
+				currentClassInfo.declarSubmitRV = true;
+				currentClassInfo.submitRVSignature = null;
+				SootMethod currentMethod = currentClass.getMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)") ;
+				if(currentMethod.isConcrete()) {
+					Body body = currentMethod.retrieveActiveBody();
+					for(Unit e:body.getUnits()) {
+						Stmt stmt = (Stmt) e;
+						if(stmt.containsInvokeExpr()&&stmt.getInvokeExpr().getMethod().getSubSignature().equals("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)")){
+							currentClassInfo.submitRVSignature = currentMethod.getSignature();
+						}
+					}
+				}
+			}
+			if(currentClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable)")) {
+				currentClassInfo.declarSubmitR = true;
+				currentClassInfo.submitRSignature = null;
+				SootMethod currentMethod = currentClass.getMethod("java.util.concurrent.Future submit(java.lang.Runnable)") ;
+				if(currentMethod.isConcrete()) {
+					Body body = currentMethod.retrieveActiveBody();
+					for(Unit e:body.getUnits()) {
+						Stmt stmt = (Stmt) e;
+						if(stmt.containsInvokeExpr()&&stmt.getInvokeExpr().getMethod().getSubSignature().equals("java.util.concurrent.Future submit(java.lang.Runnable)")){
+							currentClassInfo.submitRSignature = currentMethod.getSignature();
+						}
+					}
+				}
+			}
+			//做完最后的处理，将info和SootClass加入resultMap。
+			resultMap.put(currentClass, currentClassInfo);
+			//将子类加入WorkList。
+			workList.addAll(getDirectSubClasses(currentClass));
+		}
+		//现在开始处理是否指向字段，以及内部是否安全的代理方法。
+		for(SootClass currentClass:resultMap.keySet()) {
+			//1. 找到非抽象类进行判断。
+			if(currentClass.isConcrete()) {
+				ClassInfo currentClassInfo = resultMap.get(currentClass);
+				//2.判断是否签名都齐全
+				if(currentClassInfo.hasAllSignature()) {
+					//3.挨个判断，符合要求，将其加入到对应的集合中，用于后续的判断。此时假定有4个集合，分别对应excute,submit(三种情况）
+					String currentFieldSignature = currentClassInfo.fieldSignature;
+					// 3.1execute判断 execute不需要自己建立一个集合，但是execute是代理方法，是下面3个集合能够重构的基础，
+					// 在这个基础上可以进行clone判断。
+					SootMethod currentExecuteMethod = Scene.v().getMethod(currentClassInfo.executeSignature);
+					Body executeBody = currentExecuteMethod.retrieveActiveBody();
+					Stmt invocStmt = null;
+					JimpleLocal realExecutor = null;
+					for(Unit u : executeBody.getUnits()) {
+						invocStmt = (Stmt) u;
+						if(invocStmt.containsInvokeExpr()&&invocStmt.getInvokeExpr().getMethod().getSubSignature().equals(currentExecuteMethod.getSubSignature())) {
+							realExecutor = getReceiverLocal4InvocStmt(invocStmt);
+							if(realExecutor == null) {
+								throw new RefutureException("出现错误，无法得到receiverLocal");
+							}
+							break;
+						}
+					}
+					if(isFieldInvoc(executeBody,invocStmt,realExecutor,currentFieldSignature)) {
+						//此时，execute已经符合要求了。
+						// 3.2submitR判断
+						if(submitRcloneAnalysis(currentExecuteMethod,Scene.v().getMethod(currentClassInfo.submitRSignature))) {
+							proxySubmitRClass.add(currentClass);
+						}
+						// 3.3submitC判断
+						if(submitCcloneAnalysis(currentExecuteMethod,Scene.v().getMethod(currentClassInfo.submitCSignature))) {
+							proxySubmitCClass.add(currentClass);
+						}
+						// 3.4submitRV判断
+						if(submitRVcloneAnalysis(currentExecuteMethod,Scene.v().getMethod(currentClassInfo.submitRVSignature))) {
+							proxySubmitRVClass.add(currentClass);
+						}
+					}
+					
+				}
+			}
+		}
+		System.out.println("llllll:");
+		System.out.println(proxySubmitRClass);
+		System.out.println(proxySubmitCClass);
+		System.out.println(proxySubmitRVClass);
+	}
+	private static boolean submitRcloneAnalysis(SootMethod executeMethod,SootMethod submitMethod) {
+		List<String> executeUnits = new ArrayList<>();
+		HashMap<Unit,String> executeThisInvocMap = getRealThisInvocString(executeMethod);
+		executeMethod.retrieveActiveBody().getUnits().forEach((e)->{
+			//execute只需要将this的方法调用进行改变。
+			String executeStmtString = e.toString();
+			if(executeThisInvocMap.containsKey(e)) {
+				executeStmtString = executeThisInvocMap.get(e);
+			}
+			executeUnits.add(executeStmtString);
+		});
+		//接下来将return  变量去除，然后将该变量的assign语句变成一个单纯的方法调用语句，也就是将这个变量和等号去除。
+		List<String> submitUnits = new ArrayList<>();
+		Body submitBody = submitMethod.retrieveActiveBody();
+		ReturnStmt rs = getReturnStmt(submitMethod);
+		JimpleLocal jl = (JimpleLocal)rs.getOp();
+		List<Unit> defStmts = getDefsStmt(jl, rs, submitBody);
+		HashMap<Unit,String> submitThisInvocMap = getRealThisInvocString(submitMethod);
+		for(Unit u: submitBody.getUnits()) {
+			Stmt ss = (Stmt)u;
+			String unitString = u.toString();
+			// 将this的方法调用更改为真实的。
+			if(submitThisInvocMap.containsKey(u)) {
+				unitString = submitThisInvocMap.get(u);
+			}
+			if(u == rs) {
+				//return改变
+				unitString = "return";
+			}
+			if(defStmts.contains(u)) {
+				//去除左手变量和=号
+				String[] parts = unitString.split("=");
+				unitString = parts[parts.length -1].trim();
+			}
+			//将关键的方法调用的签名进行模糊。
+			if(ss.containsInvokeExpr()&&unitString.contains("java.util.concurrent.Future submit(java.lang.Runnable)>")) {
+				unitString = unitString.replace("java.util.concurrent.Future submit(java.lang.Runnable)>", "void execute(java.lang.Runnable)>");
+			}
+
+			submitUnits.add(unitString);
+		}
+		if(executeUnits.equals(submitUnits)) {
+			return true;
+		}
+		return false;
+	}
+	private static boolean submitCcloneAnalysis(SootMethod executeMethod,SootMethod submitMethod) {
+		List<String> executeUnits = new ArrayList<>();
+		HashMap<Unit,String> executeThisInvocMap = getRealThisInvocString(executeMethod);
+		executeMethod.retrieveActiveBody().getUnits().forEach((e)->{
+			//execute只需要将this的方法调用进行改变。
+			String executeStmtString = e.toString();
+			if(executeThisInvocMap.containsKey(e)) {
+				executeStmtString = executeThisInvocMap.get(e);
+			}
+			executeUnits.add(executeStmtString);
+		});
+		//接下来将return  变量去除，然后将该变量的assign语句变成一个单纯的方法调用语句，也就是将这个变量和等号去除。
+		List<String> submitUnits = new ArrayList<>();
+		Body submitBody = submitMethod.retrieveActiveBody();
+		ReturnStmt rs = getReturnStmt(submitMethod);
+		JimpleLocal jl = (JimpleLocal)rs.getOp();
+		List<Unit> defStmts = getDefsStmt(jl, rs, submitBody);
+		HashMap<Unit,String> submitThisInvocMap = getRealThisInvocString(submitMethod);
+		for(Unit u: submitBody.getUnits()) {
+			Stmt ss = (Stmt)u;
+			String unitString = u.toString();
+			//需要将形式参数中，callable进行修改为Runnable
+			if(unitString.contains("@parameter0: java.util.concurrent.Callable")) {
+				unitString = unitString.replace("java.util.concurrent.Callable", "java.lang.Runnable");
+			}
+			// 将this的方法调用更改为真实的。
+			if(submitThisInvocMap.containsKey(u)) {
+				unitString = submitThisInvocMap.get(u);
+			}
+			if(u == rs) {
+				//return改变
+				unitString = "return";
+			}
+			if(defStmts.contains(u)) {
+				//去除左手变量和=号
+				String[] parts = unitString.split("=");
+				unitString = parts[parts.length -1].trim();
+			}
+			//将关键的方法调用的签名进行模糊。
+			if(ss.containsInvokeExpr()&&unitString.contains("java.util.concurrent.Future submit(java.util.concurrent.Callable)>")) {
+				unitString = unitString.replace("java.util.concurrent.Future submit(java.util.concurrent.Callable)>", "void execute(java.lang.Runnable)>");
+			}
+
+			submitUnits.add(unitString);
+		}
+		if(executeUnits.equals(submitUnits)) {
+			return true;
+		}
+		return false;
+	}
+	private static boolean submitRVcloneAnalysis(SootMethod executeMethod,SootMethod submitMethod) {
+		List<String> executeUnits = new ArrayList<>();
+		HashMap<Unit,String> executeThisInvocMap = getRealThisInvocString(executeMethod);
+		executeMethod.retrieveActiveBody().getUnits().forEach((e)->{
+			//execute只需要将this的方法调用进行改变。
+			String executeStmtString = e.toString();
+			if(executeThisInvocMap.containsKey(e)) {
+				executeStmtString = executeThisInvocMap.get(e);
+			}
+			executeUnits.add(executeStmtString);
+		});
+		//接下来将return  变量去除，然后将该变量的assign语句变成一个单纯的方法调用语句，也就是将这个变量和等号去除。
+		List<String> submitUnits = new ArrayList<>();
+		Body submitBody = submitMethod.retrieveActiveBody();
+		ReturnStmt rs = getReturnStmt(submitMethod);
+		JimpleLocal rjl = (JimpleLocal)rs.getOp();
+		List<Unit> defStmts = getDefsStmt(rjl, rs, submitBody);
+		HashMap<Unit,String> submitThisInvocMap = getRealThisInvocString(submitMethod);
+		String para = new String();
+		List<JimpleLocal> needChangeNameLocals = new ArrayList<>();
+		for(Unit u: submitBody.getUnits()) {
+			Stmt ss = (Stmt)u;
+			String unitString = u.toString();
+			// 去除额外的参数的初始化。
+			if(ss instanceof JIdentityStmt&&unitString.contains("@parameter1:")) {
+				JIdentityStmt jis = (JIdentityStmt)ss;
+				JimpleLocal pjl = (JimpleLocal) jis.getLeftOp();
+				Iterator it = submitBody.getLocals().snapshotIterator();
+				boolean flag = false;
+				while(it.hasNext()) {
+					JimpleLocal current = (JimpleLocal) it.next();
+					if(flag) {
+						if(current != rjl) {
+							needChangeNameLocals.add(current);
+						}
+					}else {
+						if(current == pjl) {
+							flag = true;
+						}
+					}
+				}
+				
+				String[] parts = unitString.split(":=");
+				para = ", "+parts[0].trim();
+				continue;
+			}
+			// 将this的方法调用更改为真实的。
+			if(submitThisInvocMap.containsKey(u)) {
+				unitString = submitThisInvocMap.get(u);
+			}
+			if(u == rs) {
+				//return改变
+				unitString = "return";
+			}
+			if(defStmts.contains(u)) {
+				//去除左手变量和=号
+				String[] parts = unitString.split("=");
+				unitString = parts[parts.length -1].trim();
+			}
+			//将关键的方法调用的签名进行模糊。
+			if(ss.containsInvokeExpr()&&unitString.contains("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)>")) {
+				unitString = unitString.replace("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)>", "void execute(java.lang.Runnable)>");
+				unitString = unitString.replace(para, "");
+			}
+			//将数字-1
+			for(JimpleLocal ncnl :needChangeNameLocals) {
+				if(localInTheStmt(ncnl, ss)) {
+					String oldLocal = Matcher.quoteReplacement(ncnl.toString());
+					String newLocal = Matcher.quoteReplacement(getNameLow1ForLocal(ncnl));
+					unitString = unitString.replaceAll(oldLocal, newLocal);
+				}
+			}
+			submitUnits.add(unitString);
+		}
+		if(executeUnits.equals(submitUnits)) {
+			return true;
+		}
+		return false;
+	}
+	private static String getNameLow1ForLocal(JimpleLocal jl) {
+		String localName =jl.toString();
+	    Pattern pattern = Pattern.compile("\\d+");
+        Matcher matcher = pattern.matcher(localName);
+
+        StringBuilder sb = new StringBuilder();
+        int lastEnd = 0;
+        while (matcher.find()) {
+            String numericSubstring = matcher.group();
+            int numericValue = Integer.parseInt(numericSubstring);
+            int newValue = numericValue - 1;
+            String newNumericSubstring = String.valueOf(newValue);
+            sb.append(localName, lastEnd, matcher.start());
+            sb.append(newNumericSubstring);
+            lastEnd = matcher.end();
+        }
+        sb.append(localName.substring(lastEnd));
+		return sb.toString();
+	}
+	private static boolean localInTheStmt(JimpleLocal jl ,Stmt stmt) {
+		for(ValueBox vb :stmt.getUseAndDefBoxes()) {
+			if(vb.getValue() == jl) {
+				return true;
+			}
+		}
+		return false;
+	}
+	private static HashMap<Unit,String> getRealThisInvocString(SootMethod method){
+		JimpleLocal executeThis = (JimpleLocal) method.retrieveActiveBody().getThisLocal();
+		HashMap<Unit,String> thisInvocMap = new HashMap<>();
+		method.retrieveActiveBody().getUnits().forEach((e)->{
+			Stmt s1 = (Stmt)e;
+			if(s1.containsInvokeExpr()&&useLocalInInvocStmt(executeThis, s1)) {
+				String realMethodString = s1.getInvokeExpr().getMethod().getSignature();
+				String originString = s1.toString();
+				String result = originString.replaceFirst("<.*?>", realMethodString);
+				thisInvocMap.put(e, result);
+			}
+		});
+		return thisInvocMap;
+	}
+	
+	private static boolean useLocalInInvocStmt(Local l ,Stmt stmt) {
+		for(ValueBox vb :stmt.getInvokeExpr().getUseBoxes()) {
+			if (vb instanceof JimpleLocalBox) {
+				if(vb.getValue() == l) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	
+	private static JimpleLocal getReceiverLocal4InvocStmt(Stmt stmt) {
+		for(ValueBox vb:stmt.getUseBoxes()) {
+			if(vb instanceof JimpleLocalBox) {
+				return (JimpleLocal) vb.getValue();
+			}
+		}
+		return null;
+	}
+	
+	private static boolean isFieldInvoc(Body currentBody ,Stmt stmt,JimpleLocal realExecutor,String fieldSignature) {
+		for(Unit u:getDefsStmt(realExecutor, stmt,currentBody)) {
+			Stmt s = (Stmt)u;
+			if(s.containsFieldRef()) {
+				SootField sf = s.getFieldRef().getField();
+				if(sf.getSignature() == fieldSignature) return true;
+				continue;
+			}else if(s.containsInvokeExpr()) {
+				//这种情况下，就是去找这个方法调用的return .
+				SootMethod nsm = s.getInvokeExpr().getMethod();
+				ReturnStmt returnStmt = getReturnStmt(nsm);
+				JimpleLocal njl = (JimpleLocal) returnStmt.getOp();
+				return isFieldInvoc(nsm.retrieveActiveBody(),returnStmt,njl,fieldSignature);
+			}else if(isCastExpr(s)){
+				 String typeName = getTypeName4Cast((AbstractDefinitionStmt) s);
+				 SootClass sc = Scene.v().getSootClass(typeName);
+				 if(sc.isInterface()&&allExecutorSubClasses.contains(sc)) {
+					 JimpleLocal cal = getUseLocal4Cast((AbstractDefinitionStmt) s);
+					 return isFieldInvoc(currentBody,s,cal,fieldSignature);
+				 }
+				 continue;
+			}else {
+				continue;
+			}
+		}
+		return false;
+	}
+	
+	private static JimpleLocal getUseLocal4Cast(AbstractDefinitionStmt stmt) {
+		JCastExpr v =(JCastExpr)stmt.getRightOp();
+		return (JimpleLocal) v.getOp();
+	}
+	private static String getTypeName4Cast(AbstractDefinitionStmt stmt) {
+		JCastExpr v =(JCastExpr)stmt.getRightOp();
+		return v.getCastType().toQuotedString();
+	}
+	
+	private static boolean isCastExpr(Stmt stmt) {
+		if(stmt instanceof AbstractDefinitionStmt) {
+			AbstractDefinitionStmt jas = (AbstractDefinitionStmt) stmt;
+			Value v =jas.getRightOp();
+			if(v instanceof JCastExpr) {
+				return true;
+			}
+		}
+		return false;
+	}
+	public static List<Unit> getDefsStmt(JimpleLocal jl,Stmt stmt,Body body) {
+		LocalDefs ld = G.v().soot_toolkits_scalar_LocalDefsFactory().newLocalDefs(body);
+		return ld.getDefsOfAt(jl, stmt);
+	}
+	
+	
+	private static ReturnStmt getReturnStmt(SootMethod sm) {
+		Body deleBody = sm.retrieveActiveBody();
+		UnitGraph cfg = new BriefUnitGraph(deleBody);
+		for(Unit u:cfg.getTails()) {
+//			if(u.toString().contains("return")) {
+//				return (Stmt)u;
+//			}
+			if(u instanceof ReturnStmt) {
+				return (ReturnStmt)u;
+			}
+		}
+		return null;
+	}
+	
+	private static void processSupClass(ClassInfo currentClassInfo, ClassInfo supClassInfo) {
+		if(currentClassInfo == null) {
+			currentClassInfo = new ClassInfo(supClassInfo);
+			return;
+		}
+		if(supClassInfo.declarField) {
+			currentClassInfo.declarField = true;
+			currentClassInfo.fieldSignature = supClassInfo.fieldSignature;
+		}
+		if(supClassInfo.delcarExecute) {
+			currentClassInfo.delcarExecute = true;
+			currentClassInfo.executeSignature = supClassInfo.executeSignature;
+		}
+		if(supClassInfo.declarSubmitR) {
+			currentClassInfo.declarSubmitR = true;
+			currentClassInfo.submitRSignature = supClassInfo.submitRSignature;
+		}
+		if(supClassInfo.declarSubmitC) {
+			currentClassInfo.declarSubmitC = true;
+			currentClassInfo.submitCSignature = supClassInfo.submitCSignature;
+		}
+		if(supClassInfo.declarSubmitRV) {
+			currentClassInfo.declarSubmitRV = true;
+			currentClassInfo.submitRVSignature = supClassInfo.submitRVSignature;
+		}
+		
+	}
+	private static void processSupInterfaceInfo(ClassInfo currentClassInfo, ClassInfo supInterfaceInfo) {
+		//这里已经限制了当前处理的不是接口，因为接口不能实现接口。
+		//如果两个及以上的接口同时声明了一个方法，那么有冲突的方法会遵守需要重新实现。
+		//对多个接口的实现就是求异运算。都实现了，就相当于没实现。声明用或运算，只要有声明，说明这个类目前是声明这个方法或者字段的。
+		//有一个实现了，另一个没实现，其实也相当于没实现，因为都是Executor接口或其子类，肯定声明了execute这个方法，所以，需要根据是否声明相同的方法，若声明了相同的方法，
+		//则一定是null,两个都实现了有冲突，一个实现一个没实现，有冲突，只有两个都没实现，才不冲突。
+		if(currentClassInfo == null) {
+			currentClassInfo = new ClassInfo(supInterfaceInfo);
+			return;
+		}
+		//开始异或运算
+		//接口肯定没有字段定义，所以直接赋值null。
+		currentClassInfo.fieldSignature = null;
+		//判断是否同时声明了execute方法，并且还需要判断该Signature是否完全一致，实际上在一个方法中声明的，因为这决定了是否可以兼容。
+		if(currentClassInfo.delcarExecute&&supInterfaceInfo.delcarExecute) {
+			if(!currentClassInfo.executeSignature.equals(supInterfaceInfo.executeSignature)) {
+				currentClassInfo.executeSignature = null;
+			}
+		}else {
+			currentClassInfo.executeSignature = currentClassInfo.executeSignature == null ? supInterfaceInfo.executeSignature:currentClassInfo.executeSignature;
+		}
+		
+		if(currentClassInfo.declarSubmitC&&supInterfaceInfo.declarSubmitC) {
+			if(!currentClassInfo.submitCSignature.equals(supInterfaceInfo.submitCSignature)) {
+				currentClassInfo.submitCSignature = null;
+			}
+		}else {
+			currentClassInfo.submitCSignature = currentClassInfo.submitCSignature == null ? supInterfaceInfo.submitCSignature:currentClassInfo.submitCSignature;
+		}
+
+		if(currentClassInfo.declarSubmitR&&supInterfaceInfo.declarSubmitR) {
+			if(!currentClassInfo.submitRSignature.equals(supInterfaceInfo.submitRSignature)) {
+				currentClassInfo.submitRSignature = null;
+			}
+		}else {
+			currentClassInfo.submitRSignature = currentClassInfo.submitRSignature == null ? supInterfaceInfo.submitRSignature:currentClassInfo.submitRSignature;
+		}
+		
+		if(currentClassInfo.declarSubmitRV&&supInterfaceInfo.declarSubmitRV) {
+			if(!currentClassInfo.submitRVSignature.equals(supInterfaceInfo.submitRVSignature)) {
+				currentClassInfo.submitRVSignature = null;
+			}
+		}else {
+			currentClassInfo.submitRVSignature = currentClassInfo.submitRVSignature == null ? supInterfaceInfo.submitRVSignature:currentClassInfo.submitRVSignature;
+		}
+		
+		//开始或运算
+		if(currentClassInfo.declarField||supInterfaceInfo.declarField) {
+			currentClassInfo.declarField = true;
+		}
+		if(currentClassInfo.delcarExecute||supInterfaceInfo.delcarExecute) {
+			currentClassInfo.delcarExecute = true;
+		}
+		if(currentClassInfo.declarSubmitR||supInterfaceInfo.declarSubmitR) {
+			currentClassInfo.declarSubmitR = true;
+		}
+		if(currentClassInfo.declarSubmitC||supInterfaceInfo.declarSubmitC) {
+			currentClassInfo.declarSubmitC = true;
+		}
+		if(currentClassInfo.declarSubmitRV||supInterfaceInfo.declarSubmitRV) {
+			currentClassInfo.declarSubmitRV = true;
+		}
+		
+	}
+	private static SootClass getDirectSupCommonClass4ExecutorFamily(SootClass sc){
+		if(sc.isInterface()) {
+			return null;
+		}
+		if(isExecutorSubClass(sc.getSuperclass())) return sc.getSuperclass();
+		return null;
+	}
+	private static Set<SootClass> getDirectSupInterfaces4ExecutorFamily(SootClass sc){
+		Set<SootClass> directSupInterfaces4ExecutorFamily = new HashSet<>();
+		for(SootClass currentInterface : sc.getInterfaces()) {
+			if(isExecutorSubClass(currentInterface)) {
+				directSupInterfaces4ExecutorFamily.add(currentInterface);
+			}
+		}
+		return directSupInterfaces4ExecutorFamily;
+	}
+	
+	private static Set<SootClass> getDirectSupClasses4ExecutorFamily(SootClass sc){
+		Set<SootClass> directSupClasses4ExecutorFamily = new HashSet<>();
+		directSupClasses4ExecutorFamily.add(getDirectSupCommonClass4ExecutorFamily(sc));
+		directSupClasses4ExecutorFamily.addAll(getDirectSupInterfaces4ExecutorFamily(sc));
+		return directSupClasses4ExecutorFamily;
+	}
+	
+	
+	public static boolean isExecutorSubClass(SootClass sc) {
+		if(allExecutorSubClasses.contains(sc))	return true;
+		return false;
+	}
+	//包含直接的子类和子接口
+	public static Set<SootClass> getDirectSubClasses(SootClass sc){
+		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+		Set<SootClass> alldirectSubClass = new HashSet<>();
+		if(sc.isInterface()) {
+			alldirectSubClass.addAll(hierarchy.getDirectSubinterfacesOf(sc));
+			alldirectSubClass.addAll(hierarchy.getDirectImplementersOf(sc));
+		}else {
+			alldirectSubClass.addAll(hierarchy.getDirectSubclassesOf(sc));
+		}
+		return alldirectSubClass;
+	}
+
+	static class ClassInfo{
+		// declar开头的字段，标记着当前类是否声明了字段或者方法，是指实际上是否声明了
+		// 与父类有关的为_signature字段，保存着实际的定义
+		// 这么做的原因是因为接口存在默认方法，类型存在抽象类，通过这种方式我可以无视接口和抽象类，用同一种表示结构，进行表示。
+		// 最后的三个clone字段，代表着，是否体现出与execute()方法的克隆，以保证该类是安全代理该方法。
+		boolean declarField;
+		boolean delcarExecute;
+		boolean declarSubmitR;
+		boolean declarSubmitC;
+		boolean declarSubmitRV;
+		String fieldSignature;
+		String executeSignature;
+		String submitRSignature;
+		String submitCSignature;
+		String submitRVSignature;
+		boolean submitRClone;
+		boolean submitCClone;
+		boolean submitRVClone;
+		
+		public ClassInfo() {
+			declarField = false;
+			delcarExecute = false;
+			declarSubmitR = false;
+			declarSubmitC = false;
+			declarSubmitRV = false;
+			fieldSignature = null;
+			executeSignature = null;
+			submitRSignature = null;
+			submitCSignature = null;
+			submitRVSignature = null;
+			submitRClone = false;
+			submitCClone = false;
+			submitRVClone = false;
+		}
+		public ClassInfo(ClassInfo superClassInfo) {
+			declarField = superClassInfo.declarField;
+			delcarExecute = superClassInfo.delcarExecute;
+			declarSubmitR = superClassInfo.declarSubmitR;
+			declarSubmitC = superClassInfo.declarSubmitC;
+			declarSubmitRV = superClassInfo.declarSubmitRV;
+			fieldSignature = superClassInfo.fieldSignature;
+			executeSignature = superClassInfo.executeSignature;
+			submitRSignature = superClassInfo.submitRSignature;
+			submitCSignature = superClassInfo.submitCSignature;
+			submitRVSignature = superClassInfo.submitRVSignature;
+			submitRClone = superClassInfo.submitRClone;
+			submitCClone = superClassInfo.submitCClone;
+			submitRVClone = superClassInfo.submitRVClone;
+		}
+		public boolean hasAllSignature() {
+			if(fieldSignature == null || fieldSignature.isEmpty()) {
+				return false;
+			}
+			if(executeSignature == null || executeSignature.isEmpty()) {
+				return false;
+			}
+			if(submitRSignature == null || submitRSignature.isEmpty()) {
+				return false;
+			}
+			if(submitCSignature == null || submitCSignature.isEmpty()) {
+				return false;
+			}
+			if(submitRVSignature == null || submitRVSignature.isEmpty()) {
+				return false;
+			}
+			return true;
+		}
+		public String getFieldSignature() {
+			return fieldSignature;
+		}
+		public String getExecuteSignature() {
+			return executeSignature;
+		}
+		public String getSubmitRSignature() {
+			return submitRSignature;
+		}
+		public String getSubmitCSignature() {
+			return submitCSignature;
+		}
+		public String getSubmitRVSignature() {
+			return submitRVSignature;
+		}
+		public void setFieldSignature(String sig) {
+			fieldSignature = sig;
+		}
+		public void setExecuteSignature(String sig) {
+			executeSignature = sig;
+		}
+		public void setSubmitRSignature(String sig) {
+			submitRSignature = sig;
+		}
+		public void setSubmitCSignature(String sig) {
+			submitCSignature = sig;
+		}
+		public void setSubmitRVSignature(String sig) {
+			submitRVSignature = sig;
+		}
+		public boolean isSubmitRClone() {
+			return submitRClone;
+		}
+		public void setSubmitRClone(boolean submitRClone) {
+			this.submitRClone = submitRClone;
+		}
+		public boolean isSubmitCClone() {
+			return submitCClone;
+		}
+		public void setSubmitCClone(boolean submitCClone) {
+			this.submitCClone = submitCClone;
+		}
+		public boolean isSubmitRVClone() {
+			return submitRVClone;
+		}
+		public void setSubmitRVClone(boolean submitRVClone) {
+			this.submitRVClone = submitRVClone;
+		}
+	}
+	
 	
 	/**
 	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。.

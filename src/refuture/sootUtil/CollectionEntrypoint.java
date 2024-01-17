@@ -196,7 +196,4 @@ public class CollectionEntrypoint {
 		return true;
 	}	
 		
-	
-	
-	
 }

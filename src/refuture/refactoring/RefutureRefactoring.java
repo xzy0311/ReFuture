@@ -100,6 +100,7 @@ public class RefutureRefactoring extends Refactoring {
 			ExecutorSubclass.futureAnalysis();
 			ExecutorSubclass.taskTypeAnalysis();
 			ExecutorSubclass.executorSubClassAnalysis();
+			ExecutorSubclass.wrapperClassAnalysis();
 	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
 	        Instanceof.init();
 	        if(!this.disableCancelPattern) {
