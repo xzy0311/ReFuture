@@ -29,13 +29,12 @@ public class SootConfig {
 		System.out.println("The current start time is "+ startTime);
         soot.G.reset();
         BasicOptions();
-        JBPhaseOptions();
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
         Scene.v().loadNecessaryClasses();
         System.out.println("[setupSoot]:加载必要类完毕！");
         CGPhaseOptions();//启用Spark
         PackManager.v().runPacks();
-        System.out.println("[setupSoot]:Soot配置完毕。");
+        System.out.println("[setupSoot]:Soot包运行完毕。");
         Date currentTime = new Date();
         System.out.println("soot配置完毕的时间"+"The current start time is "+ currentTime+"已花费:"+((currentTime.getTime()-startTime.getTime())/1000)+"s");
     }
@@ -44,7 +43,7 @@ public class SootConfig {
      * 基础配置
      */
     public static void BasicOptions(){
-        // 将给定的类加载路径作为默认类加载路径
+        // 将给定的类加载路径作为默认类加载路径，如果手动设置的话，可以根据不同的待重构项目编译等级来确定jdk具体路径。
         Options.v().set_prepend_classpath(true);
         // 运行soot创建虚类，如果源码中找不到对应源码，soot 会自动创建一个虚拟的类来代替。
         Options.v().set_allow_phantom_refs(true);
@@ -60,14 +59,6 @@ public class SootConfig {
         Options.v().set_process_dir(AnalysisUtils.getSootClassPath());
     }
 
-    /**
-     * soot 的执行过程可以分为多个阶段（Phase），不同类型的Body，都有自己对应的处理阶段。
-     * 像 JimpleBody 对应的处理阶段叫'jb'，
-     * soot 提供了PhaseOptions，可以通过它来改变 soot 在该阶段的处理方式。
-     */
-    public static void JBPhaseOptions(){
-        Options.v().setPhaseOption("jb", "use-original-names:true");
-    }
 
     /**
      * Spark 是一个灵活的指针分析框架，同时支持创建Call Graph。
@@ -77,13 +68,13 @@ public class SootConfig {
     public static void CGPhaseOptions(){
     	 // 开启创建CG
         Options.v().setPhaseOption("cg.spark","enabled:true");
+    	Options.v().setPhaseOption("cg", "all-reachable:true");
+        // 一种复杂的分析方法，能够题升精度，同时会消耗大量时间。
+        Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
         if(extremeSpeedModel) {
         	System.out.println("[CGPhaseOptions]:当前为快速模式");
         	Options.v().setPhaseOption("cg.spark","apponly:true");
         }
-    	Options.v().setPhaseOption("cg", "all-reachable:true");
-        // 一种复杂的分析方法，能够题升精度，同时会消耗大量时间。
-        Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
     }
 
     private static List<String> getJarFolderPath() {

@@ -66,7 +66,7 @@ public class Future2Completable {
 	
 	public static int maybeRefactoringNode;
 	
-	public static int useNotExecutorSubClass;
+	public static int FutureCanot;
 	
 	public static int methodOverload;
 	
@@ -82,7 +82,7 @@ public class Future2Completable {
 	public static boolean initStaticField() {
 		allChanges = new ArrayList<Change>();
 		canRefactoringNode = 0;
-		useNotExecutorSubClass = 0;
+		FutureCanot = 0;
 		maybeRefactoringNode =0;
 		fineRefactoring = false;
 		methodOverload = 0;
@@ -138,7 +138,7 @@ public class Future2Completable {
 					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
 				}
 				AnalysisUtils.debugPrint("**第"+invocNum+"个{execute或submit}调用分析开始**********************************************************%n");
-				Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
+				Stmt invocStmt = AdaptAst.getJimpleStmt(invocationNode);
 				boolean returnValue;
 				int tempNum = debugUsePoint2num;
 				int refactorMode = ExecutorSubclass.arguModel(invocationNode);
@@ -147,7 +147,7 @@ public class Future2Completable {
 				switch (refactorMode) {
 			    case 1:
 			    	flagMaybeMap.put("ExecuteRunnable",flagMaybeMap.get("ExecuteRunnable")+1 );
-			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,false);
+			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
 						//因执行器类型不安全，不能重构。
 						illExecutor++;
@@ -159,7 +159,7 @@ public class Future2Completable {
 			        break;
 			    case 2:
 			    	flagMaybeMap.put("SubmitCallable",flagMaybeMap.get("SubmitCallable")+1 );
-			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
+			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
 						//因执行器类型不安全，不能重构。
 						illExecutor++;
@@ -177,7 +177,7 @@ public class Future2Completable {
 			        break;
 			    case 3:
 			    	flagMaybeMap.put("SubmitRunnable",flagMaybeMap.get("SubmitRunnable")+1 );
-			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
+			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
 						//因执行器类型不安全，不能重构。
 						illExecutor++;
@@ -193,7 +193,7 @@ public class Future2Completable {
 			        break;
 			    case 4:
 			    	flagMaybeMap.put("SubmitRunnableNValue",flagMaybeMap.get("SubmitRunnableNValue")+1 );
-			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,true);
+			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
 						//因执行器类型不安全，不能重构。
 						illExecutor++;
@@ -280,8 +280,8 @@ public class Future2Completable {
 		System.out.println("其中重构成功，ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
 				flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue"));
 		
-		System.out.println("其中，重构失败的原因是：经ASTBinding不是执行器子类："+useNotExecutorSubClass+"个；经ASTBinding方法参数个数不对："+methodOverload+"个；    execute使用instanceof："+useInstanceof
-				+"个；     因执行器类型不安全，不能重构"+illExecutor+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
+		System.out.println("其中，重构失败的原因是：经ASTBinding,Future条件不通过，可能：类型、调用instanceof、强制类型转换："+FutureCanot+"个；经ASTBinding方法参数个数不对："+methodOverload+"个；"
+				+ "    execute使用instanceof："+useInstanceof+"个；     因执行器类型不安全，不能重构"+illExecutor+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
 		System.out.println("Pointo未命中："+debugUsePoint2num);
 	}
 	

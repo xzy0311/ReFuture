@@ -39,7 +39,7 @@ public class Instanceof {
 			for(InstanceofExpression insOfNode:insOfNodes) {
 				String qName = insOfNode.getRightOperand().resolveBinding().getQualifiedName();
 				if(ExecutorSubclass.runnablesubClasses.contains(qName)&&!qName.equals("java.lang.Runnable")) {
-					Stmt stmt = AdaptAst.getJimpleInvocStmt(insOfNode);
+					Stmt stmt = AdaptAst.getJimpleStmt(insOfNode);
 					List<ValueBox> boxes = stmt.getUseBoxes();
 					for(ValueBox box : boxes) {
 						if(box instanceof ImmediateBox) {
@@ -48,7 +48,7 @@ public class Instanceof {
 						}
 					}
 				}else if(ExecutorSubclass.allFutureSubClasses.contains(qName)&&!qName.equals("java.util.concurrent.Future")) {
-					Stmt stmt = AdaptAst.getJimpleInvocStmt(insOfNode);
+					Stmt stmt = AdaptAst.getJimpleStmt(insOfNode);
 					List<ValueBox> boxes = stmt.getUseBoxes();
 					for(ValueBox box : boxes) {
 						if(box instanceof ImmediateBox) {

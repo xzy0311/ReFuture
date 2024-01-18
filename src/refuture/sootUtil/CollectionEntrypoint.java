@@ -31,10 +31,17 @@ public class CollectionEntrypoint {
 	public static void initStaticField() {
 		invocNodeMap =  new HashMap<>();
 	}
+	
+	/**
+	 * 这个方法虽然名称是入口点初始化，但是与指针分析的入口点已经没关系了。
+	 * 1.判断方法调用的名称为execute/submit()
+	 * 2.判断方法调用的receiverObject的类型为Executor或其子类.
+	 * 3.判断方法调用的实参是否包含类型为Runnable/Callable的参数。
+	 * 此时若都符合，则属于maybeRefactoringNode.
+	 * 4.对execute方法调用限制个数为1,对submit方法调用限制个数为1/2.（这个其实并不安全，且应该放在这里判断嘛？最终是为了对应到我们要重构的4种方法）
+	 * 5.对于submit情况下，判断接受Future对象的变量是否定义为Future，并且该对象是否流入intanceof判断。（需要再限制强制类型转换嘛？）
+	 */
 	public static void entryPointInit(List<ICompilationUnit> allJavaFiles){
-		List<MethodInvocation> allTaskPointList = new ArrayList<MethodInvocation>();
-		//调用cancel的方法定义(可选）
-		//调用submit/execute的方法定义|submit得到的定义变量可替代cancel的方法定义。
 		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
 			List<MethodInvocation> taskPointList = new ArrayList<MethodInvocation>();
 			ICompilationUnit cu = (ICompilationUnit) astUnit.getJavaElement();
@@ -45,6 +52,10 @@ public class CollectionEntrypoint {
 				List<Expression> arguExps =  invocationNode.arguments();
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;
 				boolean isTask = false;
+				if(!expIsExecutor(invocationNode)) {
+					AnalysisUtils.debugPrint("[entryPointInit]receiverObject不属于Executor Family.");
+					continue;
+				}
 				for(Expression arguExp : arguExps) {
 					String arguTypeName =AnalysisUtils.getTypeName4Exp(arguExp);
 					if(arguTypeName == null) {
@@ -68,82 +79,77 @@ public class CollectionEntrypoint {
 						Future2Completable.methodOverload++;
 						continue;
 					}
-					if(!futureType(invocationNode)) { continue;}
-				}
-
-				//到这里,invocation是submit/execute(task...);
-				Expression exp = invocationNode.getExpression();
-				Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
-				Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
-				if(exp==null){
-					// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
-					AnalysisUtils.debugPrint("[entryPointInit]receiverObject为this，继续判断");
-					ASTNode aboutTypeDeclaration = (ASTNode) invocationNode;
-					while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
-						aboutTypeDeclaration = aboutTypeDeclaration.getParent();
-					}
-					String typeName = null;
-					if(aboutTypeDeclaration instanceof TypeDeclaration) {
-						TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
-						ITypeBinding tdBinding = td.resolveBinding();
-						typeName = tdBinding.getQualifiedName();
-						if(tdBinding.isNested()) {
-							typeName = tdBinding.getBinaryName();
+					if(!futureType(invocationNode)) {
+						Future2Completable.FutureCanot++;
+						continue;
 						}
-					}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
-						AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
-						ITypeBinding tdBinding = acd.resolveBinding();
-						typeName = tdBinding.getQualifiedName();
-						if(tdBinding.isNested()) {
-							typeName = tdBinding.getBinaryName();
-						}
-					}else {
-						throw new RefutureException(invocationNode,"迭代,未得到类型定义或者匿名类定义");
-					}
-					typeName = typeName.replaceAll("<[^>]*>", "");
-					if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(typeName)) {
-						Future2Completable.canRefactoringNode++;
-						taskPointList.add(invocationNode);
-					}else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(typeName)) {
-						Future2Completable.canRefactoringNode++;
-						taskPointList.add(invocationNode);
-					}else if(typeName == "java.lang.Object") {
-						throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
-					}else {
-						Future2Completable.useNotExecutorSubClass++;
-						AnalysisUtils.debugPrint("[entryPointInit]receiverObject为this，判断失败，当前类不是子类。typename:"+typeName);
-					}
-					continue;
 				}
-				String typeName = AnalysisUtils.getTypeName4Exp(exp);
-				if(typeName==null){
-					throw new RefutureException(invocationNode,"typeBinding为null，应该是eclipse环境下的源码没有调试好，这里卡");
-				}
-				if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName))) {
-					Future2Completable.canRefactoringNode++;
-					AnalysisUtils.debugPrint("[entryPointInit]初步ast判定可以,这里不卡");
-					taskPointList.add(invocationNode);
-				}
-				else if(invocationNode.getName().toString().equals("submit")&&(allSubServiceNames.contains(typeName))) {
-					Future2Completable.canRefactoringNode++;
-					AnalysisUtils.debugPrint("[entryPointInit]ast判定可以,这里不卡");
-					taskPointList.add(invocationNode);
-				}else if(typeName == "java.lang.Object") {
-					throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
-				}else{
-					AnalysisUtils.debugPrint("[entryPointInite]ast判定这个调用对象的类不是子类,这个对象的类型名为:"+typeName);
-					Future2Completable.useNotExecutorSubClass++;
-				}
+				
+				taskPointList.add(invocationNode);
+				Future2Completable.canRefactoringNode++;
 			}
 		invocNodeMap.put(cu, taskPointList);
-		 allTaskPointList.addAll(taskPointList);
+//		 allTaskPointList.addAll(taskPointList);
 		}
-		}
+	}
 		
+	private static boolean expIsExecutor(MethodInvocation invocationNode) {
+		Expression exp = invocationNode.getExpression();
+		Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
+		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
+		if(exp==null){
+			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
+			AnalysisUtils.debugPrint("[entryPointInit]receiverObject为this，继续判断");
+			ASTNode aboutTypeDeclaration = (ASTNode) invocationNode;
+			while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
+				aboutTypeDeclaration = aboutTypeDeclaration.getParent();
+			}
+			String typeName = null;
+			if(aboutTypeDeclaration instanceof TypeDeclaration) {
+				TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
+				ITypeBinding tdBinding = td.resolveBinding();
+				typeName = tdBinding.getQualifiedName();
+				if(tdBinding.isNested()) {
+					typeName = tdBinding.getBinaryName();
+				}
+			}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+				AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
+				ITypeBinding tdBinding = acd.resolveBinding();
+				typeName = tdBinding.getQualifiedName();
+				if(tdBinding.isNested()) {
+					typeName = tdBinding.getBinaryName();
+				}
+			}else {
+				throw new RefutureException(invocationNode,"迭代,未得到类型定义或者匿名类定义");
+			}
+			typeName = typeName.replaceAll("<[^>]*>", "");
+			if(invocationNode.getName().toString().equals("execute")&&allSubNames.contains(typeName)) {
+				return true;
+			}else if(invocationNode.getName().toString().equals("submit")&&allSubServiceNames.contains(typeName)) {
+				return true;
+			}else if(typeName == "java.lang.Object") {
+				throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
+			}
+			return false;
+		}
+		String typeName = AnalysisUtils.getTypeName4Exp(exp);
+		if(typeName==null){
+			throw new RefutureException(invocationNode,"typeBinding为null，应该是eclipse环境下的源码没有调试好，这里卡");
+		}
+		if(invocationNode.getName().toString().equals("execute")&&(allSubNames.contains(typeName))) {
+			return true;
+		}
+		else if(invocationNode.getName().toString().equals("submit")&&(allSubServiceNames.contains(typeName))) {
+			return true;
+		}else if(typeName == "java.lang.Object") {
+			throw new RefutureException(invocationNode,"typeBinding为Object,精度不够");
+		}
+		return false;
+	}
 	private static boolean futureType(MethodInvocation mInvoc) {
 		ASTNode astNode = (ASTNode) mInvoc;
 		ASTNode parentNode = astNode.getParent();
-		Stmt stmt = AdaptAst.getJimpleInvocStmt(mInvoc);
+		Stmt stmt = AdaptAst.getJimpleStmt(mInvoc);
 		if(parentNode instanceof MethodInvocation) {
 			MethodInvocation parentInvocation = (MethodInvocation)parentNode;
 			if(parentInvocation.getExpression() == mInvoc) {
@@ -152,12 +158,14 @@ public class CollectionEntrypoint {
 				for(ITypeBinding paraTypeBinding : parentInvocation.resolveMethodBinding().getParameterTypes()) {
 					if(paraTypeBinding.getErasure().getName().equals("Future")) {
 						if(Instanceof.useInstanceofFuture(stmt)) {
+							AnalysisUtils.debugPrint("Future可能调用intanceof");
 							return false;
 						}
 						return true;
 					}
 				}
-				return false;
+				throw new RefutureException(mInvoc);
+//				return false;
 			}
 		}else if(parentNode instanceof ExpressionStatement) {
 			return true;
@@ -166,31 +174,37 @@ public class CollectionEntrypoint {
 			VariableDeclarationStatement parentDeclarationStatement = (VariableDeclarationStatement)parentDeclarationFragment.getParent();
 			if(parentDeclarationStatement.getType().resolveBinding().getErasure().getName().equals("Future")) {
 				if(Instanceof.useInstanceofFuture(stmt)) {
+					AnalysisUtils.debugPrint("Future可能调用intanceof");
 					return false;
 				}
 				return true;
 			}else {
-				return false;
+				throw new RefutureException(mInvoc);
+//				return false;
 			}
 		}else if (parentNode instanceof ReturnStatement ) {
 			MethodDeclaration md = AnalysisUtils.getMethodDeclaration4node(parentNode);
 			if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
 				if(Instanceof.useInstanceofFuture(stmt)) {
+					AnalysisUtils.debugPrint("Future可能调用intanceof");
 					return false;
 				}
 				return true;
 			}else {
-				return false;
+				throw new RefutureException(mInvoc);
+//				return false;
 			}
 		}else if(parentNode instanceof Assignment) {
 			Assignment parentAssignment = (Assignment)parentNode;
 			if(parentAssignment.getLeftHandSide().resolveTypeBinding().getErasure().getName().equals("Future")) {
 				if(Instanceof.useInstanceofFuture(stmt)) {
+					AnalysisUtils.debugPrint("Future可能调用intanceof");
 					return false;
 				}
 				return true;
 			}else {
-				return false;
+				AnalysisUtils.debugPrint("Future可能调用intanceof");
+//				return false;
 			}
 		}
 		return true;

@@ -3,6 +3,7 @@ package refuture.refactoring;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -81,16 +82,18 @@ public class RefutureRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
-		AnalysisUtils.allAST = new ArrayList<>();
-		for(ICompilationUnit cu : allJavaFiles) {
-			ASTParser parser = ASTParser.newParser(AST.JLS11);
-			parser.setResolveBindings(true);
-			parser.setStatementsRecovery(true);
-			parser.setBindingsRecovery(true);
-			parser.setSource(cu);
-			CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
-			AnalysisUtils.allAST.add(astUnit);
-		}
+		ConcurrentLinkedQueue<CompilationUnit> allAST = new ConcurrentLinkedQueue<>();
+		allJavaFiles.parallelStream().forEach(cu -> {
+		    ASTParser parser = ASTParser.newParser(AST.JLS11);
+		    parser.setResolveBindings(true);
+		    parser.setStatementsRecovery(true);
+		    parser.setBindingsRecovery(true);
+		    parser.setSource(cu);
+		    CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
+		    allAST.add(astUnit);
+		});
+		AnalysisUtils.allAST = new ArrayList<>(allAST);
+		
 		if(refactorPattern ==1) {
 			System.out.println("Future重构模式");
 			System.out.println("hello xzy ,this is "+ time++ +" times run this model.");

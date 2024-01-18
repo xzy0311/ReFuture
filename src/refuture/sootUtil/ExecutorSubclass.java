@@ -59,18 +59,21 @@ public class ExecutorSubclass {
 	private static Set<SootClass>allExecutorServiceSubClasses;
 	
 	private static Set<SootClass>allExecutorSubClasses;
+	//mustDirtyClass排除了proxyClass，且内部只包含实际类
+	private static Set<SootClass>mustDirtyClasses;
+	
+	private static Set<SootClass>submitRDirtyClasses;
+	
+	private static Set<SootClass>submitCDirtyClasses;
+	
+	private static Set<SootClass>submitRVDirtyClasses;
 	
 	/** 包含我手动添加的jdk中自带的执行器类型,以及完全没有重写关键方法子类. */
 	private static Set<SootClass>mayCompleteExecutorSubClasses;//存入可能可以重构的类型以及包装类。
 	
-	private static Set<SootClass>wrapperClass;
-	
 	private static Set<SootClass>proxySubmitRClass;
 	private static Set<SootClass>proxySubmitCClass;
 	private static Set<SootClass>proxySubmitRVClass;
-	
-	/** The all dirty classes. */
-	private static Set<SootClass>allDirtyClasses;
 	
 	/** The all appendent classes. */
 //	private static Set<SootClass>allAdditionalClasses;
@@ -90,12 +93,13 @@ public class ExecutorSubclass {
 	public static boolean initStaticField() {
 		mayCompleteExecutorSubClasses = new HashSet<SootClass>();
 		allFutureSubClasses = new HashSet<String>();
-		wrapperClass = new HashSet<SootClass>();
 		proxySubmitRClass = new HashSet<SootClass>();
 		proxySubmitCClass = new HashSet<SootClass>();
 		proxySubmitRVClass = new HashSet<SootClass>();
-		allDirtyClasses = new HashSet<SootClass>();
-//		allAdditionalClasses = new HashSet<SootClass>();
+		mustDirtyClasses = new HashSet<SootClass>();
+		submitRDirtyClasses = new HashSet<SootClass>();
+		submitCDirtyClasses = new HashSet<SootClass>();
+		submitRVDirtyClasses = new HashSet<SootClass>();
 		allExecutorServiceSubClasses= new HashSet<SootClass>();
 		allExecutorSubClasses = new HashSet<SootClass>();
 		callableSubClasses = new HashSet<String>();
@@ -137,7 +141,7 @@ public class ExecutorSubclass {
 			e = (SootClass)e;
 			runnablesubClasses.add(e.getName());
 			});
-		
+		AnalysisUtils.debugPrint("");
 		AnalysisUtils.debugPrint("CallableSubClasses:"+callableSubClasses.toString());
 		AnalysisUtils.debugPrint("");
 		AnalysisUtils.debugPrint("RunnableSubClasses:"+runnablesubClasses.toString());
@@ -168,17 +172,16 @@ public class ExecutorSubclass {
 //		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
-		wrapperClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
-		wrapperClass.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
 		
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		List<SootClass> serviceSubImplementers = hierarchy.getImplementersOf(executorServiceClass);
 		allExecutorServiceSubClasses.addAll(serviceSubImplementers);
 		List<SootClass> serviceSubInterfaces = hierarchy.getSubinterfacesOfIncluding(executorServiceClass);
 		allExecutorServiceSubClasses.addAll(serviceSubInterfaces);
-		
+		/** The all dirty classes. */
+		Set<SootClass> allDirtyClasses = new HashSet<SootClass>();
 		for(SootClass tPESubClass : serviceSubImplementers) {
-			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)||wrapperClass.contains(tPESubClass)) {
+			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
 				continue;
 			}
 			//判断是否是dirtyClass
@@ -200,9 +203,32 @@ public class ExecutorSubclass {
 				mayCompleteExecutorSubClasses.add(tPESubClass);
 			}
 		}
+		for(SootClass executorServiceImplemente:serviceSubImplementers) {
+			if(mayCompleteExecutorSubClasses.contains(executorServiceImplemente)) {
+				continue;
+			}
+			int count = 0;
+			if(!proxySubmitRClass.contains(executorServiceImplemente)) {
+				submitRDirtyClasses.add(executorServiceImplemente);
+				count++;
+			}
+			if(!proxySubmitCClass.contains(executorServiceImplemente)) {
+				submitCDirtyClasses.add(executorServiceImplemente);
+				count++;
+			}
+			if(!proxySubmitRVClass.contains(executorServiceImplemente)) {
+				submitRVDirtyClasses.add(executorServiceImplemente);
+				count++;
+			}
+			if(count ==3) {
+				mustDirtyClasses.add(executorServiceImplemente);
+			}
+			
+		}
+		AnalysisUtils.debugPrint("");
 		AnalysisUtils.debugPrint("mayCompleteExecutorSubClasses:"+mayCompleteExecutorSubClasses.toString());
 		AnalysisUtils.debugPrint("");
-		AnalysisUtils.debugPrint("allDirtyClasses:"+allDirtyClasses.toString());
+		AnalysisUtils.debugPrint("mustDirtyClasses:"+mustDirtyClasses.toString());
 	}
 
 	/**
@@ -229,7 +255,6 @@ public class ExecutorSubclass {
 	public static void wrapperClassAnalysis() {
 		//先通过工作列表算法，找到潜在的代理类。潜在的代理类是指，存在对应的字段和方法调用。但方法expression未判断是否实际指向字段，
 		//因为当类不是完全的类时，可能无法准确判断。
-		Set<SootClass> executors = new HashSet<SootClass>(allExecutorSubClasses);
 		HashMap<SootClass,ClassInfo> resultMap = new HashMap<>();
 		Queue<SootClass> workList = new LinkedList<>();
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
@@ -259,13 +284,13 @@ public class ExecutorSubclass {
 			//1.1 先处理父接口
 			for(SootClass supInterface:getDirectSupInterfaces4ExecutorFamily(currentClass)) {
 				ClassInfo supInterfaceInfo = resultMap.get(supInterface);
-				processSupInterfaceInfo(currentClassInfo,supInterfaceInfo);
+				currentClassInfo = processSupInterfaceInfo(currentClassInfo,supInterfaceInfo);
 			}
 			//1.2 处理父类
 			SootClass supClass = getDirectSupCommonClass4ExecutorFamily(currentClass);
 			if(supClass != null) {
 				ClassInfo supClassInfo = resultMap.get(supClass);
-				processSupClass(currentClassInfo,supClassInfo);
+				currentClassInfo = processSupClass(currentClassInfo,supClassInfo);
 			}
 			//2 开始分析当前类定义.
 			if(currentClassInfo == null) currentClassInfo = new ClassInfo();//其实，这个只对应了Executor接口类型分析时，会运行。
@@ -274,7 +299,7 @@ public class ExecutorSubclass {
 				if(!currentField.isStatic()) {
 					if(allExecutorInterfacesName.contains(currentField.getType().toQuotedString())) {
 						currentClassInfo.declarField = true;
-						currentClassInfo.fieldSignature = currentField.getSignature();
+						currentClassInfo.fieldSignatures.add(currentField.getSignature()) ;
 					}
 				}
 			}
@@ -289,6 +314,7 @@ public class ExecutorSubclass {
 						Stmt stmt = (Stmt) e;
 						if(stmt.containsInvokeExpr()&&stmt.getInvokeExpr().getMethod().getSubSignature().equals("void execute(java.lang.Runnable)")){
 							currentClassInfo.executeSignature = currentMethod.getSignature();
+							break;
 						}
 					}
 				}
@@ -304,6 +330,7 @@ public class ExecutorSubclass {
 						Stmt stmt = (Stmt) e;
 						if(stmt.containsInvokeExpr()&&stmt.getInvokeExpr().getMethod().getSubSignature().equals("java.util.concurrent.Future submit(java.util.concurrent.Callable)")){
 							currentClassInfo.submitCSignature = currentMethod.getSignature();
+							break;
 						}
 					}
 				}
@@ -319,6 +346,7 @@ public class ExecutorSubclass {
 						Stmt stmt = (Stmt) e;
 						if(stmt.containsInvokeExpr()&&stmt.getInvokeExpr().getMethod().getSubSignature().equals("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)")){
 							currentClassInfo.submitRVSignature = currentMethod.getSignature();
+							break;
 						}
 					}
 				}
@@ -333,6 +361,7 @@ public class ExecutorSubclass {
 						Stmt stmt = (Stmt) e;
 						if(stmt.containsInvokeExpr()&&stmt.getInvokeExpr().getMethod().getSubSignature().equals("java.util.concurrent.Future submit(java.lang.Runnable)")){
 							currentClassInfo.submitRSignature = currentMethod.getSignature();
+							break;
 						}
 					}
 				}
@@ -340,17 +369,29 @@ public class ExecutorSubclass {
 			//做完最后的处理，将info和SootClass加入resultMap。
 			resultMap.put(currentClass, currentClassInfo);
 			//将子类加入WorkList。
-			workList.addAll(getDirectSubClasses(currentClass));
+			for(SootClass directSubClass:getDirectSubClasses(currentClass)) {
+				if (!resultMap.containsKey(directSubClass) ) {
+					workList.add(directSubClass);
+				}
+			}
+			
 		}
 		//现在开始处理是否指向字段，以及内部是否安全的代理方法。
 		for(SootClass currentClass:resultMap.keySet()) {
+			//0. 手动加入可以重构的内部类型
+			if(currentClass.getName() == "java.util.concurrent.Executors$DelegatedExecutorService"||
+					currentClass.getName() == "java.util.concurrent.Executors$DelegatedScheduledExecutorService") {
+					proxySubmitRVClass.add(currentClass);
+					proxySubmitCClass.add(currentClass);
+					proxySubmitRClass.add(currentClass);
+			}
 			//1. 找到非抽象类进行判断。
 			if(currentClass.isConcrete()) {
 				ClassInfo currentClassInfo = resultMap.get(currentClass);
 				//2.判断是否签名都齐全
 				if(currentClassInfo.hasAllSignature()) {
 					//3.挨个判断，符合要求，将其加入到对应的集合中，用于后续的判断。此时假定有4个集合，分别对应excute,submit(三种情况）
-					String currentFieldSignature = currentClassInfo.fieldSignature;
+					Set<String> currentFieldSignatures = currentClassInfo.fieldSignatures;
 					// 3.1execute判断 execute不需要自己建立一个集合，但是execute是代理方法，是下面3个集合能够重构的基础，
 					// 在这个基础上可以进行clone判断。
 					SootMethod currentExecuteMethod = Scene.v().getMethod(currentClassInfo.executeSignature);
@@ -367,7 +408,7 @@ public class ExecutorSubclass {
 							break;
 						}
 					}
-					if(isFieldInvoc(executeBody,invocStmt,realExecutor,currentFieldSignature)) {
+					if(isFieldInvoc(executeBody,invocStmt,realExecutor,currentFieldSignatures)) {
 						//此时，execute已经符合要求了。
 						// 3.2submitR判断
 						if(submitRcloneAnalysis(currentExecuteMethod,Scene.v().getMethod(currentClassInfo.submitRSignature))) {
@@ -388,7 +429,9 @@ public class ExecutorSubclass {
 		}
 		System.out.println("llllll:");
 		System.out.println(proxySubmitRClass);
+		AnalysisUtils.debugPrint("");
 		System.out.println(proxySubmitCClass);
+		AnalysisUtils.debugPrint("");
 		System.out.println(proxySubmitRVClass);
 	}
 	private static boolean submitRcloneAnalysis(SootMethod executeMethod,SootMethod submitMethod) {
@@ -429,7 +472,6 @@ public class ExecutorSubclass {
 			if(ss.containsInvokeExpr()&&unitString.contains("java.util.concurrent.Future submit(java.lang.Runnable)>")) {
 				unitString = unitString.replace("java.util.concurrent.Future submit(java.lang.Runnable)>", "void execute(java.lang.Runnable)>");
 			}
-
 			submitUnits.add(unitString);
 		}
 		if(executeUnits.equals(submitUnits)) {
@@ -437,6 +479,7 @@ public class ExecutorSubclass {
 		}
 		return false;
 	}
+	
 	private static boolean submitCcloneAnalysis(SootMethod executeMethod,SootMethod submitMethod) {
 		List<String> executeUnits = new ArrayList<>();
 		HashMap<Unit,String> executeThisInvocMap = getRealThisInvocString(executeMethod);
@@ -519,7 +562,7 @@ public class ExecutorSubclass {
 				while(it.hasNext()) {
 					JimpleLocal current = (JimpleLocal) it.next();
 					if(flag) {
-						if(current != rjl) {
+						if(current != rjl&&needChangeName(pjl,current)) {
 							needChangeNameLocals.add(current);
 						}
 					}else {
@@ -566,6 +609,21 @@ public class ExecutorSubclass {
 		}
 		return false;
 	}
+	private static boolean needChangeName(JimpleLocal pjl,JimpleLocal currentLocal) {
+		//判断是否需要将当前的名称进行修改
+		if(removeSpecialCharacters(pjl.toString()).equals(removeSpecialCharacters(currentLocal.toString()))) {
+			return true;
+		}
+		return false;
+	}
+    public static String removeSpecialCharacters(String input) {
+        // 使用正则表达式匹配并替换特殊字符
+        String pattern = "[^a-zA-Z]";
+        String replacement = "";
+        String result = Pattern.compile(pattern).matcher(input).replaceAll(replacement);
+        return result;
+    }
+	
 	private static String getNameLow1ForLocal(JimpleLocal jl) {
 		String localName =jl.toString();
 	    Pattern pattern = Pattern.compile("\\d+");
@@ -629,12 +687,12 @@ public class ExecutorSubclass {
 		return null;
 	}
 	
-	private static boolean isFieldInvoc(Body currentBody ,Stmt stmt,JimpleLocal realExecutor,String fieldSignature) {
+	private static boolean isFieldInvoc(Body currentBody ,Stmt stmt,JimpleLocal realExecutor,Set<String> fieldSignature) {
 		for(Unit u:getDefsStmt(realExecutor, stmt,currentBody)) {
 			Stmt s = (Stmt)u;
 			if(s.containsFieldRef()) {
 				SootField sf = s.getFieldRef().getField();
-				if(sf.getSignature() == fieldSignature) return true;
+				if(fieldSignature.contains(sf.getSignature())) return true;
 				continue;
 			}else if(s.containsInvokeExpr()) {
 				//这种情况下，就是去找这个方法调用的return .
@@ -696,14 +754,14 @@ public class ExecutorSubclass {
 		return null;
 	}
 	
-	private static void processSupClass(ClassInfo currentClassInfo, ClassInfo supClassInfo) {
+	private static ClassInfo processSupClass(ClassInfo currentClassInfo, ClassInfo supClassInfo) {
 		if(currentClassInfo == null) {
 			currentClassInfo = new ClassInfo(supClassInfo);
-			return;
+			return currentClassInfo;
 		}
 		if(supClassInfo.declarField) {
 			currentClassInfo.declarField = true;
-			currentClassInfo.fieldSignature = supClassInfo.fieldSignature;
+			currentClassInfo.fieldSignatures.addAll(supClassInfo.fieldSignatures);
 		}
 		if(supClassInfo.delcarExecute) {
 			currentClassInfo.delcarExecute = true;
@@ -721,9 +779,9 @@ public class ExecutorSubclass {
 			currentClassInfo.declarSubmitRV = true;
 			currentClassInfo.submitRVSignature = supClassInfo.submitRVSignature;
 		}
-		
+		return currentClassInfo;
 	}
-	private static void processSupInterfaceInfo(ClassInfo currentClassInfo, ClassInfo supInterfaceInfo) {
+	private static ClassInfo processSupInterfaceInfo(ClassInfo currentClassInfo, ClassInfo supInterfaceInfo) {
 		//这里已经限制了当前处理的不是接口，因为接口不能实现接口。
 		//如果两个及以上的接口同时声明了一个方法，那么有冲突的方法会遵守需要重新实现。
 		//对多个接口的实现就是求异运算。都实现了，就相当于没实现。声明用或运算，只要有声明，说明这个类目前是声明这个方法或者字段的。
@@ -731,13 +789,13 @@ public class ExecutorSubclass {
 		//则一定是null,两个都实现了有冲突，一个实现一个没实现，有冲突，只有两个都没实现，才不冲突。
 		if(currentClassInfo == null) {
 			currentClassInfo = new ClassInfo(supInterfaceInfo);
-			return;
+			return currentClassInfo;
 		}
 		//开始异或运算
-		//接口肯定没有字段定义，所以直接赋值null。
-		currentClassInfo.fieldSignature = null;
+		//接口肯定没有字段定义，所以直接赋值null。不操作也不会错。
+//		currentClassInfo.fieldSignature = new HashSet<>();
 		//判断是否同时声明了execute方法，并且还需要判断该Signature是否完全一致，实际上在一个方法中声明的，因为这决定了是否可以兼容。
-		if(currentClassInfo.delcarExecute&&supInterfaceInfo.delcarExecute) {
+		if(currentClassInfo.executeSignature != null&&supInterfaceInfo.executeSignature != null) {
 			if(!currentClassInfo.executeSignature.equals(supInterfaceInfo.executeSignature)) {
 				currentClassInfo.executeSignature = null;
 			}
@@ -745,7 +803,7 @@ public class ExecutorSubclass {
 			currentClassInfo.executeSignature = currentClassInfo.executeSignature == null ? supInterfaceInfo.executeSignature:currentClassInfo.executeSignature;
 		}
 		
-		if(currentClassInfo.declarSubmitC&&supInterfaceInfo.declarSubmitC) {
+		if(currentClassInfo.submitCSignature != null&&supInterfaceInfo.submitCSignature != null) {
 			if(!currentClassInfo.submitCSignature.equals(supInterfaceInfo.submitCSignature)) {
 				currentClassInfo.submitCSignature = null;
 			}
@@ -753,7 +811,7 @@ public class ExecutorSubclass {
 			currentClassInfo.submitCSignature = currentClassInfo.submitCSignature == null ? supInterfaceInfo.submitCSignature:currentClassInfo.submitCSignature;
 		}
 
-		if(currentClassInfo.declarSubmitR&&supInterfaceInfo.declarSubmitR) {
+		if(currentClassInfo.submitRSignature != null&&supInterfaceInfo.submitRSignature != null) {
 			if(!currentClassInfo.submitRSignature.equals(supInterfaceInfo.submitRSignature)) {
 				currentClassInfo.submitRSignature = null;
 			}
@@ -761,7 +819,7 @@ public class ExecutorSubclass {
 			currentClassInfo.submitRSignature = currentClassInfo.submitRSignature == null ? supInterfaceInfo.submitRSignature:currentClassInfo.submitRSignature;
 		}
 		
-		if(currentClassInfo.declarSubmitRV&&supInterfaceInfo.declarSubmitRV) {
+		if(currentClassInfo.submitRVSignature != null&&supInterfaceInfo.submitRVSignature != null) {
 			if(!currentClassInfo.submitRVSignature.equals(supInterfaceInfo.submitRVSignature)) {
 				currentClassInfo.submitRVSignature = null;
 			}
@@ -785,7 +843,7 @@ public class ExecutorSubclass {
 		if(currentClassInfo.declarSubmitRV||supInterfaceInfo.declarSubmitRV) {
 			currentClassInfo.declarSubmitRV = true;
 		}
-		
+		return currentClassInfo;
 	}
 	private static SootClass getDirectSupCommonClass4ExecutorFamily(SootClass sc){
 		if(sc.isInterface()) {
@@ -806,7 +864,8 @@ public class ExecutorSubclass {
 	
 	private static Set<SootClass> getDirectSupClasses4ExecutorFamily(SootClass sc){
 		Set<SootClass> directSupClasses4ExecutorFamily = new HashSet<>();
-		directSupClasses4ExecutorFamily.add(getDirectSupCommonClass4ExecutorFamily(sc));
+		SootClass supClass = getDirectSupCommonClass4ExecutorFamily(sc);
+		if(supClass !=null) directSupClasses4ExecutorFamily.add(getDirectSupCommonClass4ExecutorFamily(sc));
 		directSupClasses4ExecutorFamily.addAll(getDirectSupInterfaces4ExecutorFamily(sc));
 		return directSupClasses4ExecutorFamily;
 	}
@@ -839,14 +898,11 @@ public class ExecutorSubclass {
 		boolean declarSubmitR;
 		boolean declarSubmitC;
 		boolean declarSubmitRV;
-		String fieldSignature;
+		Set<String> fieldSignatures;
 		String executeSignature;
 		String submitRSignature;
 		String submitCSignature;
 		String submitRVSignature;
-		boolean submitRClone;
-		boolean submitCClone;
-		boolean submitRVClone;
 		
 		public ClassInfo() {
 			declarField = false;
@@ -854,14 +910,11 @@ public class ExecutorSubclass {
 			declarSubmitR = false;
 			declarSubmitC = false;
 			declarSubmitRV = false;
-			fieldSignature = null;
+			fieldSignatures = new HashSet<String>();
 			executeSignature = null;
 			submitRSignature = null;
 			submitCSignature = null;
 			submitRVSignature = null;
-			submitRClone = false;
-			submitCClone = false;
-			submitRVClone = false;
 		}
 		public ClassInfo(ClassInfo superClassInfo) {
 			declarField = superClassInfo.declarField;
@@ -869,17 +922,14 @@ public class ExecutorSubclass {
 			declarSubmitR = superClassInfo.declarSubmitR;
 			declarSubmitC = superClassInfo.declarSubmitC;
 			declarSubmitRV = superClassInfo.declarSubmitRV;
-			fieldSignature = superClassInfo.fieldSignature;
+			fieldSignatures = new HashSet<String>(superClassInfo.fieldSignatures);
 			executeSignature = superClassInfo.executeSignature;
 			submitRSignature = superClassInfo.submitRSignature;
 			submitCSignature = superClassInfo.submitCSignature;
 			submitRVSignature = superClassInfo.submitRVSignature;
-			submitRClone = superClassInfo.submitRClone;
-			submitCClone = superClassInfo.submitCClone;
-			submitRVClone = superClassInfo.submitRVClone;
 		}
 		public boolean hasAllSignature() {
-			if(fieldSignature == null || fieldSignature.isEmpty()) {
+			if( fieldSignatures.isEmpty()) {
 				return false;
 			}
 			if(executeSignature == null || executeSignature.isEmpty()) {
@@ -896,319 +946,150 @@ public class ExecutorSubclass {
 			}
 			return true;
 		}
-		public String getFieldSignature() {
-			return fieldSignature;
-		}
-		public String getExecuteSignature() {
-			return executeSignature;
-		}
-		public String getSubmitRSignature() {
-			return submitRSignature;
-		}
-		public String getSubmitCSignature() {
-			return submitCSignature;
-		}
-		public String getSubmitRVSignature() {
-			return submitRVSignature;
-		}
-		public void setFieldSignature(String sig) {
-			fieldSignature = sig;
-		}
-		public void setExecuteSignature(String sig) {
-			executeSignature = sig;
-		}
-		public void setSubmitRSignature(String sig) {
-			submitRSignature = sig;
-		}
-		public void setSubmitCSignature(String sig) {
-			submitCSignature = sig;
-		}
-		public void setSubmitRVSignature(String sig) {
-			submitRVSignature = sig;
-		}
-		public boolean isSubmitRClone() {
-			return submitRClone;
-		}
-		public void setSubmitRClone(boolean submitRClone) {
-			this.submitRClone = submitRClone;
-		}
-		public boolean isSubmitCClone() {
-			return submitCClone;
-		}
-		public void setSubmitCClone(boolean submitCClone) {
-			this.submitCClone = submitCClone;
-		}
-		public boolean isSubmitRVClone() {
-			return submitRVClone;
-		}
-		public void setSubmitRVClone(boolean submitRVClone) {
-			this.submitRVClone = submitRVClone;
-		}
+
 	}
 	
 	
 	/**
 	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。.
 	 *
-	 * @param invocStmt the invoc stmt
-	 * 	@param	isSubmit 输入当前需要判断的函数名词是否为submit，否则是execute。
+	 * 	@param mInvocation 当前方法调用
+	 *  @param invocStmt the invoc stmt
+	 * 	@param refactorMode 如果是1，则为execute()，如果是2则为submitC,如果是3则为submitR，如果是4则为submitRV
 	 * @return 1, 如果可以进行重构;0,不可重构;2,需要得到绑定并进行判断.
 	 */
-	public static boolean canRefactor(MethodInvocation mInvocation,Stmt invocStmt , boolean isSubmit) {
+	public static boolean canRefactor(MethodInvocation mInvocation,Stmt invocStmt , int refactorMode) {
 		if(invocStmt == null) return false;
-		if(isSubmit) {
-			if(allDirtyClasses.isEmpty()) {
-				return true;
-			}
-			Set<String> completeSetTypeStrings = getCompleteExecutorSubClassesName();
-			Set<String> wrapperClassesStrings = getwrapperClassesName();
-			Set<String> typeSetStrings = new HashSet<>();
-			List<ValueBox> lvbs = invocStmt.getUseBoxes();
-			Iterator<ValueBox> it =lvbs.iterator();
-	        while(it.hasNext()) {
-	        	Object o = it.next();
-	        	if (o instanceof JimpleLocalBox) {
-	    			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
-	    			JimpleLocalBox jlb = (JimpleLocalBox) o;
-	    			Local local = (Local)jlb.getValue();
-	    			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-	    			PointsToSet ptset = pa.reachingObjects(local);
-	    			Set<Type> typeSet = ptset.possibleTypes();
-	    			for (Type obj : typeSet) {
-	    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
-	    			}
-	    			if(wrapperClassesStrings != null && wrapperClassesStrings.containsAll(typeSetStrings)) {
-	    				Set<String> tempStrings = new HashSet<>(typeSetStrings);
-	    				typeSetStrings.clear();
-	    				for(String typeName: tempStrings) {
-	    					SootClass wc = Scene.v().getSootClass(typeName);
-	    					SootField innerE = wc.getFields().getFirst();
-	    					PointsToSet leftESet = pa.reachingObjects(ptset,innerE);
-	    					Set<Type> realTypeSet = leftESet.possibleTypes();
-	    					for (Type obj : realTypeSet) {
-	    	    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
-	    	    			}
-	    				}
-	    			}
-	    		}	
-	    	}
-	        if(!typeSetStrings.isEmpty()) {
-				if(completeSetTypeStrings.containsAll(typeSetStrings)) {
-					//是安全重构的子集，就可以进行重构了。
-					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构,typeName为："+typeSetStrings);
-					return true;
-				}
-				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 进行排除,typeName为："+typeSetStrings);
-				return false;
-			}else  {
-				Future2Completable.debugUsePoint2num++;
-				//说明没有被访问到，可以进行AST判断
-				Expression exp = mInvocation.getExpression();
-				String typeName = null;
-				if (exp == null) {//对应this情况
-					ASTNode aboutTypeDeclaration = (ASTNode) mInvocation;
-					while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
-						aboutTypeDeclaration = aboutTypeDeclaration.getParent();
-					}
-					if(aboutTypeDeclaration instanceof TypeDeclaration) {
-						TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
-						ITypeBinding tdBinding = td.resolveBinding();
-						typeName = tdBinding.getQualifiedName();
-						if(tdBinding.isNested()) {
-							typeName = tdBinding.getBinaryName();
-						}
-					}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
-						AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
-						ITypeBinding tdBinding = acd.resolveBinding();
-						typeName = tdBinding.getQualifiedName();
-						if(tdBinding.isNested()) {
-							typeName = tdBinding.getBinaryName();
-						}
-					}else {
-						throw new RefutureException(mInvocation,"迭代,未得到类型定义或者匿名类定义");
-					}
-					typeName = typeName.replaceAll("<[^>]*>", "");
-					if(completeSetTypeStrings.contains(typeName)) {
-						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构,typeName为："+typeName);
-						return true;
-					}else {
-						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构,typeName为："+typeName);
-						return false;
-					}
-				}else {//对应存在接收器对象却无法得到对象类型的情况。
-					typeName = AnalysisUtils.getTypeName4Exp(exp);
-					SootClass sc = Scene.v().getSootClass(typeName);
-					Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-					if(sc.isInterface()) {//获取绑定，如果是接口，就这么做
-						List<SootClass> allImplementers = hierarchy.getImplementersOf(sc);
-						for(SootClass implementer : allImplementers) {
-							if(allDirtyClasses.contains(implementer)) {
-								AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构,typeName为："+typeName);
-								return false;
-							}
-						}
-						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构,typeName为："+typeName);
-						return true;
-					}else {//不是接口，则这么做：
-						List<SootClass> allSubClasses = hierarchy.getSubclassesOfIncluding(sc);
-						for(SootClass subClass : allSubClasses) {
-							if(allDirtyClasses.contains(subClass)) {
-								AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构,typeName为："+typeName);
-								return false;
-							}
-						}
-						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding ~~~可以重构~~~,typeName为："+typeName);
-						return true;
-					}
-					
-				}
-			}
-			
-		}else {//execute()判断
+		if(refactorMode == 1){//execute()判断
 			if(Instanceof.useInstanceofRunnable(invocStmt)) {
 				return false;
 			}else {
 				return true;
 			}
 		}
+		if(mustDirtyClasses.isEmpty()) {
+			return true;
+		}
+		Set<String> wrapperClassesStrings = null;
+		Set<SootClass> allDirtyClasses = null;
+		if(refactorMode == 2) {
+			wrapperClassesStrings = getStringInSootClassSet(proxySubmitCClass);
+			allDirtyClasses = submitCDirtyClasses;
+		}else if(refactorMode == 3) {
+			wrapperClassesStrings = getStringInSootClassSet(proxySubmitRClass);
+			allDirtyClasses = submitRDirtyClasses;
+		}else if(refactorMode == 4) {
+			wrapperClassesStrings = getStringInSootClassSet(proxySubmitRVClass);
+			allDirtyClasses = submitRVDirtyClasses;
+		}
+		Set<String> completeSetTypeStrings = getCompleteExecutorSubClassesName();
+		Set<String> typeSetStrings = new HashSet<>();
+		List<ValueBox> lvbs = invocStmt.getUseBoxes();
+		Iterator<ValueBox> it =lvbs.iterator();
+        while(it.hasNext()) {
+        	Object o = it.next();
+        	if (o instanceof JimpleLocalBox) {
+    			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
+    			JimpleLocalBox jlb = (JimpleLocalBox) o;
+    			Local local = (Local)jlb.getValue();
+    			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+    			PointsToSet ptset = pa.reachingObjects(local);
+    			Set<Type> typeSet = ptset.possibleTypes();
+    			for (Type obj : typeSet) {
+    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
+    			}
+    			if(wrapperClassesStrings.containsAll(typeSetStrings)) {
+    				AnalysisUtils.debugPrint("进入封装类判断");
+    				Set<String> tempStrings = new HashSet<>(typeSetStrings);
+    				typeSetStrings.clear();
+    				for(String typeName: tempStrings) {
+    					SootClass wc = Scene.v().getSootClass(typeName);
+    					SootField innerE = wc.getFields().getFirst();
+    					PointsToSet leftESet = pa.reachingObjects(ptset,innerE);
+    					Set<Type> realTypeSet = leftESet.possibleTypes();
+    					for (Type obj : realTypeSet) {
+    	    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
+    	    			}
+    				}
+    			}
+    		}	
+    	}
+        if(!typeSetStrings.isEmpty()) {
+			if(completeSetTypeStrings.containsAll(typeSetStrings)) {
+				//是安全重构的子集，就可以进行重构了。
+				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构,typeName为："+typeSetStrings);
+				return true;
+			}
+			AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 进行排除,typeName为："+typeSetStrings);
+			return false;
+		}else  {
+			Future2Completable.debugUsePoint2num++;
+			//说明没有被访问到，可以进行AST判断
+			Expression exp = mInvocation.getExpression();
+			String typeName = null;
+			if (exp == null) {//对应this情况
+				ASTNode aboutTypeDeclaration = (ASTNode) mInvocation;
+				while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
+					aboutTypeDeclaration = aboutTypeDeclaration.getParent();
+				}
+				if(aboutTypeDeclaration instanceof TypeDeclaration) {
+					TypeDeclaration td = (TypeDeclaration)aboutTypeDeclaration;
+					ITypeBinding tdBinding = td.resolveBinding();
+					typeName = tdBinding.getQualifiedName();
+					if(tdBinding.isNested()) {
+						typeName = tdBinding.getBinaryName();
+					}
+				}else if(aboutTypeDeclaration instanceof AnonymousClassDeclaration) {
+					AnonymousClassDeclaration acd = (AnonymousClassDeclaration)aboutTypeDeclaration;
+					ITypeBinding tdBinding = acd.resolveBinding();
+					typeName = tdBinding.getQualifiedName();
+					if(tdBinding.isNested()) {
+						typeName = tdBinding.getBinaryName();
+					}
+				}else {
+					throw new RefutureException(mInvocation,"迭代,未得到类型定义或者匿名类定义");
+				}
+				typeName = typeName.replaceAll("<[^>]*>", "");
+				if(completeSetTypeStrings.contains(typeName)) {
+					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构,typeName为："+typeName);
+					return true;
+				}else {
+					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构,typeName为："+typeName);
+					return false;
+				}
+			}else {//对应存在接收器对象却无法得到对象类型的情况。
+				typeName = AnalysisUtils.getTypeName4Exp(exp);
+				SootClass sc = Scene.v().getSootClass(typeName);
+				Hierarchy hierarchy = Scene.v().getActiveHierarchy();
+				if(sc.isInterface()) {//获取绑定，如果是接口，就这么做
+					List<SootClass> allImplementers = hierarchy.getImplementersOf(sc);
+					for(SootClass implementer : allImplementers) {
+						if(allDirtyClasses.contains(implementer)) {
+							AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构,typeName为："+typeName);
+							return false;
+						}
+					}
+					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 可以重构,typeName为："+typeName);
+					return true;
+				}else {//不是接口，则这么做：
+					List<SootClass> allSubClasses = hierarchy.getSubclassesOfIncluding(sc);
+					for(SootClass subClass : allSubClasses) {
+						if(allDirtyClasses.contains(subClass)) {
+							AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding 不可重构,typeName为："+typeName);
+							return false;
+						}
+					}
+					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据ASTtypeBinding ~~~可以重构~~~,typeName为："+typeName);
+					return true;
+				}
+				
+			}
+		}
+			
+
 		
 	}
 	
-	/**
-	 * 判断参数的类型是否复合要求。.
-	 * @param invocationNode 
-	 *
-	 * @param invocStmt the invoc stmt
-	 * @param argType   为1,代表是callable;为2,代表Runnable;为3,代表FutureTask;为4,代表两个参数。
-	 * @return true, if successful
-	 */
-//	public static boolean canRefactorArgu(MethodInvocation invocationNode, Stmt invocStmt,int argType) {
-//		/*这里已经限制了调用的方法是submit或者execute，所以第一个参数一定是：callable、Runnable或者，FutureTask。
-//		 * 我只分析invocStmt第一个参数，根据argType进行判断，为1,则判断是否是callable的子类，为2或者3,则判断是否是FutureTask,
-//		 * 若不是，再判断是否是Runnable。lambda表达式也可以正常的分析，因为在Jinple中，lambda表达式会首先由一个Local变量指向它代表的对象。
-//		 */
-//		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
-//		List<Value> lv =ivcExp.getArgs();
-//		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-//		if(invocationNode.arguments().size() == 0) {
-//			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:未传入实参，排除");
-//			return false;
-//		}
-//		if(invocationNode.arguments().size() == 2) {
-//			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:注意，这个可能是两个参数的");
-//			if(argType == 4) {
-//				return true;
-//			}
-//			return false;
-//		}
-//		if(lv.get(0)instanceof Local) {
-//			Local la1 = (Local) lv.get(0);
-//			PointsToSet ptset = pa.reachingObjects(la1);
-//			Set<Type> typeSet = ptset.possibleTypes();
-//			Hierarchy hierarchy = Scene.v().getActiveHierarchy();
-//			SootClass callable = Scene.v().getSootClass("java.util.concurrent.Callable");
-//			List<SootClass> callableImplementers =hierarchy.getImplementersOf(callable);
-//			SootClass futureTask = Scene.v().getSootClass("java.util.concurrent.FutureTask");
-//			SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
-//			List<SootClass> runnableImplementers =hierarchy.getImplementersOf(runnable);
-//			switch (argType) {
-//			case 1://是否是Callable的子类.
-//				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]进入callable子类判断");
-//				if(typeSet.isEmpty()) {
-//					//利用ASTbinding 获得类型
-//					Expression exp = (Expression) invocationNode.arguments().get(0);
-//    				String typeName = AnalysisUtils.getTypeName4Exp(exp);
-//    				if(typeName == null) {
-//    					throw new RefutureException(invocationNode);
-//    				}
-//    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]程序中没有访问到,进一步判断,类型为："+typeName);
-//    				if(callable.getName().equals(typeName)) {
-//    					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
-//						return true;
-//    				}
-//    				for(SootClass callableImplementer:callableImplementers) {
-//    					if(callableImplementer.getName().equals(typeName)) {
-//    						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
-//    						return true;
-//    					}
-//    				}
-//    				
-//    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据AST不是callable的子类,排除,得到的类型名为"+ typeName);
-//				}else {
-//					for(Type type:typeSet) {
-//						SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-//						if(sc.isPhantom()) {
-//							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
-//							return false;
-//						}
-//						if(callableImplementers.contains(sc)) {
-//							return true;
-//						}else {
-//							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是callable的子类，排除");
-//						}
-//					}
-//				}
-//				break;
-//			case 2:		
-//				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]进入runnable子类判断");
-//				if(typeSet.isEmpty()) {
-//					//利用ASTbinding 获得类型
-//					Expression exp = (Expression) invocationNode.arguments().get(0);
-//    				String typeName = AnalysisUtils.getTypeName4Exp(exp);
-//    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]程序中没有访问到,进一步判断,类型为："+typeName);
-//    				if(runnable.getName().equals(typeName)) {
-//    					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
-//						return true;
-//    				}
-//    				for(SootClass runnableImplementer:runnableImplementers) {
-//    					if(runnableImplementer.getName().equals(typeName)) {
-//    						AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据ASTtypeBinding 可以重构");
-//    						return true;
-//    					}
-//    				}
-//    				AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactorArgu]根据AST不是runnable的子类,排除,得到的类型名为"+ typeName);
-//				}else {
-//					for(Type type:typeSet) {
-//						SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-//						if(sc.isPhantom()) {
-//							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
-//							return false;
-//						}
-//						if(runnableImplementers.contains(sc)) {
-//							return true;
-//						}else{
-//							AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是Runnable的子类，排除");
-//						}
-//					}
-//				}
-//				break;
-//			case 3:		
-//				for(Type type:typeSet) {
-//					SootClass sc = Scene.v().getSootClass(type.getEscapedName());
-//					if(sc.isPhantom()) {
-//						AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:传入的实参类型无法获得SootClass，排除");
-//						return false;
-//					}
-//					if(hierarchy.isClassSuperclassOfIncluding(futureTask, sc)) {
-//						return true;
-//					}
-//				}
-//				break;
-//			case 4:		
-//				if(lv.size()==2) {
-//				return true;
-//			}
-//				break;
-//			default:
-//				throw new IllegalArgumentException("Invalid number");
-//		}
-//			AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:哎，排除");
-//			return false;
-//		}
-//		AnalysisUtils.debugPrint("[ExecutorSubclass.canRefactorArgu]:不是local变量，排除");
-//		return false;
-//	}
-//	
 	/**
 	 * 判断参数的类型是否复合要求。.
 	 * @param invocationNode 
@@ -1250,43 +1131,22 @@ public class ExecutorSubclass {
 		return -1;
 	}
 	
+	
+	public static Set<String> getStringInSootClassSet(Set<SootClass> sootClassSet){
+		Set<String> rClassesStrings = new HashSet<>();
+		for(SootClass SC:sootClassSet) {
+			rClassesStrings.add(SC.getName());
+		}
+		return rClassesStrings;
+	}
 	public static Set<String> getCompleteExecutorSubClassesName(){
-		Set<String> completeSetTypeStrings = new HashSet<>();
-		for(SootClass completeSC:mayCompleteExecutorSubClasses) {
-			completeSetTypeStrings.add(completeSC.getName());
-		}
-		return completeSetTypeStrings;
+		return getStringInSootClassSet(mayCompleteExecutorSubClasses);
 	}
-	
-	public static Set<String> getwrapperClassesName(){
-		Set<String> wrapperClassesStrings = new HashSet<>();
-		for(SootClass completeSC:wrapperClass) {
-			wrapperClassesStrings.add(completeSC.getName());
-		}
-		return wrapperClassesStrings;
-	}
-
-	public static Set<String> getAllDirtyExecutorSubClassName(){
-		Set<String> allDirtyClassesStrings = new HashSet<>();
-		for(SootClass allDirtyClass:allDirtyClasses) {
-			allDirtyClassesStrings.add(allDirtyClass.getName());
-		}
-		return allDirtyClassesStrings;
-	}
-	
 	public static Set<String> getAllExecutorServiceSubClassesName(){
-		Set<String> allExecutorSubClassesStrings = new HashSet<>();
-		for(SootClass allExecutorSubClass:allExecutorServiceSubClasses) {
-			allExecutorSubClassesStrings.add(allExecutorSubClass.getName());
-		}
-		return allExecutorSubClassesStrings;
+		return getStringInSootClassSet(allExecutorServiceSubClasses);
 	}
 	public static Set<String> getAllExecutorSubClassesName() {
-		Set<String> allExecutorSubClassesStrings = new HashSet<>();
-		for(SootClass allExecutorSubClass:allExecutorSubClasses) {
-			allExecutorSubClassesStrings.add(allExecutorSubClass.getName());
-		}
-		return allExecutorSubClassesStrings;
+		return getStringInSootClassSet(allExecutorSubClasses);
 	}
 
 	

@@ -61,7 +61,7 @@ public class Cancel {
 				if(typeName == null) { throw new RefutureException(invocationNode);}
 				if(allFutureAndsubName.contains(typeName)) {
 					//在这里确定了调用了future.cancel()。接下来开始将exp对应的sootlocal存入静态字段。
-					Stmt invocStmt = AdaptAst.getJimpleInvocStmt(invocationNode);
+					Stmt invocStmt = AdaptAst.getJimpleStmt(invocationNode);
 					if(invocStmt == null) {
 						continue; 
 					}
