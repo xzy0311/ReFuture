@@ -53,7 +53,7 @@ public class CollectionEntrypoint {
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;
 				boolean isTask = false;
 				if(!expIsExecutor(invocationNode)) {
-					AnalysisUtils.debugPrint("[entryPointInit]receiverObject不属于Executor Family.");
+//					AnalysisUtils.debugPrint("[entryPointInit]receiverObject不属于Executor Family.");
 					continue;
 				}
 				for(Expression arguExp : arguExps) {
@@ -99,7 +99,7 @@ public class CollectionEntrypoint {
 		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
 		if(exp==null){
 			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
-			AnalysisUtils.debugPrint("[entryPointInit]receiverObject为this，继续判断");
+//			AnalysisUtils.debugPrint("[entryPointInit]receiverObject为this，继续判断");
 			ASTNode aboutTypeDeclaration = (ASTNode) invocationNode;
 			while(!(aboutTypeDeclaration instanceof TypeDeclaration)&&!(aboutTypeDeclaration instanceof AnonymousClassDeclaration)) {
 				aboutTypeDeclaration = aboutTypeDeclaration.getParent();

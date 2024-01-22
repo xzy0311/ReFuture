@@ -8,8 +8,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
@@ -57,9 +59,10 @@ public class ExecutorSubclass {
 	//9月14日记录，目前所有记录的安全的，污染的，附加的类都是用于遇到submit()方法时，判断是否符合重构条件。待添加包装类判断
 	/** The all subclasses. */
 	private static Set<SootClass>allExecutorServiceSubClasses;
-	
 	private static Set<SootClass>allExecutorSubClasses;
 	//mustDirtyClass排除了proxyClass，且内部只包含实际类
+	private static HashMap<SootClass,ClassInfo> resultMap;
+	
 	private static Set<SootClass>mustDirtyClasses;
 	
 	private static Set<SootClass>submitRDirtyClasses;
@@ -93,6 +96,7 @@ public class ExecutorSubclass {
 	public static boolean initStaticField() {
 		mayCompleteExecutorSubClasses = new HashSet<SootClass>();
 		allFutureSubClasses = new HashSet<String>();
+		resultMap = new HashMap<>();
 		proxySubmitRClass = new HashSet<SootClass>();
 		proxySubmitCClass = new HashSet<SootClass>();
 		proxySubmitRVClass = new HashSet<SootClass>();
@@ -252,10 +256,11 @@ public class ExecutorSubclass {
 //			}
 //		}
 //	}
+	
 	public static void wrapperClassAnalysis() {
 		//先通过工作列表算法，找到潜在的代理类。潜在的代理类是指，存在对应的字段和方法调用。但方法expression未判断是否实际指向字段，
 		//因为当类不是完全的类时，可能无法准确判断。
-		HashMap<SootClass,ClassInfo> resultMap = new HashMap<>();
+//		HashMap<SootClass,ClassInfo> resultMap = new HashMap<>();
 		Queue<SootClass> workList = new LinkedList<>();
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		SootClass executorSC = Scene.v().getSootClass("java.util.concurrent.Executor");
@@ -391,7 +396,7 @@ public class ExecutorSubclass {
 				//2.判断是否签名都齐全
 				if(currentClassInfo.hasAllSignature()) {
 					//3.挨个判断，符合要求，将其加入到对应的集合中，用于后续的判断。此时假定有4个集合，分别对应excute,submit(三种情况）
-					Set<String> currentFieldSignatures = currentClassInfo.fieldSignatures;
+					Stack<String> currentFieldSignatures = currentClassInfo.fieldSignatures;
 					// 3.1execute判断 execute不需要自己建立一个集合，但是execute是代理方法，是下面3个集合能够重构的基础，
 					// 在这个基础上可以进行clone判断。
 					SootMethod currentExecuteMethod = Scene.v().getMethod(currentClassInfo.executeSignature);
@@ -687,7 +692,7 @@ public class ExecutorSubclass {
 		return null;
 	}
 	
-	private static boolean isFieldInvoc(Body currentBody ,Stmt stmt,JimpleLocal realExecutor,Set<String> fieldSignature) {
+	private static boolean isFieldInvoc(Body currentBody ,Stmt stmt,JimpleLocal realExecutor,Stack<String> fieldSignature) {
 		for(Unit u:getDefsStmt(realExecutor, stmt,currentBody)) {
 			Stmt s = (Stmt)u;
 			if(s.containsFieldRef()) {
@@ -898,7 +903,7 @@ public class ExecutorSubclass {
 		boolean declarSubmitR;
 		boolean declarSubmitC;
 		boolean declarSubmitRV;
-		Set<String> fieldSignatures;
+		Stack<String> fieldSignatures;
 		String executeSignature;
 		String submitRSignature;
 		String submitCSignature;
@@ -910,7 +915,7 @@ public class ExecutorSubclass {
 			declarSubmitR = false;
 			declarSubmitC = false;
 			declarSubmitRV = false;
-			fieldSignatures = new HashSet<String>();
+			fieldSignatures = new Stack<String>();
 			executeSignature = null;
 			submitRSignature = null;
 			submitCSignature = null;
@@ -922,7 +927,7 @@ public class ExecutorSubclass {
 			declarSubmitR = superClassInfo.declarSubmitR;
 			declarSubmitC = superClassInfo.declarSubmitC;
 			declarSubmitRV = superClassInfo.declarSubmitRV;
-			fieldSignatures = new HashSet<String>(superClassInfo.fieldSignatures);
+			fieldSignatures = superClassInfo.fieldSignatures.stream().collect(Collectors.toCollection(Stack::new));
 			executeSignature = superClassInfo.executeSignature;
 			submitRSignature = superClassInfo.submitRSignature;
 			submitCSignature = superClassInfo.submitCSignature;
@@ -948,8 +953,47 @@ public class ExecutorSubclass {
 		}
 
 	}
-	
-	
+	/**
+	 * 这个方法，将所有的封装类迭代判断，直到结果中不存在封装类。
+	 * @param typeSetStrings
+	 * @param wrapperClassesStrings
+	 * @param ptset
+	 * @return
+	 */
+	private static Set<String> processProxyClass(Set<String> typeSet, Set<String> wrapperClasses, PointsToSet ptset) {
+	    PointsToAnalysis pta = Scene.v().getPointsToAnalysis();
+	    Set<String> result = new HashSet<>();
+	    
+	    for (String typeString : typeSet) {
+	        if (wrapperClasses.contains(typeString)) {
+	            SootClass wc = Scene.v().getSootClass(typeString);
+	            String fieldSignature = getFieldSignatures4ProxyClass(wc);
+	            SootField innerField = Scene.v().getField(fieldSignature);
+	            PointsToSet innerPtSet = pta.reachingObjects(ptset,innerField);
+	            Set<Type> realTypeSet = innerPtSet.possibleTypes();
+	            
+	            // 将可能的类型转换为字符串集合
+	            Set<String> realTypeStrings = getStringInTypeSet(realTypeSet);
+	            
+	            // 递归处理嵌套的封装类
+	            Set<String> nestedResult = processProxyClass(realTypeStrings, wrapperClasses, innerPtSet);
+	            for (String nestedType : nestedResult) {
+	                if (!wrapperClasses.contains(nestedType)) {
+	                    result.add(nestedType);
+	                }
+	            }
+	        } else {
+	            // 如果当前类型不是封装类，则直接添加到结果集
+	            result.add(typeString);
+	        }
+	    }
+	    
+	    return result;
+	}
+	private static String getFieldSignatures4ProxyClass(SootClass sc) {
+		ClassInfo ci =resultMap.get(sc);
+		return ci.fieldSignatures.peek();
+	}
 	/**
 	 * 是否可以安全的重构，就是判断调用提交异步任务方法的变量是否是安全提交的几种执行器的对象之一。.
 	 *
@@ -995,22 +1039,10 @@ public class ExecutorSubclass {
     			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
     			PointsToSet ptset = pa.reachingObjects(local);
     			Set<Type> typeSet = ptset.possibleTypes();
-    			for (Type obj : typeSet) {
-    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
-    			}
+    			typeSetStrings = getStringInTypeSet(typeSet);
     			if(wrapperClassesStrings.containsAll(typeSetStrings)) {
     				AnalysisUtils.debugPrint("进入封装类判断");
-    				Set<String> tempStrings = new HashSet<>(typeSetStrings);
-    				typeSetStrings.clear();
-    				for(String typeName: tempStrings) {
-    					SootClass wc = Scene.v().getSootClass(typeName);
-    					SootField innerE = wc.getFields().getFirst();
-    					PointsToSet leftESet = pa.reachingObjects(ptset,innerE);
-    					Set<Type> realTypeSet = leftESet.possibleTypes();
-    					for (Type obj : realTypeSet) {
-    	    				typeSetStrings.add(obj.toString()); // 将每个对象转换为字符串类型并添加到 Set<String> 中
-    	    			}
-    				}
+    				typeSetStrings = processProxyClass(typeSetStrings, wrapperClassesStrings, ptset);
     			}
     		}	
     	}
@@ -1090,6 +1122,7 @@ public class ExecutorSubclass {
 		
 	}
 	
+
 	/**
 	 * 判断参数的类型是否复合要求。.
 	 * @param invocationNode 
@@ -1131,7 +1164,13 @@ public class ExecutorSubclass {
 		return -1;
 	}
 	
-	
+	public static Set<String> getStringInTypeSet(Set<Type> typeSet){
+		Set<String> rClassesStrings = new HashSet<>();
+		for(Type type:typeSet) {
+			rClassesStrings.add(type.toQuotedString());
+		}
+		return rClassesStrings;
+	}
 	public static Set<String> getStringInSootClassSet(Set<SootClass> sootClassSet){
 		Set<String> rClassesStrings = new HashSet<>();
 		for(SootClass SC:sootClassSet) {
