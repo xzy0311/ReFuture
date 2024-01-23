@@ -20,6 +20,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
 import refuture.astvisitor.AllVisiter;
 import refuture.sootUtil.Cancel;
+import refuture.sootUtil.CastAnalysis;
 import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
 import refuture.sootUtil.Instanceof;
@@ -118,6 +119,7 @@ public class RefutureRefactoring extends Refactoring {
 			ExecutorSubclass.wrapperClassAnalysis();
 	        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
 	        Instanceof.init();
+	        CastAnalysis.init();
 	        if(!this.disableCancelPattern) {
 		        Cancel.initCancel(allJavaFiles);
 	        }

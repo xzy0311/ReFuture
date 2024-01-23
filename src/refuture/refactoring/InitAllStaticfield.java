@@ -1,6 +1,7 @@
 package refuture.refactoring;
 
 import refuture.sootUtil.Cancel;
+import refuture.sootUtil.CastAnalysis;
 import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
 import refuture.sootUtil.Instanceof;
@@ -14,6 +15,7 @@ public class InitAllStaticfield {
 		SootConfig.sootConfigStaticInitial();
 		CollectionEntrypoint.initStaticField();
 		Instanceof.initStaticField();
+		CastAnalysis.initStaticField();
 		return status;
 	}
 
