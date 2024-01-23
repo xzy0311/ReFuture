@@ -10,6 +10,7 @@ import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 
+import refuture.astvisitor.AllVisiter;
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.ForTask;
@@ -48,37 +49,33 @@ public class Cancel {
 	
 	public static void initCancel(List<ICompilationUnit> allJavaFiles) {
 		Set<String> allFutureAndsubName = ExecutorSubclass.allFutureSubClasses;
-		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
-			MethodInvocationVisiter miv = new MethodInvocationVisiter();
-			astUnit.accept(miv);
-			List<MethodInvocation> invocationNodes = miv.getResult();
-			for(MethodInvocation invocationNode:invocationNodes) {
-				if(!invocationNode.getName().toString().equals("cancel") || !isTrue(invocationNode) || invocationNode.getExpression() == null) {
-					continue;
+		List<MethodInvocation> invocationNodes = AllVisiter.getInstance().getMInvocResult();
+		for(MethodInvocation invocationNode:invocationNodes) {
+			if(!invocationNode.getName().toString().equals("cancel") || !isTrue(invocationNode) || invocationNode.getExpression() == null) {
+				continue;
+			}
+			//到这里都是cancel(true)了。根据astBinding 得到接收器类型。
+			String typeName = AnalysisUtils.getTypeName4Exp(invocationNode.getExpression());
+			if(typeName == null) { throw new RefutureException(invocationNode);}
+			if(allFutureAndsubName.contains(typeName)) {
+				//在这里确定了调用了future.cancel()。接下来开始将exp对应的sootlocal存入静态字段。
+				Stmt invocStmt = AdaptAst.getJimpleStmt(invocationNode);
+				if(invocStmt == null) {
+					continue; 
 				}
-				//到这里都是cancel(true)了。根据astBinding 得到接收器类型。
-				String typeName = AnalysisUtils.getTypeName4Exp(invocationNode.getExpression());
-				if(typeName == null) { throw new RefutureException(invocationNode);}
-				if(allFutureAndsubName.contains(typeName)) {
-					//在这里确定了调用了future.cancel()。接下来开始将exp对应的sootlocal存入静态字段。
-					Stmt invocStmt = AdaptAst.getJimpleStmt(invocationNode);
-					if(invocStmt == null) {
-						continue; 
-					}
-					//得到定义的unit中的Local，并加入待分析里面。
-					List<ValueBox> lvbs = invocStmt.getUseBoxes();
-					for(ValueBox vb : lvbs) {
-						if(vb instanceof JimpleLocalBox) {
-							JimpleLocalBox jlb = (JimpleLocalBox) vb;
-							Local futureLocal = (Local)jlb.getValue();
-							invocCancelLocals.add(futureLocal);
-							//将所在的方法加入entryPoints。
-						}
+				//得到定义的unit中的Local，并加入待分析里面。
+				List<ValueBox> lvbs = invocStmt.getUseBoxes();
+				for(ValueBox vb : lvbs) {
+					if(vb instanceof JimpleLocalBox) {
+						JimpleLocalBox jlb = (JimpleLocalBox) vb;
+						Local futureLocal = (Local)jlb.getValue();
+						invocCancelLocals.add(futureLocal);
+						//将所在的方法加入entryPoints。
 					}
 				}
-				else if(typeName == "java.lang.Object") {
-					System.out.println("||可能需要精确度更高的分析取代ASTBinding||");
-				}
+			}
+			else if(typeName == "java.lang.Object") {
+				System.out.println("||可能需要精确度更高的分析取代ASTBinding||");
 			}
 		}
 		System.out.println("本程序中共包含调用cancel(true)的Future实例:"+invocCancelLocals.size()+"处");

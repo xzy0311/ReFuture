@@ -19,14 +19,12 @@ import soot.options.Options;
 
 public class SootConfig {
 	public static boolean extremeSpeedModel;
-	public static Date startTime;
+
 	public static void sootConfigStaticInitial() {
 		extremeSpeedModel = false;
 	}
 	
     public static void setupSoot() {
-    	startTime =new Date();
-		System.out.println("The current start time is "+ startTime);
         soot.G.reset();
         BasicOptions();
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
@@ -35,8 +33,6 @@ public class SootConfig {
         CGPhaseOptions();//启用Spark
         PackManager.v().runPacks();
         System.out.println("[setupSoot]:Soot包运行完毕。");
-        Date currentTime = new Date();
-        System.out.println("soot配置完毕的时间"+"The current start time is "+ currentTime+"已花费:"+((currentTime.getTime()-startTime.getTime())/1000)+"s");
     }
 
     /**

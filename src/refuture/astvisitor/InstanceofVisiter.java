@@ -5,7 +5,7 @@ import java.util.List;
 
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
-
+@Deprecated
 public class InstanceofVisiter extends ASTVisitor {
 
 	List<InstanceofExpression> expNodes;

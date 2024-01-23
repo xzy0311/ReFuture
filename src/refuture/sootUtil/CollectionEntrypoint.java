@@ -22,6 +22,7 @@ import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
+import refuture.astvisitor.AllVisiter;
 import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
@@ -47,9 +48,7 @@ public class CollectionEntrypoint {
 		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
 			List<MethodInvocation> taskPointList = new ArrayList<MethodInvocation>();
 			ICompilationUnit cu = (ICompilationUnit) astUnit.getJavaElement();
-			MethodInvocationVisiter miv = new MethodInvocationVisiter();
-			astUnit.accept(miv);
-			List<MethodInvocation> invocationNodes = miv.getResult();
+			List<MethodInvocation> invocationNodes = AllVisiter.getInstance().getMInvocResult();
 			for(MethodInvocation invocationNode:invocationNodes) {
 				List<Expression> arguExps =  invocationNode.arguments();
 				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;

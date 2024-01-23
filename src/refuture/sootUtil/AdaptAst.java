@@ -512,14 +512,6 @@ public class AdaptAst {
 		return sm;
 	}
 	
-	public static Statement getASTStmt4SootStmt(Stmt sootStmt,SootClass sootClass) {
-		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
-			
-			
-		}
-		return null;
-		
-	}
 	
 	
 }

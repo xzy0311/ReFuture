@@ -8,6 +8,7 @@ import java.util.Set;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
 
+import refuture.astvisitor.AllVisiter;
 import refuture.astvisitor.InstanceofVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
@@ -32,29 +33,25 @@ public class Instanceof {
 	}
 	
 	public static void init() {
-		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
-			InstanceofVisiter insOf = new InstanceofVisiter();
-			astUnit.accept(insOf);
-			List<InstanceofExpression> insOfNodes = insOf.getResult();
-			for(InstanceofExpression insOfNode:insOfNodes) {
-				String qName = insOfNode.getRightOperand().resolveBinding().getQualifiedName();
-				if(ExecutorSubclass.runnablesubClasses.contains(qName)&&!qName.equals("java.lang.Runnable")) {
-					Stmt stmt = AdaptAst.getJimpleStmt(insOfNode);
-					List<ValueBox> boxes = stmt.getUseBoxes();
-					for(ValueBox box : boxes) {
-						if(box instanceof ImmediateBox) {
-							JimpleLocal local = (JimpleLocal)box.getValue();
-							useInstanceofRunnable.add(local);
-						}
+		List<InstanceofExpression> insOfNodes = AllVisiter.getInstance().getInsResult();
+		for(InstanceofExpression insOfNode:insOfNodes) {
+			String qName = insOfNode.getRightOperand().resolveBinding().getQualifiedName();
+			if(ExecutorSubclass.runnablesubClasses.contains(qName)&&!qName.equals("java.lang.Runnable")) {
+				Stmt stmt = AdaptAst.getJimpleStmt(insOfNode);
+				List<ValueBox> boxes = stmt.getUseBoxes();
+				for(ValueBox box : boxes) {
+					if(box instanceof ImmediateBox) {
+						JimpleLocal local = (JimpleLocal)box.getValue();
+						useInstanceofRunnable.add(local);
 					}
-				}else if(ExecutorSubclass.allFutureSubClasses.contains(qName)&&!qName.equals("java.util.concurrent.Future")) {
-					Stmt stmt = AdaptAst.getJimpleStmt(insOfNode);
-					List<ValueBox> boxes = stmt.getUseBoxes();
-					for(ValueBox box : boxes) {
-						if(box instanceof ImmediateBox) {
-							JimpleLocal local = (JimpleLocal)box.getValue();
-							useInstanceofFuture.add(local);
-						}
+				}
+			}else if(ExecutorSubclass.allFutureSubClasses.contains(qName)&&!qName.equals("java.util.concurrent.Future")) {
+				Stmt stmt = AdaptAst.getJimpleStmt(insOfNode);
+				List<ValueBox> boxes = stmt.getUseBoxes();
+				for(ValueBox box : boxes) {
+					if(box instanceof ImmediateBox) {
+						JimpleLocal local = (JimpleLocal)box.getValue();
+						useInstanceofFuture.add(local);
 					}
 				}
 			}

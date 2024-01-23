@@ -8,8 +8,9 @@ import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 // TODO: Auto-generated Javadoc
 /**
- * 得到显式定义的，继承Thread,Runnable,Callable及其子类，并覆写Run/Call方法的ASTNode
+ * 得到显式定义的，继承Thread,Runnable,Callable及其子类，并覆写Run/Call方法的ASTNode,这个无用
  */
+@Deprecated
 public class ExplicitDefinition extends ASTVisitor {
 	
 	/** The sub thread. */

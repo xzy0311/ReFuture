@@ -11,6 +11,7 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 /**
  * 得到ASTNode中所有的方法调用。
  */
+@Deprecated
 public class MethodInvocationVisiter extends ASTVisitor {
 	
 	/** The declaration nodes. */
