@@ -10,6 +10,10 @@ import org.eclipse.jdt.core.dom.CastExpression;
 import refuture.astvisitor.AllVisiter;
 import refuture.astvisitor.CastVisiter;
 import refuture.refactoring.AnalysisUtils;
+import refuture.refactoring.Future2Completable;
+import soot.PointsToAnalysis;
+import soot.PointsToSet;
+import soot.Scene;
 import soot.ValueBox;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
@@ -37,6 +41,21 @@ public class CastAnalysis {
 				}
 			}
 		}
+	}
+	
+	public static boolean useCast(Stmt castStmt) {
+		if(useCastofFuture.isEmpty()) return false;
+		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+		JimpleLocal local =(JimpleLocal)castStmt.getDefBoxes().get(0).getValue();
+		PointsToSet ptset = pa.reachingObjects(local);
+		for(JimpleLocal ioLocal:useCastofFuture) {
+			if(ptset.hasNonEmptyIntersection(pa.reachingObjects(ioLocal))) {
+				Future2Completable.FutureCanot++;
+				AnalysisUtils.debugPrint("Future因使用强制类型转换而被排除");
+				return true;
+			}
+		}
+		return false;
 	}
 	
 }

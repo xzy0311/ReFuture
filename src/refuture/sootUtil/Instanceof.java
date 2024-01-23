@@ -82,8 +82,8 @@ public class Instanceof {
 			PointsToSet ptset = pa.reachingObjects(local);
 			for(JimpleLocal ioLocal:useInstanceofFuture) {
 				if(ptset.hasNonEmptyIntersection(pa.reachingObjects(ioLocal))) {
-					Future2Completable.useInstanceof++;
-					AnalysisUtils.debugPrint("因使用 instanceof而被排除");
+					Future2Completable.FutureCanot++;
+					AnalysisUtils.debugPrint("Future可能调用intanceof而被排除");
 					return true;
 				}
 			}

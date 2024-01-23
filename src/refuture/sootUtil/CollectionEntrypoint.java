@@ -98,6 +98,9 @@ public class CollectionEntrypoint {
 					Future2Completable.methodOverload++;
 					continue;
 				}
+				if(!futureType(invocationNode)) {
+					continue;
+				}
 				taskPointList.add(invocationNode);
 				Future2Completable.canRefactoringNode++;
 			}
@@ -158,6 +161,7 @@ public class CollectionEntrypoint {
 		}
 		return false;
 	}
+	
 	private static boolean futureType(MethodInvocation mInvoc) {
 		ASTNode astNode = (ASTNode) mInvoc;
 		ASTNode parentNode = astNode.getParent();
@@ -169,15 +173,13 @@ public class CollectionEntrypoint {
 			}else if(parentInvocation.arguments().contains(mInvoc)) {
 				for(ITypeBinding paraTypeBinding : parentInvocation.resolveMethodBinding().getParameterTypes()) {
 					if(paraTypeBinding.getErasure().getName().equals("Future")) {
-						if(Instanceof.useInstanceofFuture(stmt)) {
-							AnalysisUtils.debugPrint("Future可能调用intanceof");
+						if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
 							return false;
 						}
 						return true;
 					}
 				}
 				throw new RefutureException(mInvoc);
-//				return false;
 			}
 		}else if(parentNode instanceof ExpressionStatement) {
 			return true;
@@ -185,38 +187,32 @@ public class CollectionEntrypoint {
 			VariableDeclarationFragment parentDeclarationFragment = (VariableDeclarationFragment)parentNode;
 			VariableDeclarationStatement parentDeclarationStatement = (VariableDeclarationStatement)parentDeclarationFragment.getParent();
 			if(parentDeclarationStatement.getType().resolveBinding().getErasure().getName().equals("Future")) {
-				if(Instanceof.useInstanceofFuture(stmt)) {
-					AnalysisUtils.debugPrint("Future可能调用intanceof");
+				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
 					return false;
 				}
 				return true;
 			}else {
 				throw new RefutureException(mInvoc);
-//				return false;
 			}
 		}else if (parentNode instanceof ReturnStatement ) {
 			MethodDeclaration md = AnalysisUtils.getMethodDeclaration4node(parentNode);
 			if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
-				if(Instanceof.useInstanceofFuture(stmt)) {
-					AnalysisUtils.debugPrint("Future可能调用intanceof");
+				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
 					return false;
 				}
 				return true;
 			}else {
 				throw new RefutureException(mInvoc);
-//				return false;
 			}
 		}else if(parentNode instanceof Assignment) {
 			Assignment parentAssignment = (Assignment)parentNode;
 			if(parentAssignment.getLeftHandSide().resolveTypeBinding().getErasure().getName().equals("Future")) {
-				if(Instanceof.useInstanceofFuture(stmt)) {
-					AnalysisUtils.debugPrint("Future可能调用intanceof");
+				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
 					return false;
 				}
 				return true;
 			}else {
-				AnalysisUtils.debugPrint("Future可能调用intanceof");
-//				return false;
+				throw new RefutureException(mInvoc);
 			}
 		}
 		return true;
