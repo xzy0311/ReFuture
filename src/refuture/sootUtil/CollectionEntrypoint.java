@@ -2,6 +2,7 @@ package refuture.sootUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -12,6 +13,7 @@ import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
+import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -66,30 +68,41 @@ public class CollectionEntrypoint {
 					}
 				}
 				if(isTask) {Future2Completable.maybeRefactoringNode++;}else {continue;}
-				
-				if(invocationNode.getName().toString().equals("execute")) {
-					if(arguExps.size() != 1) {
-						AnalysisUtils.debugPrint("[entryPointInit]:execute的参数不为1排除");
-						Future2Completable.methodOverload++;
-						continue;
-					}
-				}else if(invocationNode.getName().toString().equals("submit")) {
-					if(arguExps.size() == 0||arguExps.size()>2) {
-						AnalysisUtils.debugPrint("[entryPointInit]:参数个数为0或大于2execute的参数不为1排除");
-						Future2Completable.methodOverload++;
-						continue;
-					}
-					if(!futureType(invocationNode)) {
-						Future2Completable.FutureCanot++;
-						continue;
-						}
+				Set<String> methodSubSignature = new HashSet<>();
+				methodSubSignature.add("execute(java.lang.Runnable)");
+				methodSubSignature.add("submit(java.lang.Runnable)");
+				methodSubSignature.add("submit(java.util.concurrent.Callable)");
+				methodSubSignature.add("submit(java.lang.Runnable,java.lang.Object)");
+				boolean ssFlag = false;
+				IMethodBinding imb = invocationNode.resolveMethodBinding();
+				ITypeBinding[] itbs =imb.getParameterTypes();
+				String typeArgument = null;
+				for(ITypeBinding itbT :imb.getReturnType().getTypeArguments()) {
+					typeArgument = itbT.getQualifiedName();
 				}
-				
+				List<String> arguNameList = new ArrayList<>();
+				for(int i = 0;i<itbs.length;i++) {
+					String name = itbs[i].getErasure().getQualifiedName();
+					if(i>0&&typeArgument!= null&&name.equals(typeArgument)) {
+						name = "java.lang.Object";
+					}
+					arguNameList.add(name);
+				}
+				String arguName = String.join(",", arguNameList);
+				String subSignature = imb.getName()+"("+arguName+")";
+				for(String ss:methodSubSignature) {
+					if(subSignature.contains(ss)) {
+						ssFlag = true;
+					}
+				}
+				if(!ssFlag) {
+					Future2Completable.methodOverload++;
+					continue;
+				}
 				taskPointList.add(invocationNode);
 				Future2Completable.canRefactoringNode++;
 			}
 		invocNodeMap.put(cu, taskPointList);
-//		 allTaskPointList.addAll(taskPointList);
 		}
 	}
 		
