@@ -44,6 +44,7 @@ import soot.jimple.internal.JCastExpr;
 import soot.jimple.internal.JIdentityStmt;
 import soot.jimple.internal.JimpleLocal;
 import soot.jimple.internal.JimpleLocalBox;
+import soot.jimple.spark.sets.DoublePointsToSet;
 import soot.toolkits.graph.BriefUnitGraph;
 import soot.toolkits.graph.UnitGraph;
 import soot.toolkits.scalar.LocalDefs;
@@ -960,23 +961,25 @@ public class ExecutorSubclass {
 	 * @param ptset
 	 * @return
 	 */
-	private static Set<String> processProxyClass(Set<String> typeSet, Set<String> wrapperClasses, PointsToSet ptset) {
+	private static Set<String> processProxyClass(Set<String> typeSet, Set<String> wrapperClasses,DoublePointsToSet ptset) {
 	    PointsToAnalysis pta = Scene.v().getPointsToAnalysis();
 	    Set<String> result = new HashSet<>();
-	    
 	    for (String typeString : typeSet) {
 	        if (wrapperClasses.contains(typeString)) {
 	            SootClass wc = Scene.v().getSootClass(typeString);
 	            String fieldSignature = getFieldSignatures4ProxyClass(wc);
 	            SootField innerField = Scene.v().getField(fieldSignature);
-	            PointsToSet innerPtSet = pta.reachingObjects(ptset,innerField);
+	            DoublePointsToSet innerPtSet = (DoublePointsToSet) pta.reachingObjects(ptset,innerField);
 	            Set<Type> realTypeSet = innerPtSet.possibleTypes();
 	            
 	            // 将可能的类型转换为字符串集合
 	            Set<String> realTypeStrings = getStringInTypeSet(realTypeSet);
 	            
 	            // 递归处理嵌套的封装类
-	            Set<String> nestedResult = processProxyClass(realTypeStrings, wrapperClasses, innerPtSet);
+	            if(innerPtSet.pointsToSetEquals(ptset)) {
+	            	continue;
+	            }
+	            Set<String> nestedResult = processProxyClass(realTypeStrings, wrapperClasses,innerPtSet);
 	            for (String nestedType : nestedResult) {
 	                if (!wrapperClasses.contains(nestedType)) {
 	                    result.add(nestedType);
@@ -1040,9 +1043,9 @@ public class ExecutorSubclass {
     			PointsToSet ptset = pa.reachingObjects(local);
     			Set<Type> typeSet = ptset.possibleTypes();
     			typeSetStrings = getStringInTypeSet(typeSet);
-    			if(wrapperClassesStrings.containsAll(typeSetStrings)) {
+    			if(!typeSetStrings.isEmpty()&&wrapperClassesStrings.containsAll(typeSetStrings)) {
     				AnalysisUtils.debugPrint("进入封装类判断");
-    				typeSetStrings = processProxyClass(typeSetStrings, wrapperClassesStrings, ptset);
+    				typeSetStrings = processProxyClass(typeSetStrings, wrapperClassesStrings,(DoublePointsToSet) ptset);
     			}
     		}	
     	}

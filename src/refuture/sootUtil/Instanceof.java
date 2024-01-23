@@ -76,7 +76,7 @@ public class Instanceof {
 				}
 			}
 		}
-		return true;
+		return false;
 	}
 	public static boolean useInstanceofFuture(Stmt invocStmt) {
 		if(useInstanceofFuture.isEmpty()) return false;
