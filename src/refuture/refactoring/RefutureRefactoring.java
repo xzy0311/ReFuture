@@ -78,7 +78,7 @@ public class RefutureRefactoring extends Refactoring {
 	@Override
 	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
-		
+		startTime = new Date();
 		ConcurrentLinkedQueue<CompilationUnit> allAST = new ConcurrentLinkedQueue<>();
 		allJavaFiles.parallelStream().forEach(cu -> {
 		    ASTParser parser = ASTParser.newParser(AST.JLS11);
