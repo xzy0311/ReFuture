@@ -73,6 +73,7 @@ public class Future2Completable {
 	public static int useInstanceof;
 	
 	public static boolean fineRefactoring;
+	public static boolean debugFlag;
 	public static String debugClassName;
 	public static String debugMethodName;
 	public static int debugLineNumber;
@@ -85,6 +86,7 @@ public class Future2Completable {
 		FutureCanot = 0;
 		maybeRefactoringNode =0;
 		fineRefactoring = false;
+		debugFlag = false;
 		methodOverload = 0;
 		useInstanceof = 0;
 		debugUsePoint2num = 0;
@@ -131,7 +133,7 @@ public class Future2Completable {
 				}else {
 					change = classChange;
 				}
-				if(!printClassFlag&&AnalysisUtils.debugFlag) {
+				if(!printClassFlag&&debugFlag) {
 					SootClass sc = AdaptAst.getSootClass4InvocNode(invocationNode);
 					AnalysisUtils.debugPrint("--第"+j+"个包含可能调用的类："+sc.getName()+"分析开始------------------------------%n");
 					printClassFlag =true;

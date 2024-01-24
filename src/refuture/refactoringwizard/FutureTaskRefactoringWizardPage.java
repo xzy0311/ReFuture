@@ -19,7 +19,7 @@ import refuture.sootUtil.SootConfig;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	
-//	Button btnCheck1;
+	Button btnCheck1;
 	Button btnCheck2;
 	Button btnCheck3;
 	Button btnCheck4;
@@ -40,10 +40,10 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		composite.setLayout(lay);
 
 		// Button 1
-//		btnCheck1 = new Button(composite, SWT.CHECK);
-//		btnCheck1.setText("Find Thread Mode");
-//		GridData gdBtnCheck1 = new GridData(SWT.FILL, SWT.CENTER, true, false);
-//		btnCheck1.setLayoutData(gdBtnCheck1);
+		btnCheck1 = new Button(composite, SWT.CHECK);
+		btnCheck1.setText("DebugPrint");
+		GridData gdBtnCheck1 = new GridData(SWT.FILL, SWT.CENTER, true, false);
+		btnCheck1.setLayoutData(gdBtnCheck1);
 
 		// Button 2
 		btnCheck2 = new Button(composite, SWT.CHECK);
@@ -101,22 +101,20 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	 */
 	private void defineListener(){
 		RefutureRefactoring refactoring = (RefutureRefactoring) getRefactoring();
-//		btnCheck1.addSelectionListener(new SelectionListener(){
-//
-//			@Override
-//			public void widgetDefaultSelected(SelectionEvent arg0) {
-//				btnCheck1.setEnabled(false);
-//			}
-//
-//			@Override
-//			public void widgetSelected(SelectionEvent se) {
-//				if(btnCheck1.getEnabled()){
-//					refactoring.setRefactorPattern(2);
-//				}else{
-//					refactoring.setRefactorPattern(1);
-//				}
-//			}
-//		});
+		btnCheck1.addSelectionListener(new SelectionListener(){
+			@Override
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+				btnCheck1.setEnabled(false);
+			}
+			@Override
+			public void widgetSelected(SelectionEvent se) {
+				if(btnCheck1.getEnabled()){
+					Future2Completable.debugFlag = true;
+				}else{
+					Future2Completable.debugFlag = false;
+				}
+			}
+		});
 		btnCheck2.addSelectionListener(new SelectionListener(){
 			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {

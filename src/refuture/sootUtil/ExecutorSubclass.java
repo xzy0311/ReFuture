@@ -1015,6 +1015,7 @@ public class ExecutorSubclass {
 			}
 		}
 		if(mustDirtyClasses.isEmpty()) {
+			AnalysisUtils.debugPrint("因无污染类,直接通过");
 			return true;
 		}
 		Set<String> wrapperClassesStrings = null;
