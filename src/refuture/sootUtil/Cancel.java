@@ -93,7 +93,7 @@ public class Cancel {
 			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
 			PointsToSet futureLocalSet = pa.reachingObjects(futureLocal);
 			if(futureLocalSet.isEmpty()) {
-				System.out.println("分析是否和调用cancel的变量为别名时，无法得到分配点");
+				AnalysisUtils.debugPrint("分析是否和调用cancel的变量为别名时，无法得到分配点");
 			}
 			for(Local cancelLocal: invocCancelLocals) {
 				PointsToSet cancelLocalSet = pa.reachingObjects(cancelLocal);
