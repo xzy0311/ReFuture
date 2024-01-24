@@ -43,7 +43,7 @@ public class AnalysisUtils {
 	private static String PROJECTPATH;
 
 	/** 输出调试信息标志 */
-	public static boolean debugFlag = true;
+	public static boolean debugFlag = false;
 	
 	public static List<CompilationUnit> allAST;
 

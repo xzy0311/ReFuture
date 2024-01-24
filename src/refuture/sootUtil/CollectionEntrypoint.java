@@ -45,66 +45,65 @@ public class CollectionEntrypoint {
 	 * 5.对于submit情况下，判断接受Future对象的变量是否定义为Future，并且该对象是否流入intanceof判断。（需要再限制强制类型转换嘛？）
 	 */
 	public static void entryPointInit(List<ICompilationUnit> allJavaFiles){
-		for(CompilationUnit astUnit : AnalysisUtils.allAST) {
-			List<MethodInvocation> taskPointList = new ArrayList<MethodInvocation>();
-			ICompilationUnit cu = (ICompilationUnit) astUnit.getJavaElement();
-			List<MethodInvocation> invocationNodes = AllVisiter.getInstance().getMInvocResult();
-			for(MethodInvocation invocationNode:invocationNodes) {
-				List<Expression> arguExps =  invocationNode.arguments();
-				if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;
-				boolean isTask = false;
-				if(!expIsExecutor(invocationNode)) {
+		List<MethodInvocation> invocationNodes = AllVisiter.getInstance().getMInvocResult();
+		for(MethodInvocation invocationNode:invocationNodes) {
+			ICompilationUnit cu = (ICompilationUnit) ((CompilationUnit) invocationNode.getRoot()).getJavaElement();
+			List<Expression> arguExps =  invocationNode.arguments();
+			if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;
+			boolean isTask = false;
+			if(!expIsExecutor(invocationNode)) {
 //					AnalysisUtils.debugPrint("[entryPointInit]receiverObject不属于Executor Family.");
-					continue;
-				}
-				for(Expression arguExp : arguExps) {
-					String arguTypeName =AnalysisUtils.getTypeName4Exp(arguExp);
-					if(arguTypeName == null) {
-						throw new RefutureException(invocationNode,"得不到类型绑定");
-					}else if(arguTypeName == "java.lang.Object") {throw new RefutureException(invocationNode,"得到了object");}
-					if(ExecutorSubclass.callableSubClasses.contains(arguTypeName)|| ExecutorSubclass.runnablesubClasses.contains(arguTypeName)) {
-						isTask = true;
-					}
-				}
-				if(isTask) {Future2Completable.maybeRefactoringNode++;}else {continue;}
-				Set<String> methodSubSignature = new HashSet<>();
-				methodSubSignature.add("execute(java.lang.Runnable)");
-				methodSubSignature.add("submit(java.lang.Runnable)");
-				methodSubSignature.add("submit(java.util.concurrent.Callable)");
-				methodSubSignature.add("submit(java.lang.Runnable,java.lang.Object)");
-				boolean ssFlag = false;
-				IMethodBinding imb = invocationNode.resolveMethodBinding();
-				ITypeBinding[] itbs =imb.getParameterTypes();
-				String typeArgument = null;
-				for(ITypeBinding itbT :imb.getReturnType().getTypeArguments()) {
-					typeArgument = itbT.getQualifiedName();
-				}
-				List<String> arguNameList = new ArrayList<>();
-				for(int i = 0;i<itbs.length;i++) {
-					String name = itbs[i].getErasure().getQualifiedName();
-					if(i>0&&typeArgument!= null&&name.equals(typeArgument)) {
-						name = "java.lang.Object";
-					}
-					arguNameList.add(name);
-				}
-				String arguName = String.join(",", arguNameList);
-				String subSignature = imb.getName()+"("+arguName+")";
-				for(String ss:methodSubSignature) {
-					if(subSignature.contains(ss)) {
-						ssFlag = true;
-					}
-				}
-				if(!ssFlag) {
-					Future2Completable.methodOverload++;
-					continue;
-				}
-				if(!futureType(invocationNode)) {
-					continue;
-				}
-				taskPointList.add(invocationNode);
-				Future2Completable.canRefactoringNode++;
+				continue;
 			}
-		invocNodeMap.put(cu, taskPointList);
+			for(Expression arguExp : arguExps) {
+				String arguTypeName =AnalysisUtils.getTypeName4Exp(arguExp);
+				if(arguTypeName == null) {
+					throw new RefutureException(invocationNode,"得不到类型绑定");
+				}else if(arguTypeName == "java.lang.Object") {throw new RefutureException(invocationNode,"得到了object");}
+				if(ExecutorSubclass.callableSubClasses.contains(arguTypeName)|| ExecutorSubclass.runnablesubClasses.contains(arguTypeName)) {
+					isTask = true;
+				}
+			}
+			if(isTask) {Future2Completable.maybeRefactoringNode++;}else {continue;}
+			Set<String> methodSubSignature = new HashSet<>();
+			methodSubSignature.add("execute(java.lang.Runnable)");
+			methodSubSignature.add("submit(java.lang.Runnable)");
+			methodSubSignature.add("submit(java.util.concurrent.Callable)");
+			methodSubSignature.add("submit(java.lang.Runnable,java.lang.Object)");
+			boolean ssFlag = false;
+			IMethodBinding imb = invocationNode.resolveMethodBinding();
+			ITypeBinding[] itbs =imb.getParameterTypes();
+			String typeArgument = null;
+			for(ITypeBinding itbT :imb.getReturnType().getTypeArguments()) {
+				typeArgument = itbT.getQualifiedName();
+			}
+			List<String> arguNameList = new ArrayList<>();
+			for(int i = 0;i<itbs.length;i++) {
+				String name = itbs[i].getErasure().getQualifiedName();
+				if(i>0&&typeArgument!= null&&name.equals(typeArgument)) {
+					name = "java.lang.Object";
+				}
+				arguNameList.add(name);
+			}
+			String arguName = String.join(",", arguNameList);
+			String subSignature = imb.getName()+"("+arguName+")";
+			for(String ss:methodSubSignature) {
+				if(subSignature.contains(ss)) {
+					ssFlag = true;
+				}
+			}
+			if(!ssFlag) {
+				Future2Completable.methodOverload++;
+				continue;
+			}
+			if(!futureType(invocationNode)) {
+				continue;
+			}
+			if(!invocNodeMap.containsKey(cu)){
+				invocNodeMap.put(cu, new ArrayList<MethodInvocation>());
+			}
+			invocNodeMap.get(cu).add(invocationNode);
+			Future2Completable.canRefactoringNode++;
 		}
 	}
 		
