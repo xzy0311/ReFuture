@@ -433,12 +433,12 @@ public class ExecutorSubclass {
 				}
 			}
 		}
-		System.out.println("llllll:");
-		System.out.println(proxySubmitRClass);
 		AnalysisUtils.debugPrint("");
-		System.out.println(proxySubmitCClass);
+		AnalysisUtils.debugPrint(proxySubmitRClass.toString());
 		AnalysisUtils.debugPrint("");
-		System.out.println(proxySubmitRVClass);
+		AnalysisUtils.debugPrint(proxySubmitCClass.toString());
+		AnalysisUtils.debugPrint("");
+		AnalysisUtils.debugPrint(proxySubmitRVClass.toString());
 	}
 	private static boolean submitRcloneAnalysis(SootMethod executeMethod,SootMethod submitMethod) {
 		List<String> executeUnits = new ArrayList<>();
