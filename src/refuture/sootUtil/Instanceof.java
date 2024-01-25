@@ -41,8 +41,11 @@ public class Instanceof {
 				List<ValueBox> boxes = stmt.getUseBoxes();
 				for(ValueBox box : boxes) {
 					if(box instanceof ImmediateBox) {
-						JimpleLocal local = (JimpleLocal)box.getValue();
-						useInstanceofRunnable.add(local);
+						Value v = box.getValue();
+						if(v instanceof JimpleLocal) {
+							JimpleLocal local = (JimpleLocal)v;
+							useInstanceofRunnable.add(local);
+						}
 					}
 				}
 			}else if(ExecutorSubclass.allFutureSubClasses.contains(qName)&&!qName.equals("java.util.concurrent.Future")) {

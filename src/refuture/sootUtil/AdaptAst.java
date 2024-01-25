@@ -36,6 +36,7 @@ import soot.Unit;
 import soot.ValueBox;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
+import soot.toolkits.graph.BriefUnitGraph;
 import soot.toolkits.scalar.LocalDefs;
 
 
@@ -240,18 +241,32 @@ public class AdaptAst {
 //        	System.out.println("@error[AdaptAST.getJimpleInvocStmt]:获取调用节点对应的Stmt出错，找到有调用名称的语句，但是行号不对应且不是唯一一个这个方法调用在这个方法中{MethodSig:"
 //        +sm.getSignature()+"ASTLineNumber:"+lineNumber+"JimLineNumber:"+jimpleLineNumber);
         	int count = 0;
-        	int number;
+        	int number = 0;
     		if(exp instanceof InstanceofExpression) {
     			number = getNoInstance4Block((InstanceofExpression) exp);
     		}else if(exp instanceof MethodInvocation) {
     			number = getNoInvoc4Block((MethodInvocation) exp);
-    			for(Stmt stmt:mS) {
-    				count++;
-    				if(count == number) {
-	        			return stmt;
-	        		}
+    		}
+    		if(containTargetNum !=mS.size()) {//如果不相等,说明mS中添加元素失败,在if elseif的条件下可能发生,此时,使用
+    			//cfg进行判断.
+    			BriefUnitGraph cfg = new BriefUnitGraph(body);
+    			Iterator cfgIt = cfg.iterator();
+    			while(cfgIt.hasNext()) {
+    				Stmt stmt = (Stmt) cfgIt.next();
+    				if(stmt.toString().contains(expName)) {
+    					count++;
+    					if(count == number) {
+    	        			return stmt;
+    	        		}
+    				}
     			}
     		}
+			for(Stmt stmt:mS) {
+				count++;
+				if(count == number) {
+        			return stmt;
+        		}
+			}
         }
 		throw new RefutureException(exp,"排查错误原因。");
 //        return null;

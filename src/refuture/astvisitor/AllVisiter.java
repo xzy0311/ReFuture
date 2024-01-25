@@ -16,6 +16,10 @@ public class AllVisiter extends ASTVisitor{
 	private List<InstanceofExpression> insNodes;
 	private List<CastExpression> castNodes;
 
+	public static void reSet() {
+		instance = null;
+	}
+	
 	/**
 	 * Private constructor to prevent instantiation from outside the class.
 	 */

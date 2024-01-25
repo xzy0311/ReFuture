@@ -1,5 +1,6 @@
 package refuture.refactoring;
 
+import refuture.astvisitor.AllVisiter;
 import refuture.sootUtil.Cancel;
 import refuture.sootUtil.CastAnalysis;
 import refuture.sootUtil.CollectionEntrypoint;
@@ -16,6 +17,7 @@ public class InitAllStaticfield {
 		CollectionEntrypoint.initStaticField();
 		Instanceof.initStaticField();
 		CastAnalysis.initStaticField();
+		AllVisiter.reSet();
 		return status;
 	}
 

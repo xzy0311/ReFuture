@@ -665,6 +665,7 @@ public class ExecutorSubclass {
 			if(s1.containsInvokeExpr()&&useLocalInInvocStmt(executeThis, s1)) {
 				String realMethodString = s1.getInvokeExpr().getMethod().getSignature();
 				String originString = s1.toString();
+				realMethodString = realMethodString.replaceAll("\\$", "\\\\\\$");
 				String result = originString.replaceFirst("<.*?>", realMethodString);
 				thisInvocMap.put(e, result);
 			}
