@@ -14,14 +14,16 @@ import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
 import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.Statement;
+import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.RefutureException;
@@ -306,20 +308,20 @@ public class AdaptAst {
 		//得到通过AST得到的方法名称，类名称，调用的行号。
 		//得到lambda外的函数调用的名称
 		//12.19修改,得到SootMethod下的第一层lambda外的methodInvocation.并获得总共的层数.若外层不是方法调用,而是变量定义语句,则应该会报错,报错的时候再解决.
-		List<Expression> InvocLambdaMethodList = AdaptAst.getInvocLambdaMethod2Delcaration(exp,deep);
+		List<ASTNode> InvocLambdaMethodList = AdaptAst.getInvocLambdaMethod2Delcaration(exp,deep);
 		
 		SootClass sc = getSootClass4InvocNode(exp);
 		SootMethod sm =getSootMethod4invocNode(exp);
 		SootMethod mainMethod = sm;
 		//得到lambda的SootClass,通过调用Lambda的MIV所在的Body和Stmt.
 		for(int i = 0 ;i < InvocLambdaMethodList.size();i++) {
-			Expression invocLambdaMethod = InvocLambdaMethodList.get(i);
+			ASTNode invocLambdaMethod = InvocLambdaMethodList.get(i);
 			mainMethod = getSootRealFunction4Lambda(mainMethod,invocLambdaMethod,sc.getName());
 		}
 		return mainMethod;
 	}
 	// 得到方法调用及其外部的SootMethod, 以及主类的SootClass.getName().得到存在于主SootClass中的实际Lambda表达式内容的方法的SootMethod.
-	private static SootMethod getSootRealFunction4Lambda(SootMethod sm,Expression invocLambdaMethod,String mainClassName) {
+	private static SootMethod getSootRealFunction4Lambda(SootMethod sm,ASTNode invocLambdaMethod,String mainClassName) {
 		SootClass lambdaClass = getInvocSootLambdaOnBody(sm,invocLambdaMethod);
     	SootMethod method = getSootFunction4Lambda(lambdaClass);
     	//新的情况，在lambda表达式中，并没有直接的调用这个函数。而是又调用存在于主类的一个lambda方法，并且里面包含行号。
@@ -347,7 +349,7 @@ public class AdaptAst {
 		return mainClassMethodList.get(0);
 	}
 	// 得到调用Lambda的MIV,及其所在的SootMethod中实际调用的Lambda的SootClass.
-	private static SootClass getInvocSootLambdaOnBody(SootMethod sm,Expression invocLambdaMethod){
+	private static SootClass getInvocSootLambdaOnBody(SootMethod sm,ASTNode invocLambdaMethod){
 		//这里得到了对应的JimpleIR中的调用lambda表达式的stmt。
 		CompilationUnit cu = (CompilationUnit)invocLambdaMethod.getRoot();
 		int invocLambdaMethodLineNumber = cu.getLineNumber(invocLambdaMethod.getStartPosition());
@@ -364,7 +366,25 @@ public class AdaptAst {
 				}
 				taskNumber++;
 			}
-		}else {
+		}else if(invocLambdaMethod instanceof VariableDeclarationFragment){//因为变量定义语句是没有特征的,只能直接获得lambda的定义语句,不用通过使用-def这种方式了.
+			Body body = sm.retrieveActiveBody();
+			Iterator it = body.getUnits().snapshotIterator();
+			while (it.hasNext()) {
+				Stmt stmt = (Stmt) it.next();
+				if(stmt.toString().contains("bootstrap")&&stmt.getJavaSourceStartLineNumber() == invocLambdaMethodLineNumber) {
+					String unitString = stmt.toString();
+			        int firstLessThanIndex = unitString.indexOf("<");  
+			        int firstColonIndex = unitString.indexOf(":", firstLessThanIndex);  
+			        unitString = unitString.substring(firstLessThanIndex + 1, firstColonIndex);
+			        return Scene.v().getSootClass(unitString);
+				}
+			}
+					
+		}else if(invocLambdaMethod instanceof ReturnStatement){
+			ReturnStatement returnStatement = (ReturnStatement)invocLambdaMethod;
+			bMIVstmt=getStmt4StringOnBody(sm, "return", invocLambdaMethodLineNumber);
+			taskNumber = 1;
+		}else{
 			MethodInvocation invocLambdaMethodInvocation = (MethodInvocation)invocLambdaMethod;
 			bMIVstmt=getStmt4StringOnBody(sm, invocLambdaMethodInvocation.getName().toString(), invocLambdaMethodLineNumber);
 			// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
@@ -419,8 +439,12 @@ public class AdaptAst {
         while(it.hasNext())
         {
             Stmt stmt=(Stmt) it.next();
-            if(stmt.toString().contains(mivName)&&((countInvoc == 1)||(stmt.getJavaSourceStartLineNumber()==ASTLineNume))) {
-            	return stmt;
+            if(stmt.toString().contains(mivName)) {
+                int lineNumber = stmt.getJavaSourceStartLineNumber();
+            	if((countInvoc == 1)||(lineNumber==ASTLineNume)){
+            		return stmt;
+            	}
+            	
             }
         }
 		throw new RefutureException("从SootMethd的Body中,没有找到包含文本对应的Stmt");
@@ -439,21 +463,22 @@ public class AdaptAst {
 	}
 	//得到存在链式调用Lambda表达式嵌套的情况下,调用Labmda表达式的方法由MethodDeclaration到MIV的所有调用Lambda的MethodInvocation列表
 	//因为JDT对于构造方法调用，不是MethodInvocation，所有这里加入构造方法调用支持。
-	private static List<Expression> getInvocLambdaMethod2Delcaration(Expression exp,int deep) {
-		List<Expression> methodInvocList = new ArrayList<>() ;
+	private static List<ASTNode> getInvocLambdaMethod2Delcaration(Expression exp,int deep) {
+		List<ASTNode> methodInvocList = new ArrayList<>() ;
 		ASTNode node = exp;
 		for(;deep>0;deep--) {
 			do {
 				node = node.getParent();
 			}while(!(node instanceof LambdaExpression));
 			//不考虑其他可能,报错再说,只要需要变量/对象的地方,就有可能需要LambdaExpression.
-			while(!(node instanceof MethodInvocation)&&!(node instanceof ClassInstanceCreation)) {
+			while(!(node instanceof MethodInvocation)&&!(node instanceof ClassInstanceCreation)&&!(node instanceof VariableDeclarationFragment)
+					&&!(node instanceof ReturnStatement)) {
 				node = node.getParent();
 				if (node instanceof MethodDeclaration) {
 					throw new RefutureException(exp);
 				}
 			}
-			methodInvocList.add((Expression) node);
+			methodInvocList.add(node);
 		}
 		Collections.reverse(methodInvocList);
 		return methodInvocList;
@@ -493,6 +518,9 @@ public class AdaptAst {
 		}else if(astNode.getParent() instanceof AnonymousClassDeclaration) {
 			AnonymousClassDeclaration ad = (AnonymousClassDeclaration)astNode.getParent();
 			itb = ad.resolveBinding();
+		}else if(astNode.getParent() instanceof EnumDeclaration) {
+			EnumDeclaration td=(EnumDeclaration)astNode.getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
+			itb = td.resolveBinding();//得到FullName,必须是用绑定。
 		}else {
 			TypeDeclaration td=(TypeDeclaration)astNode.getParent();//MethodDeclaration 节点的父节点就是TypeDeclaration
 			itb = td.resolveBinding();//得到FullName,必须是用绑定。
@@ -522,7 +550,8 @@ public class AdaptAst {
 		try{
 			sm= sc.getMethodByName(AnalysisUtils.getSimpleMethodNameofSoot(expNode));
 		}catch(AmbiguousMethodException e) {
-			sm = sc.getMethod(AnalysisUtils.getMethodNameNArgusofSoot(expNode));
+			String subSignature = AnalysisUtils.getMethodNameNArgusofSoot(expNode);
+			sm = sc.getMethod(subSignature);
 		}
 		return sm;
 	}

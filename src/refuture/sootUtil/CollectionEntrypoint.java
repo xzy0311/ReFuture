@@ -195,6 +195,9 @@ public class CollectionEntrypoint {
 			}
 		}else if (parentNode instanceof ReturnStatement ) {
 			MethodDeclaration md = AnalysisUtils.getMethodDeclaration4node(parentNode);
+			if(md == null) {
+				throw new RefutureException(mInvoc);
+			}
 			if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
 				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
 					return false;
