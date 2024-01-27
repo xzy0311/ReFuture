@@ -303,10 +303,11 @@ public class AnalysisUtils {
 		}
 		if(node instanceof MethodDeclaration) {
 			return (MethodDeclaration) node;
-		}else if(node instanceof LambdaExpression) {
-			LambdaExpression le = (LambdaExpression) node;
-			return le;//返回LambdaExpression,便于后续处理
 		}
+//		else if(node instanceof LambdaExpression) {
+//			LambdaExpression le = (LambdaExpression) node;
+//			return le;//返回LambdaExpression,便于后续处理
+//		}
 		else {//node instanceof TypeDeclaration
 			//if InvocationNode not in MethodDeclaration,it may in Initial Block (static or not) .if in static block it will in staic void <clinit>() in soot ,if in block ,it will in public void <init>().
 			//so ,i just return null;

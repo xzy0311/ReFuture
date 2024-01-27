@@ -195,21 +195,28 @@ public class CollectionEntrypoint {
 				throw new RefutureException(mInvoc);
 			}
 		}else if (parentNode instanceof ReturnStatement ) {
-			ASTNode mdNode = AnalysisUtils.getMethodDeclaration4node(parentNode);
-			if(mdNode == null) {
+			while (!(parentNode instanceof TypeDeclaration)) {
+				if (parentNode instanceof MethodDeclaration) {
+					break;
+				}else if(parentNode instanceof LambdaExpression) {
+					break;
+				}
+				parentNode = parentNode.getParent();
+			}
+			if(parentNode == null) {
 //				return false;
 				throw new RefutureException(mInvoc);
 			}
-			if(mdNode instanceof MethodDeclaration) {
-				MethodDeclaration md = (MethodDeclaration) mdNode;
+			if(parentNode instanceof MethodDeclaration) {
+				MethodDeclaration md = (MethodDeclaration) parentNode;
 				if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
 					if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
 						return false;
 					}
 					return true;
 				}
-			}else if(mdNode instanceof LambdaExpression) {
-				LambdaExpression le = (LambdaExpression)mdNode;
+			}else if(parentNode instanceof LambdaExpression) {
+				LambdaExpression le = (LambdaExpression)parentNode;
 				if(le.resolveMethodBinding().getReturnType().getErasure().getName().equals("Future")) {
 					if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
 						return false;
