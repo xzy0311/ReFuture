@@ -18,6 +18,7 @@ import org.eclipse.jdt.core.dom.CastExpression;
 import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
 import org.eclipse.jdt.core.dom.IfStatement;
@@ -236,6 +237,8 @@ public class Future2Completable {
 						ASTNode outTD = outMD.getParent();
 						if(outTD instanceof AnonymousClassDeclaration) {
 							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d,Points未命中:%d%n",i,((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber,debugUsePoint2num-tempNum);
+						}else if(outTD instanceof EnumDeclaration) {
+							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d,Points未命中:%d%n",i,((EnumDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber,debugUsePoint2num-tempNum);
 						}else {
 							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d,Points未命中:%d%n",i,((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber,debugUsePoint2num-tempNum);
 						}

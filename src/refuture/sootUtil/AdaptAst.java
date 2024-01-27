@@ -11,6 +11,7 @@ import java.util.TreeSet;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -38,6 +39,7 @@ import soot.Unit;
 import soot.ValueBox;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
+import soot.jimple.internal.JIfStmt;
 import soot.toolkits.graph.BriefUnitGraph;
 import soot.toolkits.scalar.LocalDefs;
 
@@ -239,6 +241,9 @@ public class AdaptAst {
             	}
             	jimpleLineNumber = stmt.getJavaSourceStartLineNumber();
             	if(jimpleLineNumber==lineNumber) {
+            		if(stmt instanceof JIfStmt) {
+            			continue;
+            		}
             		return stmt;
             	}
             }
@@ -371,7 +376,7 @@ public class AdaptAst {
 				}
 				taskNumber++;
 			}
-		}else if(invocLambdaMethod instanceof VariableDeclarationFragment){//因为变量定义语句是没有特征的,只能直接获得lambda的定义语句,不用通过使用-def这种方式了.
+		}else if(invocLambdaMethod instanceof VariableDeclarationFragment||invocLambdaMethod instanceof Assignment){//因为变量定义语句是没有特征的,只能直接获得lambda的定义语句,不用通过使用-def这种方式了.
 			Body body = sm.retrieveActiveBody();
 			Iterator it = body.getUnits().snapshotIterator();
 			while (it.hasNext()) {
@@ -389,7 +394,8 @@ public class AdaptAst {
 			ReturnStatement returnStatement = (ReturnStatement)invocLambdaMethod;
 			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,"return" ,sm);
 			taskNumber = 1;
-		}else{
+		}
+		else{
 			MethodInvocation invocLambdaMethodInvocation = (MethodInvocation)invocLambdaMethod;
 			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,invocLambdaMethodInvocation.getName().toString(),sm);
 			// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
@@ -451,7 +457,8 @@ public class AdaptAst {
 			}while(!(node instanceof LambdaExpression));
 			//不考虑其他可能,报错再说,只要需要变量/对象的地方,就有可能需要LambdaExpression.
 			while(!(node instanceof MethodInvocation)&&!(node instanceof ClassInstanceCreation)
-					&&!(node instanceof VariableDeclarationFragment)&&!(node instanceof ReturnStatement)) {
+					&&!(node instanceof VariableDeclarationFragment)&&!(node instanceof ReturnStatement)
+					&&!(node instanceof Assignment)) {
 				if(node == null) {
 					throw new RefutureException(exp);
 				}
