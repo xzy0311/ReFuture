@@ -447,7 +447,7 @@ public class AnalysisUtils {
 			System.out.println(message);
 		}
 	}
-	public static String invocNodeInfo(Expression expNode) {
+	public static String invocNodeInfo(ASTNode expNode) {
 		StringBuilder message = new StringBuilder();
     	message.append("所在类为"+getTypeDeclaration4node(expNode).getName()+";");
     	message.append("所在方法为"+getMethodNameNArgusofSoot(expNode)+";");

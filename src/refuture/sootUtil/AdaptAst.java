@@ -178,7 +178,7 @@ public class AdaptAst {
 	 * @param miv the miv
 	 * @return the jimple invoc stmt
 	 */
-	public static Stmt getJimpleStmt(Expression exp) {
+	public static Stmt getJimpleStmt(ASTNode exp) {
 		CompilationUnit cu = (CompilationUnit)exp.getRoot();
 		int lineNumber = cu.getLineNumber(exp.getStartPosition());//行号
 		String expName;
@@ -203,6 +203,14 @@ public class AdaptAst {
 		
 		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getSignature());
 
+		return getStmtInternal(exp, lineNumber, expName, sm);
+//        return null;
+		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
+		//也就是说正常情况下不应该出错。
+	}
+
+
+	private static Stmt getStmtInternal(ASTNode exp, int lineNumber, String expName, SootMethod sm) {
 		Body body =sm.retrieveActiveBody();
         Iterator<Unit> i=body.getUnits().snapshotIterator();
         boolean notLocalFlag = false;// if method is localmethod,its jimple name is stemp name not execute or submit.
@@ -271,9 +279,6 @@ public class AdaptAst {
 			}
         }
 		throw new RefutureException(exp,"排查错误原因。");
-//        return null;
-		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
-		//也就是说正常情况下不应该出错。
 	}
 //	private static Stmt getJimpleInvocStmtInLambda(Expression exp) {
 //		CompilationUnit cu = (CompilationUnit)exp.getRoot();
@@ -303,7 +308,7 @@ public class AdaptAst {
 //        throw new RefutureException(exp);
 //	}
 	//若MIV存在于Lambda表达式,则得到实际MIV所在的SootMethod,也就是存在于主SootClass中的实际Lambda表达式内容的方法的SootMethod.
-	public static SootMethod getSootRealFunction4InLambda(Expression exp) {
+	public static SootMethod getSootRealFunction4InLambda(ASTNode exp) {
 		int deep = invocInLambda(exp);
 		//得到通过AST得到的方法名称，类名称，调用的行号。
 		//得到lambda外的函数调用的名称
@@ -359,7 +364,7 @@ public class AdaptAst {
 		//12.25日添加，支持new 调用构造方法时传入的lambda，这时使用lambda实现的参数不能够在arguments中找到。
 		if(invocLambdaMethod instanceof ClassInstanceCreation) {
 			ClassInstanceCreation invocLambdaClassInstanceCreation = (ClassInstanceCreation)invocLambdaMethod;
-			bMIVstmt=getStmt4StringOnBody(sm, "void <init>", invocLambdaMethodLineNumber);
+			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,"void <init>" ,sm);
 			for(Object ob :invocLambdaClassInstanceCreation.arguments()) {
 				if(ob instanceof LambdaExpression) {
 					break;
@@ -382,11 +387,11 @@ public class AdaptAst {
 					
 		}else if(invocLambdaMethod instanceof ReturnStatement){
 			ReturnStatement returnStatement = (ReturnStatement)invocLambdaMethod;
-			bMIVstmt=getStmt4StringOnBody(sm, "return", invocLambdaMethodLineNumber);
+			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,"void <init>" ,sm);
 			taskNumber = 1;
 		}else{
 			MethodInvocation invocLambdaMethodInvocation = (MethodInvocation)invocLambdaMethod;
-			bMIVstmt=getStmt4StringOnBody(sm, invocLambdaMethodInvocation.getName().toString(), invocLambdaMethodLineNumber);
+			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,"void <init>" ,sm);
 			// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
 			for(Object ob :invocLambdaMethodInvocation.arguments()) {
 				if(ob instanceof LambdaExpression) {
@@ -423,32 +428,6 @@ public class AdaptAst {
         return Scene.v().getSootClass(unitString);
 	}
 
-	// 给定SootMethod 和 要匹配的字符串及行号,若匹配成功,则返回Stmt.
-	public static Stmt getStmt4StringOnBody(SootMethod sm,String mivName,int ASTLineNume) {
-		Body body =sm.retrieveActiveBody();
-        Iterator<Unit> it=body.getUnits().snapshotIterator();
-        int countInvoc = 0;
-        Iterator<Unit> tmpit = body.getUnits().snapshotIterator();
-        while(tmpit.hasNext())//防止判断行号从api中读取的有些误差,若只有一个调用则不需要判断行号
-        {
-            Stmt stmt=(Stmt) tmpit.next();
-            if(stmt.toString().contains(mivName)) {
-            	countInvoc ++;
-            }
-        }
-        while(it.hasNext())
-        {
-            Stmt stmt=(Stmt) it.next();
-            if(stmt.toString().contains(mivName)) {
-                int lineNumber = stmt.getJavaSourceStartLineNumber();
-            	if((countInvoc == 1)||(lineNumber==ASTLineNume)){
-            		return stmt;
-            	}
-            	
-            }
-        }
-		throw new RefutureException("从SootMethd的Body中,没有找到包含文本对应的Stmt");
-	}
 	
 	// 得到一个Lambda SootClass的三个方法中,函数式接口实现方法的SootMethod.
 	public static SootMethod getSootFunction4Lambda(SootClass sootLambdaClass) {
@@ -463,7 +442,7 @@ public class AdaptAst {
 	}
 	//得到存在链式调用Lambda表达式嵌套的情况下,调用Labmda表达式的方法由MethodDeclaration到MIV的所有调用Lambda的MethodInvocation列表
 	//因为JDT对于构造方法调用，不是MethodInvocation，所有这里加入构造方法调用支持。
-	private static List<ASTNode> getInvocLambdaMethod2Delcaration(Expression exp,int deep) {
+	private static List<ASTNode> getInvocLambdaMethod2Delcaration(ASTNode exp,int deep) {
 		List<ASTNode> methodInvocList = new ArrayList<>() ;
 		ASTNode node = exp;
 		for(;deep>0;deep--) {
@@ -484,7 +463,7 @@ public class AdaptAst {
 		return methodInvocList;
 	}
 	//返回当前MIV是否在Lambda表达式中,在的话若存在嵌套方法调用Lambda,则计算距离MethodDelaration深度.返回值大于0代表存在.
-	public static int invocInLambda(Expression exp) {
+	public static int invocInLambda(ASTNode exp) {
 		int deep = 0;
 		ASTNode node = (ASTNode) exp;
 		MethodDeclaration method = AnalysisUtils.getMethodDeclaration4node(exp);
@@ -507,7 +486,7 @@ public class AdaptAst {
 		return deep;
 	}
 
-	public static SootClass getSootClass4InvocNode(Expression expNode) {
+	public static SootClass getSootClass4InvocNode(ASTNode expNode) {
 		ITypeBinding itb;
 		String typeFullName;
 		ASTNode astNode = AnalysisUtils.getMethodDeclaration4node(expNode);
@@ -544,7 +523,7 @@ public class AdaptAst {
 		return sc;
 	}
 
-	public static SootMethod getSootMethod4invocNode(Expression expNode) {
+	public static SootMethod getSootMethod4invocNode(ASTNode expNode) {
 		SootMethod sm;
 		SootClass sc = getSootClass4InvocNode(expNode);
 		try{
