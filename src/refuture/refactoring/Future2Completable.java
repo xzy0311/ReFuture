@@ -124,8 +124,11 @@ public class Future2Completable {
 			for(MethodInvocation invocationNode:invocNodeMap.get(cu)) {
 				CompilationUnit astUnit = (CompilationUnit)invocationNode.getRoot();
 				int lineNumber = astUnit.getLineNumber(invocationNode.getStartPosition());
-				if((lineNumber == debugLineNumber)&&(cu.getElementName().equals(debugClassName))&&(debugMethodName.equals(AnalysisUtils.getMethodDeclaration4node(invocationNode).getName().toString()))) {
-					System.out.println("已到达指定位置");
+				if((lineNumber == debugLineNumber)&&(cu.getElementName().equals(debugClassName))) {
+					MethodDeclaration deMd = (MethodDeclaration)AnalysisUtils.getMethodDeclaration4node(invocationNode);
+					if(debugMethodName.equals(deMd.getName().toString())) {
+						System.out.println("已到达指定位置");
+					}
 				}
 				TextFileChange change;
 				if(fineRefactoring) {
@@ -228,7 +231,7 @@ public class Future2Completable {
 						}
 						allChanges.add(change);
 					}
-					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
+					MethodDeclaration outMD = (MethodDeclaration) AnalysisUtils.getMethodDeclaration4node(invocationNode);
 					if(outMD != null) {
 						ASTNode outTD = outMD.getParent();
 						if(outTD instanceof AnonymousClassDeclaration) {
@@ -243,7 +246,7 @@ public class Future2Completable {
 					}
 					i = i+1;
 				}else {
-					MethodDeclaration outMD = AnalysisUtils.getMethodDeclaration4node(invocationNode);
+					MethodDeclaration outMD = (MethodDeclaration) AnalysisUtils.getMethodDeclaration4node(invocationNode);
 					if(outMD != null) {
 						ASTNode outTD = outMD.getParent();
 						if(outTD instanceof AnonymousClassDeclaration) {

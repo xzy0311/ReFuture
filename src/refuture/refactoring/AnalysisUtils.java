@@ -22,6 +22,7 @@ import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.Initializer;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
@@ -286,21 +287,27 @@ public class AnalysisUtils {
 	}
 
 	/**
-	 * 得到节点所属的方法块的方法定义节点, 可能返回null;
+	 * 得到节点所属的方法块的方法定义节点, 可能返回null;也可能返回LambdaExpression,便于后续处理.
 	 *
 	 * @param node the node
 	 * @return the method declaration 4 node
 	 */
-	public static MethodDeclaration getMethodDeclaration4node(ASTNode node) {
+	public static ASTNode getMethodDeclaration4node(ASTNode node) {
 		while (!(node instanceof TypeDeclaration)) {
 			if (node instanceof MethodDeclaration) {
+				break;
+			}else if(node instanceof LambdaExpression) {
 				break;
 			}
 			node = node.getParent();
 		}
 		if(node instanceof MethodDeclaration) {
 			return (MethodDeclaration) node;
-		}else {//node instanceof TypeDeclaration
+		}else if(node instanceof LambdaExpression) {
+			LambdaExpression le = (LambdaExpression) node;
+			return le;//返回LambdaExpression,便于后续处理
+		}
+		else {//node instanceof TypeDeclaration
 			//if InvocationNode not in MethodDeclaration,it may in Initial Block (static or not) .if in static block it will in staic void <clinit>() in soot ,if in block ,it will in public void <init>().
 			//so ,i just return null;
 			return null;

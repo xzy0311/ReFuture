@@ -15,6 +15,7 @@ import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.ReturnStatement;
@@ -96,7 +97,7 @@ public class CollectionEntrypoint {
 				Future2Completable.methodOverload++;
 				continue;
 			}
-			if(!futureType(invocationNode)) {
+			if(!subSignature.equals("execute(java.lang.Runnable)" ) &&!futureType(invocationNode)) {
 				continue;
 			}
 			if(!invocNodeMap.containsKey(cu)){
@@ -194,15 +195,27 @@ public class CollectionEntrypoint {
 				throw new RefutureException(mInvoc);
 			}
 		}else if (parentNode instanceof ReturnStatement ) {
-			MethodDeclaration md = AnalysisUtils.getMethodDeclaration4node(parentNode);
-			if(md == null) {
+			ASTNode mdNode = AnalysisUtils.getMethodDeclaration4node(parentNode);
+			if(mdNode == null) {
+//				return false;
 				throw new RefutureException(mInvoc);
 			}
-			if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
-				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
-					return false;
+			if(mdNode instanceof MethodDeclaration) {
+				MethodDeclaration md = (MethodDeclaration) mdNode;
+				if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
+					if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
+						return false;
+					}
+					return true;
 				}
-				return true;
+			}else if(mdNode instanceof LambdaExpression) {
+				LambdaExpression le = (LambdaExpression)mdNode;
+				if(le.resolveMethodBinding().getReturnType().getErasure().getName().equals("Future")) {
+					if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
+						return false;
+					}
+					return true;
+				}
 			}else {
 				throw new RefutureException(mInvoc);
 			}

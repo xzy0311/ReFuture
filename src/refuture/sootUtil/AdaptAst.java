@@ -52,7 +52,7 @@ public class AdaptAst {
 	 */
 	public static int getNoInstance4Block(InstanceofExpression iof) {
 		//1.得到instanceof所在的方法.
-				MethodDeclaration md = AnalysisUtils.getMethodDeclaration4node(iof);
+				MethodDeclaration md = (MethodDeclaration) AnalysisUtils.getMethodDeclaration4node(iof);
 				if(md == null) {
 					throw new RefutureException(iof+"需完善,代码，可能在字段中的方法调用");
 				}
@@ -107,7 +107,7 @@ public class AdaptAst {
 	 */
 	public static int getNoInvoc4Block(MethodInvocation miv) {
 		//1.得到miv所在的方法.
-		MethodDeclaration md = AnalysisUtils.getMethodDeclaration4node(miv);
+		MethodDeclaration md = (MethodDeclaration) AnalysisUtils.getMethodDeclaration4node(miv);
 		if(md == null) {
 			throw new RefutureException(miv+"需完善,代码，可能在字段中的方法调用");
 		}
@@ -238,7 +238,7 @@ public class AdaptAst {
             		TempStmt = stmt;
             	}
             	jimpleLineNumber = stmt.getJavaSourceStartLineNumber();
-            	if(jimpleLineNumber==lineNumber||lineNumber - jimpleLineNumber == 1) {
+            	if(jimpleLineNumber==lineNumber) {
             		return stmt;
             	}
             }
@@ -387,11 +387,11 @@ public class AdaptAst {
 					
 		}else if(invocLambdaMethod instanceof ReturnStatement){
 			ReturnStatement returnStatement = (ReturnStatement)invocLambdaMethod;
-			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,"void <init>" ,sm);
+			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,"return" ,sm);
 			taskNumber = 1;
 		}else{
 			MethodInvocation invocLambdaMethodInvocation = (MethodInvocation)invocLambdaMethod;
-			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,"void <init>" ,sm);
+			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,invocLambdaMethodInvocation.getName().toString(),sm);
 			// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
 			for(Object ob :invocLambdaMethodInvocation.arguments()) {
 				if(ob instanceof LambdaExpression) {
@@ -450,8 +450,11 @@ public class AdaptAst {
 				node = node.getParent();
 			}while(!(node instanceof LambdaExpression));
 			//不考虑其他可能,报错再说,只要需要变量/对象的地方,就有可能需要LambdaExpression.
-			while(!(node instanceof MethodInvocation)&&!(node instanceof ClassInstanceCreation)&&!(node instanceof VariableDeclarationFragment)
-					&&!(node instanceof ReturnStatement)) {
+			while(!(node instanceof MethodInvocation)&&!(node instanceof ClassInstanceCreation)
+					&&!(node instanceof VariableDeclarationFragment)&&!(node instanceof ReturnStatement)) {
+				if(node == null) {
+					throw new RefutureException(exp);
+				}
 				node = node.getParent();
 				if (node instanceof MethodDeclaration) {
 					throw new RefutureException(exp);
@@ -466,7 +469,7 @@ public class AdaptAst {
 	public static int invocInLambda(ASTNode exp) {
 		int deep = 0;
 		ASTNode node = (ASTNode) exp;
-		MethodDeclaration method = AnalysisUtils.getMethodDeclaration4node(exp);
+		MethodDeclaration method = (MethodDeclaration) AnalysisUtils.getMethodDeclaration4node(exp);
 		if(method != null) {
 			while(!node.equals(method)) {
 				if(node instanceof LambdaExpression) {
