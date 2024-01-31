@@ -173,7 +173,6 @@ public class ExecutorSubclass {
 //		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
-		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService"));
 //		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
 		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
@@ -207,6 +206,13 @@ public class ExecutorSubclass {
 			}else {
 				mayCompleteExecutorSubClasses.add(tPESubClass);
 			}
+		}
+		//处理proxy类。
+		//将这个类进行特殊处理。
+		// 因为它肯定只会是安全的。
+		SootClass fDEsc = Scene.v().getSootClass("java.util.concurrent.Executors$FinalizableDelegatedExecutorService");
+		if(allDirtyClasses.contains(fDEsc)) {
+			mayCompleteExecutorSubClasses.add(fDEsc);
 		}
 		for(SootClass executorServiceImplemente:serviceSubImplementers) {
 			if(mayCompleteExecutorSubClasses.contains(executorServiceImplemente)) {

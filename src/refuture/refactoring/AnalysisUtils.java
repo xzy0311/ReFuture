@@ -1,10 +1,8 @@
 package refuture.refactoring;
 
-import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -13,7 +11,6 @@ import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -29,8 +26,8 @@ import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
-
-import refuture.sootUtil.ExecutorSubclass;
+import org.eclipse.jdt.internal.core.JavaModelManager;
+import org.eclipse.jdt.internal.core.JavaModelManager.PerProjectInfo;
 
 /**
  * The Class AnalysisUtils. 提供分析方法的工具包类，它的方法都是静态的。
@@ -87,7 +84,7 @@ public class AnalysisUtils {
 			 * ********这里有一些配置，需要手动更改。************
 			 */
 			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume xml项目。
-			boolean testFlag = false;
+			boolean testFlag = true;
 			if (testFlag) {
 				String projectOutPath = PROJECTOUTPATH.get(0);
 				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
@@ -96,7 +93,7 @@ public class AnalysisUtils {
 			}
 			//1.2 手动添加测试类class文件路径
 			// 1.2.1cassandra使用
-			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
+//			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
 			// 1.2.2 elasticSearch 使用
 //			String projectTestOutPath = PROJECTPATH+File.separator+"build-eclipse"+File.separator+"2";
 			// 1.2.3 traific use
@@ -106,25 +103,24 @@ public class AnalysisUtils {
 			// 1.2.5 mockito use
 //			String projectTestOutPath = "/home/xzy/runtime-workspace/mockito-3.3.0/bin/test";
 			//1.3 上面开启,此项必须开启
-			PROJECTOUTPATH.add(projectTestOutPath);
-			for (IJavaElement element : project.getChildren()) {
-			//2 对源码包的过滤选项。
-				//2.1jGroups，cassandra, lucene-solr 使用
-				boolean javaFolder = element.toString().startsWith("src")&&!element.getElementName().equals("resources")||element.toString().startsWith("test");
-//				boolean javaFolder = (element.toString().startsWith("src")&&!element.getElementName().equals("resources"))||element.toString().startsWith("target");// xml,flume,jenkins
-//				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("test")||element.getElementName().equals("classes");// tomcat
-//				boolean javaFolder = element.toString().startsWith("src");// Jailer   SPECjbb
-//				boolean javaFolder = element.getElementName().equals("java");// signalserver、hadoop zookeeper syncope elaticSearch tika brooklyn使用。
-//				boolean javaFolder = element.getElementName().equals("java")||element.getElementName().equals("gen-java");
-				if (javaFolder) {// 找到包，给AST使用
-					IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) element;
-					for (IJavaElement ele : packageRoot.getChildren()) {
-						if (ele instanceof IPackageFragment) {
-							IPackageFragment packageFragment = (IPackageFragment) ele;
-							// 一个CompilationUnit代表一个java文件。
-							for (ICompilationUnit unit : packageFragment.getCompilationUnits()) {
-								allJavaFiles.add(unit);
-							}
+//			PROJECTOUTPATH.add(projectTestOutPath);
+			PerProjectInfo ppi = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(project.getProject());
+			System.out.println(ppi.jrtRoots);
+			System.out.println(ppi.options);
+			System.out.println(ppi.preferences);
+			System.out.println(ppi.rawClasspath);
+			System.out.println(ppi.rawClasspathStatus);
+			System.out.println();
+			
+			IPackageFragmentRoot[] roots = project.getPackageFragmentRoots();
+			for (IPackageFragmentRoot root : roots) {
+				IJavaElement[] children = root.getChildren();
+				for (IJavaElement child : children) {
+					if (child.getElementType() == IJavaElement.PACKAGE_FRAGMENT) {
+						IPackageFragment fragment = (IPackageFragment) child;
+						ICompilationUnit[] units = fragment.getCompilationUnits();
+						for (ICompilationUnit unit : units) {
+							allJavaFiles.add(unit);
 						}
 					}
 				}
