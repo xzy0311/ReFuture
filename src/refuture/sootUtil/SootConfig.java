@@ -1,30 +1,43 @@
 package refuture.sootUtil;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.internal.core.JavaModelManager;
+import org.eclipse.jdt.internal.core.JavaModelManager.PerProjectInfo;
 
 import refuture.refactoring.AnalysisUtils;
 import soot.PackManager;
 import soot.Scene;
-import soot.SootMethod;
-import soot.jimple.toolkits.callgraph.CHATransformer;
 import soot.options.Options;
 
 public class SootConfig {
 	public static boolean extremeSpeedModel;
-
+	
+	public static List<String> sourceClassPath;
+	
+	public static List<String> libClassPath;
+	
 	public static void sootConfigStaticInitial() {
 		extremeSpeedModel = false;
+		sourceClassPath = null;
+		libClassPath = null;
 	}
 	
     public static void setupSoot() {
+    	try {
+			processClassPath();
+		} catch (JavaModelException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         soot.G.reset();
         BasicOptions();
         System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
@@ -50,9 +63,9 @@ public class SootConfig {
         // Set output format for Soot
         Options.v().set_output_format(Options.output_format_none);
         // 添加jar包路径
-        Options.v().set_process_jar_dir(getJarFolderPath());
+        Options.v().set_process_jar_dir(libClassPath);
         // 处理目录中所有的类
-        Options.v().set_process_dir(AnalysisUtils.getSootClassPath());
+        Options.v().set_process_dir(sourceClassPath);
     }
 
 
@@ -72,16 +85,48 @@ public class SootConfig {
         	Options.v().setPhaseOption("cg.spark","apponly:true");
         }
     }
-
-    private static List<String> getJarFolderPath() {
-    	String jarFolderPath = AnalysisUtils.getProjectPath()+File.separator+"lib";
-    	File file = new File(jarFolderPath);
-    	if(file.exists()) {
-    		return Collections.singletonList(jarFolderPath);
-    	}else {
-        	return null;
-    	}
+    
+    private static void processClassPath() throws JavaModelException {
+    	IProject project = AnalysisUtils.eclipseProject;
+    	String projectPath = project.getFullPath().toOSString();
+    	String fullPath = project.getLocation().toOSString();
+    	String WorkSpace = fullPath.replace(projectPath, "");
+    	Set<String> sourceClassPath =new HashSet<>();
+    	Set<String> libClassPath = new HashSet<>();
+		PerProjectInfo ppi = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(project);
+		String javaFlag = File.separator+"jre"+File.separator+"lib"+File.separator;
+		for(IClasspathEntry cp : ppi.rawClasspath) {
+			if(cp.getContentKind() == 1) {
+				IPath ip = cp.getOutputLocation();
+				if(ip != null&& !ip.isEmpty()) {
+					sourceClassPath.add(WorkSpace+ip.toOSString());
+				}
+			}else if(cp.getContentKind() ==2 ) {
+				IPath ip = cp.getPath();
+				if(ip != null&& !ip.isEmpty()) {
+					if(!ip.toOSString().contains(javaFlag)) {
+						libClassPath.add(cp.getPath().toOSString());
+					}
+				}
+			}
+		}
+		for(IClasspathEntry cp : ppi.resolvedClasspath) {
+			if(cp.getContentKind() == 1) {
+				IPath ip = cp.getOutputLocation();
+				if(ip != null&& !ip.isEmpty()) {
+					sourceClassPath.add(WorkSpace+ip.toOSString());
+				}
+			}else if(cp.getContentKind() ==2 ) {
+				IPath ip = cp.getPath();
+				if(ip != null&& !ip.isEmpty()) {
+					if(!ip.toOSString().contains(javaFlag)) {
+						libClassPath.add(cp.getPath().toOSString());
+					}
+				}
+			}
+		}
+		
+		SootConfig.sourceClassPath = new ArrayList<String>(sourceClassPath);
+		SootConfig.libClassPath = new ArrayList<String>(libClassPath);
     }
-    
-    
 }

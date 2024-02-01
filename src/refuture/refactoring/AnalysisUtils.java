@@ -4,6 +4,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
@@ -26,8 +27,6 @@ import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
-import org.eclipse.jdt.internal.core.JavaModelManager;
-import org.eclipse.jdt.internal.core.JavaModelManager.PerProjectInfo;
 
 /**
  * The Class AnalysisUtils. 提供分析方法的工具包类，它的方法都是静态的。
@@ -35,13 +34,7 @@ import org.eclipse.jdt.internal.core.JavaModelManager.PerProjectInfo;
 public class AnalysisUtils {
 
 	/** The projectpath. */
-	private static List<String> PROJECTOUTPATH;
-
-	/** The projectpath. */
-	private static String PROJECTPATH;
-
-	/** 输出调试信息标志 */
-//	public static boolean debugFlag = false;
+	public static IProject eclipseProject;
 	
 	public static List<CompilationUnit> allAST;
 
@@ -61,57 +54,12 @@ public class AnalysisUtils {
 	 * @param project the project
 	 * @return 传入的对象中包含的java文件列表。
 	 *8.3 projectNest need to implement 
+	 * @throws JavaModelException 
 	 *
 	 */
-	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) {
+	public static List<ICompilationUnit> collectFromSelect(IJavaProject project) throws JavaModelException {
+		eclipseProject = project.getProject();
 		List<ICompilationUnit> allJavaFiles = new ArrayList<ICompilationUnit>();
-		
-		// 得到输出的class在的文件夹，方便后继使用soot分析。
-		try {
-			String projectoutpath = project.getOutputLocation().toOSString();
-			PROJECTPATH = project.getProject().getLocation().toOSString();
-	        int secondSlashIndex = projectoutpath.indexOf('/', projectoutpath.indexOf('/') + 1);
-	        projectoutpath = projectoutpath.substring(secondSlashIndex);
-			PROJECTOUTPATH = new ArrayList<String>();
-			PROJECTOUTPATH.add(PROJECTPATH + projectoutpath);
-//			PROJECTOUTPATH.add(PROJECTPATH + projectoutpath +"/1");
-		} catch (JavaModelException ex) {
-			System.out.println(ex);
-		}
-		// 得到选中的元素中的JAVA项目。
-		try {
-			/*
-			 * ********这里有一些配置，需要手动更改。************
-			 */
-			// 1.1 测试标志，是否将test-classes替换classes从而得到测试代码生成的class文件路径。适合JGroups flume xml项目。
-			boolean testFlag = true;
-			if (testFlag) {
-				String projectOutPath = PROJECTOUTPATH.get(0);
-				String projectTestOutPath = projectOutPath.replace("classes", "test-classes");
-				PROJECTOUTPATH.add(projectTestOutPath);
-				testFlag = false;
-			}
-			//1.2 手动添加测试类class文件路径
-			// 1.2.1cassandra使用
-//			String projectTestOutPath = PROJECTPATH+File.separator+"build"+File.separator+"test"+File.separator+"classes";
-			// 1.2.2 elasticSearch 使用
-//			String projectTestOutPath = PROJECTPATH+File.separator+"build-eclipse"+File.separator+"2";
-			// 1.2.3 traific use
-//			String projectTestOutPath = PROJECTPATH+File.separator+"target"+File.separator+"bin-test";
-			// 1.2.4 dropward use
-//			String projectTestOutPath = "/home/xzy/runtime-workspace/dropwizard-1.3.16/dropwizard-logging/target/classes";
-			// 1.2.5 mockito use
-//			String projectTestOutPath = "/home/xzy/runtime-workspace/mockito-3.3.0/bin/test";
-			//1.3 上面开启,此项必须开启
-//			PROJECTOUTPATH.add(projectTestOutPath);
-			PerProjectInfo ppi = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(project.getProject());
-			System.out.println(ppi.jrtRoots);
-			System.out.println(ppi.options);
-			System.out.println(ppi.preferences);
-			System.out.println(ppi.rawClasspath);
-			System.out.println(ppi.rawClasspathStatus);
-			System.out.println();
-			
 			IPackageFragmentRoot[] roots = project.getPackageFragmentRoots();
 			for (IPackageFragmentRoot root : roots) {
 				IJavaElement[] children = root.getChildren();
@@ -125,9 +73,6 @@ public class AnalysisUtils {
 					}
 				}
 			}
-		} catch (JavaModelException e) {
-			e.printStackTrace();
-		}
 		return allJavaFiles;
 	}
 
@@ -341,14 +286,6 @@ public class AnalysisUtils {
 			return true;
 		}
 		return false;
-	}
-
-	public static String getProjectPath() {
-		return PROJECTPATH;
-	}
-
-	public static List<String> getSootClassPath() {
-		return PROJECTOUTPATH;
 	}
 
 	public static void throwNull() {

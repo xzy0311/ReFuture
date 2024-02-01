@@ -10,6 +10,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -50,7 +51,12 @@ public class RefutureRefactoring extends Refactoring {
 	 * @param selectProject the select project
 	 */
 	public RefutureRefactoring(IJavaProject selectProject) {		
-		allJavaFiles = AnalysisUtils.collectFromSelect(selectProject);
+		try {
+			allJavaFiles = AnalysisUtils.collectFromSelect(selectProject);
+		} catch (JavaModelException e) {
+			e.printStackTrace();
+		}
+		
 		allChanges = new ArrayList<Change>();
 	}
 
