@@ -93,6 +93,7 @@ public class SootConfig {
     	String locationPath = project.getLocation().toOSString();
     	Set<String> sourceClassPath =new HashSet<>();
     	Set<String> libClassPath = new HashSet<>();
+    	Set<String> libProjectPath = new HashSet<>();
 		PerProjectInfo ppi = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(project);
 		String javaFlag = File.separator+"jre"+File.separator+"lib"+File.separator;
 		for(IClasspathEntry cp : ppi.rawClasspath) {
@@ -100,6 +101,8 @@ public class SootConfig {
 				IPath ip = cp.getOutputLocation();
 				if(ip != null&& !ip.isEmpty()) {
 					sourceClassPath.add(ip.toOSString().replaceFirst(projectPath, locationPath));
+				}else if(cp.getEntryKind() == IClasspathEntry.CPE_PROJECT){
+					libProjectPath.add(cp.getPath().toOSString());
 				}
 			}else if(cp.getContentKind() ==2 ) {
 				IPath ip = cp.getPath();
@@ -120,6 +123,8 @@ public class SootConfig {
 				IPath ip = cp.getOutputLocation();
 				if(ip != null&& !ip.isEmpty()) {
 					sourceClassPath.add(ip.toOSString().replaceFirst(projectPath, locationPath));
+				}else if(cp.getEntryKind() == IClasspathEntry.CPE_PROJECT){
+					libProjectPath.add(cp.getPath().toOSString());
 				}
 			}else if(cp.getContentKind() ==2 ) {
 				IPath ip = cp.getPath();
@@ -133,6 +138,15 @@ public class SootConfig {
 						libClassPath.add(libPathString);
 					}
 				}
+			}
+		}
+		for(String libProject: libProjectPath) {
+			for(String classPath :sourceClassPath) {
+				String newLibProjectPath = classPath.replaceFirst(projectPath, libProject);
+		        File file = new File(newLibProjectPath);
+		        if (file.exists()) {
+		            libClassPath.add(newLibProjectPath);
+		        }
 			}
 		}
 		

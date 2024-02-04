@@ -155,8 +155,6 @@ public class Future2Completable {
 			    	flagMaybeMap.put("ExecuteRunnable",flagMaybeMap.get("ExecuteRunnable")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
-						//因执行器类型不安全，不能重构。
-						illExecutor++;
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 						continue;
 					}
