@@ -203,7 +203,7 @@ public class AdaptAst {
 			}
 		}
 		
-		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:包含submit/execute方法调用的类："+sc.getName()+"方法名"+sm.getSignature());
+		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:获取的Stmt所在的方法签名"+sm.getSignature());
 
 		return getStmtInternal(exp, lineNumber, expName, sm);
 //        return null;

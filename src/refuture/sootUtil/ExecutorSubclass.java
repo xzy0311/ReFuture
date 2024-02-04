@@ -1014,7 +1014,30 @@ public class ExecutorSubclass {
 	 */
 	public static boolean canRefactor(MethodInvocation mInvocation,Stmt invocStmt , int refactorMode) {
 		if(invocStmt == null) return false;
+		Set<String> completeSetTypeStrings = getCompleteExecutorSubClassesName();
 		if(refactorMode == 1){//execute()判断
+			Set<String> typeSetStrings = new HashSet<>();
+			List<ValueBox> lvbs = invocStmt.getUseBoxes();
+			Iterator<ValueBox> it =lvbs.iterator();
+	        while(it.hasNext()) {
+	        	Object o = it.next();
+	        	if (o instanceof JimpleLocalBox) {
+	    			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
+	    			JimpleLocalBox jlb = (JimpleLocalBox) o;
+	    			Local local = (Local)jlb.getValue();
+	    			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
+	    			PointsToSet ptset = pa.reachingObjects(local);
+	    			Set<Type> typeSet = ptset.possibleTypes();
+	    			typeSetStrings = getStringInTypeSet(typeSet);
+	    		}	
+	    	}
+	        if(!typeSetStrings.isEmpty()) {
+				if(completeSetTypeStrings.containsAll(typeSetStrings)) {
+					//是安全重构的子集，就可以进行重构了。
+					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构,typeName为："+typeSetStrings);
+					return true;
+				}
+			}
 			if(Instanceof.useInstanceofRunnable(invocStmt)) {
 				return false;
 			}else {
@@ -1037,7 +1060,6 @@ public class ExecutorSubclass {
 			wrapperClassesStrings = getStringInSootClassSet(proxySubmitRVClass);
 			allDirtyClasses = submitRVDirtyClasses;
 		}
-		Set<String> completeSetTypeStrings = getCompleteExecutorSubClassesName();
 		Set<String> typeSetStrings = new HashSet<>();
 		List<ValueBox> lvbs = invocStmt.getUseBoxes();
 		Iterator<ValueBox> it =lvbs.iterator();
@@ -1128,9 +1150,6 @@ public class ExecutorSubclass {
 				
 			}
 		}
-			
-
-		
 	}
 	
 

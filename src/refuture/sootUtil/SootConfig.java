@@ -40,9 +40,6 @@ public class SootConfig {
 		}
         soot.G.reset();
         BasicOptions();
-        System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
-        Scene.v().loadNecessaryClasses();
-        System.out.println("[setupSoot]:加载必要类完毕！");
         CGPhaseOptions();//启用Spark
         PackManager.v().runPacks();
         System.out.println("[setupSoot]:Soot包运行完毕。");
@@ -62,23 +59,27 @@ public class SootConfig {
         Options.v().set_keep_line_number(true);
         // Set output format for Soot
         Options.v().set_output_format(Options.output_format_none);
-        // 添加jar包路径
-        Options.v().set_process_jar_dir(libClassPath);
         // 处理目录中所有的类
         Options.v().set_process_dir(sourceClassPath);
+        AnalysisUtils.debugPrint("[setupSoot]:本次process_dir："+Scene.v().getSootClassPath());
+        // 添加jar包路径
+        for(String libPath :libClassPath) {
+        	Scene.v().extendSootClassPath(libPath);
+        }
+        AnalysisUtils.debugPrint("[setupSoot]:本次SootClassPath："+Scene.v().getSootClassPath());
+        Scene.v().loadNecessaryClasses();
+        AnalysisUtils.debugPrint("[setupSoot]:加载必要类完毕！");
     }
 
 
     /**
      * Spark 是一个灵活的指针分析框架，同时支持创建Call Graph。
      * 选用指针分析算法创建Call Graph。
-     * 除"cg.spark"之外，soot 还支持"cg.cha"（使用CHA算法创建Call Graph）、"cg.paddle"（paddle框架创建）、"CG" （分析整个源代码，包括JDK部分）
      */
     public static void CGPhaseOptions(){
     	 // 开启创建CG
-        Options.v().setPhaseOption("cg.spark","enabled:true");
     	Options.v().setPhaseOption("cg", "all-reachable:true");
-        // 一种复杂的分析方法，能够题升精度，同时会消耗大量时间。
+        Options.v().setPhaseOption("cg.spark","enabled:true");
         Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
         if(extremeSpeedModel) {
         	System.out.println("[CGPhaseOptions]:当前为快速模式");
@@ -89,8 +90,7 @@ public class SootConfig {
     private static void processClassPath() throws JavaModelException {
     	IProject project = AnalysisUtils.eclipseProject;
     	String projectPath = project.getFullPath().toOSString();
-    	String fullPath = project.getLocation().toOSString();
-    	String WorkSpace = fullPath.replace(projectPath, "");
+    	String locationPath = project.getLocation().toOSString();
     	Set<String> sourceClassPath =new HashSet<>();
     	Set<String> libClassPath = new HashSet<>();
 		PerProjectInfo ppi = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(project);
@@ -99,13 +99,18 @@ public class SootConfig {
 			if(cp.getContentKind() == 1) {
 				IPath ip = cp.getOutputLocation();
 				if(ip != null&& !ip.isEmpty()) {
-					sourceClassPath.add(WorkSpace+ip.toOSString());
+					sourceClassPath.add(ip.toOSString().replaceFirst(projectPath, locationPath));
 				}
 			}else if(cp.getContentKind() ==2 ) {
 				IPath ip = cp.getPath();
 				if(ip != null&& !ip.isEmpty()) {
-					if(!ip.toOSString().contains(javaFlag)) {
-						libClassPath.add(cp.getPath().toOSString());
+					String libPathString = ip.toOSString();
+					if(!libPathString.contains(javaFlag)) {
+			            File file = new File(libPathString);
+			            if (!file.exists()) {
+			               continue;
+			            }
+						libClassPath.add(libPathString);
 					}
 				}
 			}
@@ -114,13 +119,18 @@ public class SootConfig {
 			if(cp.getContentKind() == 1) {
 				IPath ip = cp.getOutputLocation();
 				if(ip != null&& !ip.isEmpty()) {
-					sourceClassPath.add(WorkSpace+ip.toOSString());
+					sourceClassPath.add(ip.toOSString().replaceFirst(projectPath, locationPath));
 				}
 			}else if(cp.getContentKind() ==2 ) {
 				IPath ip = cp.getPath();
 				if(ip != null&& !ip.isEmpty()) {
-					if(!ip.toOSString().contains(javaFlag)) {
-						libClassPath.add(cp.getPath().toOSString());
+					String libPathString = ip.toOSString();
+					if(!libPathString.contains(javaFlag)) {
+			            File file = new File(libPathString);
+			            if (!file.exists()) {
+			               continue;
+			            }
+						libClassPath.add(libPathString);
 					}
 				}
 			}
@@ -129,4 +139,6 @@ public class SootConfig {
 		SootConfig.sourceClassPath = new ArrayList<String>(sourceClassPath);
 		SootConfig.libClassPath = new ArrayList<String>(libClassPath);
     }
+
+    
 }

@@ -192,7 +192,7 @@ public class CollectionEntrypoint {
 				}
 				return true;
 			}else {
-				throw new RefutureException(mInvoc);
+				return false;
 			}
 		}else if (parentNode instanceof ReturnStatement ) {
 			while (!(parentNode instanceof TypeDeclaration)) {

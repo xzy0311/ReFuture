@@ -114,9 +114,12 @@ public class RefutureRefactoring extends Refactoring {
 		ExecutorSubclass.executorSubClassAnalysis();
 		ExecutorSubclass.wrapperClassAnalysis();
         ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
+        AnalysisUtils.debugPrint("instanceof初始化开始");
         Instanceof.init();
+        AnalysisUtils.debugPrint("强制类型转换初始化开始");
         CastAnalysis.init();
         if(!this.disableCancelPattern) {
+        	AnalysisUtils.debugPrint("cancel(true)初始化开始");
 	        Cancel.initCancel(allJavaFiles);
         }
 		CollectionEntrypoint.entryPointInit(allJavaFiles);

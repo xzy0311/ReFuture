@@ -1,15 +1,12 @@
 package refuture.sootUtil;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
 
 import refuture.astvisitor.AllVisiter;
-import refuture.astvisitor.InstanceofVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
 import soot.Local;
@@ -22,6 +19,7 @@ import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
 import soot.jimple.internal.JimpleLocal;
+import soot.jimple.toolkits.pointer.FullObjectSet;
 
 public class Instanceof {
 	public static Set<JimpleLocal> useInstanceofRunnable;
@@ -69,9 +67,10 @@ public class Instanceof {
 			Local la1 = (Local) lv.get(0);
 			PointsToSet ptset = pa.reachingObjects(la1);
 			for(JimpleLocal ioLocal:useInstanceofRunnable) {
-				if(ptset.hasNonEmptyIntersection(pa.reachingObjects(ioLocal))) {
+				PointsToSet ptsetIO = pa.reachingObjects(ioLocal);
+				if(ptset.hasNonEmptyIntersection(ptsetIO)) {
 					Future2Completable.useInstanceof++;
-					AnalysisUtils.debugPrint("因使用 instanceof而被排除");
+					AnalysisUtils.debugPrint("Runnable因使用 instanceof而被排除");
 					return true;
 				}
 			}
