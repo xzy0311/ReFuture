@@ -53,7 +53,7 @@ public class CollectionEntrypoint {
 			if(!invocationNode.getName().toString().equals("execute")&&!invocationNode.getName().toString().equals("submit")) continue;
 			boolean isTask = false;
 			if(!expIsExecutor(invocationNode)) {
-//					AnalysisUtils.debugPrint("[entryPointInit]receiverObject不属于Executor Family.");
+				AnalysisUtils.debugPrint("[entryPointInit]receiverObject不属于Executor Family.");
 				continue;
 			}
 			for(Expression arguExp : arguExps) {
