@@ -369,7 +369,7 @@ public class Future2Completable {
 			ast = returnStatement.getAST();
 		}
 		if (ast == null) {
-			throw new NullPointerException();
+			return;
 		}
     	ASTRewrite rewriter = ASTRewrite.create(ast);
     	//重构逻辑

@@ -149,6 +149,9 @@ public class SootConfig {
 		        }
 			}
 		}
+		if(sourceClassPath.isEmpty()) {
+			sourceClassPath.add(ppi.outputLocation.toOSString().replaceFirst(projectPath, locationPath));
+		}
 		
 		SootConfig.sourceClassPath = new ArrayList<String>(sourceClassPath);
 		SootConfig.libClassPath = new ArrayList<String>(libClassPath);

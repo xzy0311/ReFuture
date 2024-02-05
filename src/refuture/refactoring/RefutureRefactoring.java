@@ -85,21 +85,8 @@ public class RefutureRefactoring extends Refactoring {
 	public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
 		startTime = new Date();
-		ConcurrentLinkedQueue<CompilationUnit> allAST = new ConcurrentLinkedQueue<>();
-		allJavaFiles.parallelStream().forEach(cu -> {
-		    ASTParser parser = ASTParser.newParser(AST.JLS11);
-		    parser.setResolveBindings(true);
-		    parser.setStatementsRecovery(true);
-		    parser.setBindingsRecovery(true);
-		    parser.setSource(cu);
-		    CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
-		    allAST.add(astUnit);
-		});
-		AnalysisUtils.allAST = new ArrayList<>(allAST);
-		AllVisiter av = AllVisiter.getInstance();
-		for(CompilationUnit cu:allAST) {
-			cu.accept(av);
-		}
+		processASTP();
+//		processAST();
 		Date initConfigTime = new Date();
 		System.out.println("AST初始化完毕的时间"+"The current time is "+ initConfigTime+"已花费:"+((initConfigTime.getTime()-startTime.getTime())/1000)+"s");
 		
@@ -129,6 +116,35 @@ public class RefutureRefactoring extends Refactoring {
 		return null;
 	}
 
+	private void processASTP() {
+		ConcurrentLinkedQueue<CompilationUnit> allAST = new ConcurrentLinkedQueue<>();
+		allJavaFiles.parallelStream().forEach(cu -> {
+		    ASTParser parser = ASTParser.newParser(AST.JLS11);
+		    parser.setResolveBindings(true);
+		    parser.setStatementsRecovery(true);
+		    parser.setBindingsRecovery(true);
+		    parser.setSource(cu);
+		    CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
+		    allAST.add(astUnit);
+		});
+		AllVisiter av = AllVisiter.getInstance();
+		for(CompilationUnit cu:allAST) {
+			cu.accept(av);
+		}
+	}
+	private void processAST() {
+		AllVisiter av = AllVisiter.getInstance();
+		allJavaFiles.stream().forEach(cu -> {
+		    ASTParser parser = ASTParser.newParser(AST.JLS11);
+		    parser.setResolveBindings(true);
+		    parser.setStatementsRecovery(true);
+		    parser.setBindingsRecovery(true);
+		    parser.setSource(cu);
+		    CompilationUnit astUnit = (CompilationUnit) parser.createAST(null);
+			astUnit.accept(av);
+		});
+	}
+
 
 	@Override
 	public Change createChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
@@ -138,6 +154,8 @@ public class RefutureRefactoring extends Refactoring {
 		CompositeChange change = new CompositeChange("refuture 待更改", changes);
 		return change;
 	}
+	
+	
 
 
 

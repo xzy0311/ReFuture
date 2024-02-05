@@ -36,7 +36,6 @@ public class AnalysisUtils {
 	/** The projectpath. */
 	public static IProject eclipseProject;
 	
-	public static List<CompilationUnit> allAST;
 
 	//跳过一些方法
 	public static List<String> skipMethodName = new ArrayList<String>();

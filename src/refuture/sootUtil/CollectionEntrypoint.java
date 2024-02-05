@@ -234,7 +234,7 @@ public class CollectionEntrypoint {
 				}
 				return true;
 			}else {
-				throw new RefutureException(mInvoc);
+				return false;
 			}
 		}
 		return true;
