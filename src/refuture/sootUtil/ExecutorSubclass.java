@@ -168,32 +168,43 @@ public class ExecutorSubclass {
 	 */
 	public static void threadPoolExecutorSubClassAnalysis() {
 		SootClass executorServiceClass = Scene.v().getSootClass("java.util.concurrent.ExecutorService");
-		
-//		mayCompleteExecutorSubClasses.add(executorServiceClass);//不是安全的。
-//		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedScheduledExecutorService"));
-		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService"));
-		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
-//		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.Executors$DelegatedExecutorService"));
-		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor"));
-		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ForkJoinPool"));
-		
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		List<SootClass> serviceSubImplementers = hierarchy.getImplementersOf(executorServiceClass);
 		allExecutorServiceSubClasses.addAll(serviceSubImplementers);
 		List<SootClass> serviceSubInterfaces = hierarchy.getSubinterfacesOfIncluding(executorServiceClass);
 		allExecutorServiceSubClasses.addAll(serviceSubInterfaces);
+		
+		
+		
+		SootClass AbsExecutorServiceClass = Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService");
+		SootClass ForkJoinPoolClass = Scene.v().getSootClass("java.util.concurrent.ForkJoinPool");
+		SootClass SThreadPoolExecutorClass = Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor");
+		mayCompleteExecutorSubClasses.add(ForkJoinPoolClass);
+		mayCompleteExecutorSubClasses.add(SThreadPoolExecutorClass);
+		mayCompleteExecutorSubClasses.add(Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor"));
+		List<SootClass> AbsExecutorServiceSubClasses = hierarchy.getSubclassesOf(AbsExecutorServiceClass);
+
 		/** The all dirty classes. */
 		Set<SootClass> allDirtyClasses = new HashSet<SootClass>();
-		for(SootClass tPESubClass : serviceSubImplementers) {
+		for(SootClass tPESubClass : AbsExecutorServiceSubClasses) {
+			boolean confantFlag = true;
+			boolean flag1,flag2,flag3,flag4,flag5 = false;
 			if(mayCompleteExecutorSubClasses.contains(tPESubClass)||allDirtyClasses.contains(tPESubClass)) {
 				continue;
 			}
 			//判断是否是dirtyClass
-			boolean flag1 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
-			boolean flag2 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)");
-			boolean flag3 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable)");
-			boolean flag4 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.util.concurrent.Callable)");
-			boolean flag5 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.lang.Runnable,java.lang.Object)");
+			if(hierarchy.isClassSubclassOf(tPESubClass, ForkJoinPoolClass)||hierarchy.isClassSubclassOf(tPESubClass, SThreadPoolExecutorClass)) {
+				flag1 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
+				flag2 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)");
+				flag3 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable)");
+				flag4 = tPESubClass.declaresMethod("void execute(java.lang.Runnable)");
+			}else {
+				flag1 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.util.concurrent.Callable)");
+				flag2 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable,java.lang.Object)");
+				flag3 = tPESubClass.declaresMethod("java.util.concurrent.Future submit(java.lang.Runnable)");
+				flag4 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.util.concurrent.Callable)");
+				flag5 = tPESubClass.declaresMethod("java.util.concurrent.RunnableFuture newTaskFor(java.lang.Runnable,java.lang.Object)");
+			}
 			if(flag1||flag2||flag3||flag4||flag5) {
 				allDirtyClasses.add(tPESubClass);
 				List<SootClass> dirtySubClasses = hierarchy.getSubclassesOf(tPESubClass);
@@ -214,6 +225,8 @@ public class ExecutorSubclass {
 		if(allDirtyClasses.contains(fDEsc)) {
 			mayCompleteExecutorSubClasses.add(fDEsc);
 		}
+		//防止将这个类加入到mustDiryClasses
+		mayCompleteExecutorSubClasses.add(AbsExecutorServiceClass);
 		for(SootClass executorServiceImplemente:serviceSubImplementers) {
 			if(mayCompleteExecutorSubClasses.contains(executorServiceImplemente)) {
 				continue;
@@ -1073,9 +1086,16 @@ public class ExecutorSubclass {
     			PointsToSet ptset = pa.reachingObjects(local);
     			Set<Type> typeSet = ptset.possibleTypes();
     			typeSetStrings = getStringInTypeSet(typeSet);
-    			if(!typeSetStrings.isEmpty()&&wrapperClassesStrings.containsAll(typeSetStrings)) {
-    				AnalysisUtils.debugPrint("进入封装类判断");
-    				typeSetStrings = processProxyClass(typeSetStrings, wrapperClassesStrings,(DoublePointsToSet) ptset);
+    			if(!typeSetStrings.isEmpty()) {
+    				//&&wrapperClassesStrings.containsAll(typeSetStrings)
+    				boolean wrapFlag = false;
+    				for(String classSiguture : typeSetStrings) {
+    					if(wrapperClassesStrings.contains(classSiguture)) wrapFlag = true;
+    				}
+    				if(wrapFlag) {
+        				AnalysisUtils.debugPrint("进入封装类判断");
+        				typeSetStrings = processProxyClass(typeSetStrings, wrapperClassesStrings,(DoublePointsToSet) ptset);
+    				}
     			}
     		}	
     	}
