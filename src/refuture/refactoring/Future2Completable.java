@@ -671,10 +671,10 @@ public class Future2Completable {
     	MethodInvocation invocationCauseSecond = ast.newMethodInvocation();
     	rewriter.set(invocationCauseSecond, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("runex$Rf$"), null);
     	rewriter.set(invocationCauseSecond, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("getCause"), null);
-    	//cf$Rf$.obtrudeException(runex$Rf$.getCause())
+    	//cf$Rf$.completeExceptionally(runex$Rf$.getCause())
     	MethodInvocation invocationObtrudeExp = ast.newMethodInvocation();
     	rewriter.set(invocationObtrudeExp, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("cf$Rf$"), null);
-    	rewriter.set(invocationObtrudeExp, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("obtrudeException"), null);
+    	rewriter.set(invocationObtrudeExp, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("completeExceptionally"), null);
     	ListRewrite invocationObtrudeExpListRewriter = rewriter.getListRewrite(invocationObtrudeExp, MethodInvocation.ARGUMENTS_PROPERTY);
     	invocationObtrudeExpListRewriter.insertLast(invocationCauseSecond, null);
     	ExpressionStatement expStatement = ast.newExpressionStatement(invocationObtrudeExp);
@@ -687,10 +687,10 @@ public class Future2Completable {
     	ifBlockComposeFirstListRewrite.insertLast(runtimeExpVDS, null);
     	ifBlockComposeFirstListRewrite.insertLast(expStatement, null);
     	ifBlockComposeFirstListRewrite.insertLast(returnComposeFirst, null);
-    	//cf$Rf$.obtrudeValue(o$Rf$);
+    	//cf$Rf$.complete(o$Rf$);
     	MethodInvocation ivocationObtrudeValue = ast.newMethodInvocation();
     	rewriter.set(ivocationObtrudeValue, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("cf$Rf$"), null);
-    	rewriter.set(ivocationObtrudeValue, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("obtrudeValue"), null);
+    	rewriter.set(ivocationObtrudeValue, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("complete"), null);
     	ListRewrite ivocationObtrudeValueListRewrite = rewriter.getListRewrite(ivocationObtrudeValue, MethodInvocation.ARGUMENTS_PROPERTY);
     	ivocationObtrudeValueListRewrite.insertLast(ast.newSimpleName("o$Rf$"), null);
     	ExpressionStatement expStatementSecond = ast.newExpressionStatement(ivocationObtrudeValue);
