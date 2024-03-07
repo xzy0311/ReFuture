@@ -34,19 +34,6 @@ public class Cancel {
 		return true;
 	}
 	
-	private static boolean isTrue(MethodInvocation cancelInvoc) {
-		List argus = cancelInvoc.arguments();
-		if(argus.size() == 1 && argus.get(0) instanceof BooleanLiteral) {
-			BooleanLiteral boolExp = (BooleanLiteral) argus.get(0);
-			if(boolExp.booleanValue() == true) {
-				return true;
-			}
-		}
-		
-		return false;
-	}
-	
-	
 	public static void initCancel(List<ICompilationUnit> allJavaFiles) {
 		Set<String> allFutureAndsubName = ExecutorSubclass.allFutureSubClasses;
 		List<MethodInvocation> invocationNodes = AllVisiter.getInstance().getMInvocResult();
@@ -93,7 +80,8 @@ public class Cancel {
 			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
 			PointsToSet futureLocalSet = pa.reachingObjects(futureLocal);
 			if(futureLocalSet.isEmpty()) {
-				AnalysisUtils.debugPrint("分析是否和调用cancel的变量为别名时，无法得到分配点");
+				AnalysisUtils.debugPrint("分析是否和调用cancel的变量为别名时，无法得到分配点,保守决定排除");
+				return true;
 			}
 			for(Local cancelLocal: invocCancelLocals) {
 				PointsToSet cancelLocalSet = pa.reachingObjects(cancelLocal);
@@ -103,6 +91,17 @@ public class Cancel {
 				}
 			}
 		}
+		return false;
+	}
+	private static boolean isTrue(MethodInvocation cancelInvoc) {
+		List argus = cancelInvoc.arguments();
+		if(argus.size() == 1 && argus.get(0) instanceof BooleanLiteral) {
+			BooleanLiteral boolExp = (BooleanLiteral) argus.get(0);
+			if(boolExp.booleanValue() == true) {
+				return true;
+			}
+		}
+		
 		return false;
 	}
 	

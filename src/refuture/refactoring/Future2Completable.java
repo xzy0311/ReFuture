@@ -122,6 +122,7 @@ public class Future2Completable {
 				classChange= new TextFileChange(cu.getElementName(),source);
 			}
 			boolean scClassflag = false;
+			boolean sRVClassflag = false;
 			for(MethodInvocation invocationNode:invocNodeMap.get(cu)) {
 				CompilationUnit astUnit = (CompilationUnit)invocationNode.getRoot();
 				int lineNumber = astUnit.getLineNumber(invocationNode.getStartPosition());
@@ -210,6 +211,7 @@ public class Future2Completable {
 			        }
 			    	refactorSubmitRunnableNValue(invocStmt, invocationNode, change, cu);
 			    	flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
+			    	sRVClassflag = true;
 			        break;
 			    default:
 			    	flag = false;
@@ -221,6 +223,9 @@ public class Future2Completable {
 						ir.addImport("java.util.concurrent.CompletableFuture");
 						if(scflag) {
 							ir.addImport("java.util.concurrent.CompletionException");
+						}
+						if(sRVClassflag) {
+							ir.addImport("java.util.concurrent.Executors");
 						}
 						try {
 							TextEdit editsImport = ir.rewriteImports(null);
@@ -268,6 +273,9 @@ public class Future2Completable {
 				ir.addImport("java.util.concurrent.CompletableFuture");
 				if(scClassflag) {
 					ir.addImport("java.util.concurrent.CompletionException");
+				}
+				if(sRVClassflag) {
+					ir.addImport("java.util.concurrent.Executors");
 				}
 				try {
 					TextEdit editsImport = ir.rewriteImports(null);
@@ -780,47 +788,6 @@ public class Future2Completable {
 	}
 	
 	/*
-	 * FutureTask ft = ...;
-	 * future f = es.submit(ft);
-	 * 转换
-	 * future f = CompletableFuture.runAsync(ft,es);
-	 */
-//	private static boolean refactorSubmitFutureTask(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
-//		if (invocationNode.getName().toString().equals("submit")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 3)) {
-//        	AST ast = invocationNode.getAST();
-//        	//hello
-//        	ASTRewrite rewriter = ASTRewrite.create(ast);
-//        	//重构逻辑
-//        	rewriter.set(invocationNode, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
-//        	rewriter.set(invocationNode, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"), null);
-//        	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
-//        	Expression expression = invocationNode.getExpression();
-//        	if(expression == null) {
-//        		listRewriter.insertLast(ast.newThisExpression(), null);
-//        	}else {
-//        		listRewriter.insertLast(expression, null);
-//        	}
-//        	TextEdit edits = rewriter.rewriteAST();
-//			if(change.getEdit() == null) {
-//		    	change.setEdit(edits);
-//			}else {
-//		    	change.addEdit(edits);
-//			}
-//        	
-//       	 ImportRewrite ir = ImportRewrite.create(cu, true);
-//		 ir.addImport("java.util.concurrent.CompletableFuture");
-//		try {
-//			TextEdit editsImport = ir.rewriteImports(null);
-//			change.addEdit(editsImport);
-//		} catch (CoreException e) {
-//			e.printStackTrace();
-//		}
-//		AnalysisUtils.debugPrint("[refactorSubmitFutureTask]refactor success!");
-//        	return true;
-//		}
-//		return false;
-//	}
-	/*
 	 * 		Future f = es.submit(r, value);
 	 * 
 		 7.25:
@@ -851,42 +818,6 @@ public class Future2Completable {
 
    	 	AnalysisUtils.debugPrint("[refactorSubmitRunnableNValue]refactor success!");
 	}
-	
-	/*
-	 * FutureTask f = ... ；
-	 * 
-	 * es.excute(f);
-	 * CompletableFuture.runAsync(f,es);
-	 */
-//	private static boolean refactorExecuteFutureTask(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
-//		if (invocationNode.getName().toString().equals("execute")&&ExecutorSubclass.canRefactorArgu(invocationNode, invocStmt, 3)) {
-//        	AST ast = invocationNode.getAST();
-//        	ASTRewrite rewriter = ASTRewrite.create(ast);
-//        	//重构逻辑
-//        	rewriter.set(invocationNode, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName("CompletableFuture"), null);
-//        	rewriter.set(invocationNode, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("runAsync"), null);
-//        	ListRewrite listRewriter = rewriter.getListRewrite(invocationNode, MethodInvocation.ARGUMENTS_PROPERTY);
-//        	listRewriter.insertLast(invocationNode.getExpression(), null);
-//        	TextEdit edits = rewriter.rewriteAST();
-//			if(change.getEdit() == null) {
-//		    	change.setEdit(edits);
-//			}else {
-//		    	change.addEdit(edits);
-//			}
-//        	 ImportRewrite ir = ImportRewrite.create(cu, true);
-//			 ir.addImport("java.util.concurrent.CompletableFuture");
-//			try {
-//				TextEdit editsImport = ir.rewriteImports(null);
-//				change.addEdit(editsImport);
-//			} catch (CoreException e) {
-//				e.printStackTrace();
-//			}
-//			AnalysisUtils.debugPrint("[refactorExecuteFutureTask]refactor success!");
-//        	return true;
-//		}
-//		return false;
-//	}
-	
 	
 	public static List<Change>  getallChanges() {
 		return allChanges;
