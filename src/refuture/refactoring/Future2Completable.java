@@ -151,6 +151,7 @@ public class Future2Completable {
 				int refactorMode = ExecutorSubclass.arguModel(invocationNode);
 				boolean flag = true;
 				boolean scflag = false;
+				boolean sRVflag = false;
 				switch (refactorMode) {
 			    case 1:
 			    	flagMaybeMap.put("ExecuteRunnable",flagMaybeMap.get("ExecuteRunnable")+1 );
@@ -212,6 +213,7 @@ public class Future2Completable {
 			    	refactorSubmitRunnableNValue(invocStmt, invocationNode, change, cu);
 			    	flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
 			    	sRVClassflag = true;
+			    	sRVflag = true;
 			        break;
 			    default:
 			    	flag = false;
@@ -224,7 +226,7 @@ public class Future2Completable {
 						if(scflag) {
 							ir.addImport("java.util.concurrent.CompletionException");
 						}
-						if(sRVClassflag) {
+						if(sRVflag) {
 							ir.addImport("java.util.concurrent.Executors");
 						}
 						try {
@@ -398,77 +400,79 @@ public class Future2Completable {
     		*/
     		
     		//得到{ele}
-    		LambdaExpression lambdaExpression = (LambdaExpression)callableObject;
-    		ASTNode lambdaBody = lambdaExpression.getBody();
-    		Block blockFirst;
-    		if(lambdaBody instanceof Expression) {
-    			// return exp;
-    			ReturnStatement reExp = ast.newReturnStatement();
+			LambdaExpression lambdaExpression = (LambdaExpression)callableObject;
+			ASTNode lambdaBody = lambdaExpression.getBody();
+			Block blockFirst;
+			if(lambdaBody instanceof Expression) {
+				// return exp;
+				ReturnStatement reExp = ast.newReturnStatement();
 	        	rewriter.set(reExp, ReturnStatement.EXPRESSION_PROPERTY, lambdaBody, null);
-    			blockFirst = ast.newBlock();
-    			ListRewrite tryBlockFirstListRewrite = rewriter.getListRewrite(blockFirst, Block.STATEMENTS_PROPERTY);
+				blockFirst = ast.newBlock();
+				ListRewrite tryBlockFirstListRewrite = rewriter.getListRewrite(blockFirst, Block.STATEMENTS_PROPERTY);
 	        	tryBlockFirstListRewrite.insertLast(reExp, null);
-    		}else {
-    			blockFirst = (Block) lambdaBody;
-    		}
-
-        	//try {ele}
-        	TryStatement tryFirst = ast.newTryStatement();
-        	rewriter.set(tryFirst, TryStatement.BODY_PROPERTY, blockFirst, null);
-        	//catch (Exception e){ throw new RuntimeException(e)};}
-        	//Exception e
-        	SingleVariableDeclaration exceptionE = ast.newSingleVariableDeclaration();
-        	rewriter.set(exceptionE, SingleVariableDeclaration.TYPE_PROPERTY, ast.newSimpleType(ast.newSimpleName("Exception")), null);
-        	rewriter.set(exceptionE, SingleVariableDeclaration.NAME_PROPERTY, ast.newSimpleName("e"), null);
-        	//new RuntimeException(e)
-        	ClassInstanceCreation exceptionInstance = ast.newClassInstanceCreation();
-        	rewriter.set(exceptionInstance, ClassInstanceCreation.TYPE_PROPERTY, ast.newSimpleType(ast.newSimpleName("RuntimeException")), null);
-        	ListRewrite listRewriterRe = rewriter.getListRewrite(exceptionInstance, ClassInstanceCreation.ARGUMENTS_PROPERTY);
-        	listRewriterRe.insertLast(ast.newSimpleName("e"), null);
-        	//throw new RuntimeException(e)
-        	ThrowStatement throwStatement = ast.newThrowStatement();
-        	rewriter.set(throwStatement, ThrowStatement.EXPRESSION_PROPERTY, exceptionInstance, null);
-        	//{throw new RuntimeException(e)};
-        	Block tryBlockSecond = ast.newBlock();
-        	ListRewrite tryBlockSecondListRewrite = rewriter.getListRewrite(tryBlockSecond, Block.STATEMENTS_PROPERTY);
-        	tryBlockSecondListRewrite.insertLast(throwStatement, null);
-        	//catch (Exception e){ throw new RuntimeException(e)};}
-        	CatchClause catchClause = ast.newCatchClause();
-        	rewriter.set(catchClause, CatchClause.EXCEPTION_PROPERTY, exceptionE, null);
-        	rewriter.set(catchClause, CatchClause.BODY_PROPERTY, tryBlockSecond, null);
-        	/*
-        	 * 	try {
+			}else {
+				blockFirst = (Block) lambdaBody;
+			}
+	
+	    	//try {ele}
+	    	TryStatement tryFirst = ast.newTryStatement();
+	    	rewriter.set(tryFirst, TryStatement.BODY_PROPERTY, blockFirst, null);
+	    	//catch (Exception e){ throw new RuntimeException(e)};}
+	    	//Exception e
+	    	SingleVariableDeclaration exceptionE = ast.newSingleVariableDeclaration();
+	    	rewriter.set(exceptionE, SingleVariableDeclaration.TYPE_PROPERTY, ast.newSimpleType(ast.newSimpleName("Exception")), null);
+	    	rewriter.set(exceptionE, SingleVariableDeclaration.NAME_PROPERTY, ast.newSimpleName("e"), null);
+	    	//new RuntimeException(e)
+	    	ClassInstanceCreation exceptionInstance = ast.newClassInstanceCreation();
+	    	rewriter.set(exceptionInstance, ClassInstanceCreation.TYPE_PROPERTY, ast.newSimpleType(ast.newSimpleName("RuntimeException")), null);
+	    	ListRewrite listRewriterRe = rewriter.getListRewrite(exceptionInstance, ClassInstanceCreation.ARGUMENTS_PROPERTY);
+	    	listRewriterRe.insertLast(ast.newSimpleName("e"), null);
+	    	//throw new RuntimeException(e)
+	    	ThrowStatement throwStatement = ast.newThrowStatement();
+	    	rewriter.set(throwStatement, ThrowStatement.EXPRESSION_PROPERTY, exceptionInstance, null);
+	    	//{throw new RuntimeException(e)};
+	    	Block tryBlockSecond = ast.newBlock();
+	    	ListRewrite tryBlockSecondListRewrite = rewriter.getListRewrite(tryBlockSecond, Block.STATEMENTS_PROPERTY);
+	    	tryBlockSecondListRewrite.insertLast(throwStatement, null);
+	    	//catch (Exception e){ throw new RuntimeException(e)};}
+	    	CatchClause catchClause = ast.newCatchClause();
+	    	rewriter.set(catchClause, CatchClause.EXCEPTION_PROPERTY, exceptionE, null);
+	    	rewriter.set(catchClause, CatchClause.BODY_PROPERTY, tryBlockSecond, null);
+	    	/*
+	    	 * 	try {
 	                    ele
 	                } catch (Exception e) {
 	                    throw new RuntimeException(e);
 	                }
-        	 */
-        	ListRewrite listRewriterTry = rewriter.getListRewrite(tryFirst, TryStatement.CATCH_CLAUSES_PROPERTY);
-        	listRewriterTry.insertLast(catchClause, null);
-        	
-        	// ()->{try}
-        	Block lambdaBlockFirst = ast.newBlock();
-        	ListRewrite lambdaBlockFirstListRewrite = rewriter.getListRewrite(lambdaBlockFirst, Block.STATEMENTS_PROPERTY);
-        	lambdaBlockFirstListRewrite.insertLast(tryFirst, null);
-        	//()->{}
-        	rewriter.set(lambdaExpFirst, LambdaExpression.BODY_PROPERTY, lambdaBlockFirst, null);
-//        		lambdaExpFirst = ((LambdaExpression)callableObject);
+	    	 */
+	    	ListRewrite listRewriterTry = rewriter.getListRewrite(tryFirst, TryStatement.CATCH_CLAUSES_PROPERTY);
+	    	listRewriterTry.insertLast(catchClause, null);
+	    	
+	    	// ()->{try}
+	    	Block lambdaBlockFirst = ast.newBlock();
+	    	ListRewrite lambdaBlockFirstListRewrite = rewriter.getListRewrite(lambdaBlockFirst, Block.STATEMENTS_PROPERTY);
+	    	lambdaBlockFirstListRewrite.insertLast(tryFirst, null);
+	    	//()->{}
+            rewriter.set(lambdaExpFirst, LambdaExpression.BODY_PROPERTY, lambdaBlockFirst, null);
+	//        		lambdaExpFirst = ((LambdaExpression)callableObject);
     	}else {
-    		/*
-    		 * 	()->{
-    				                try {
-    				                    return call.call();
-    				                } catch (Exception e) {
-    				                    throw new RuntimeException(e);
-    				                }
-    				            }
-    		 */
+		/*
+		 * 	()->{
+				                try {
+				                    return call.call();
+				                } catch (Exception e) {
+				                    throw new RuntimeException(e);
+				                }
+				            }
+		 */
+		
+    	// callable.call()；
     		
-        	// callable.call()；
-        		MethodInvocation invocCall = ast.newMethodInvocation();
-        		if(callableObject instanceof SimpleName) {
-        			rewriter.set(invocCall, MethodInvocation.EXPRESSION_PROPERTY, callableObject, null);
-    		}else {
+    		
+            MethodInvocation invocCall = ast.newMethodInvocation();
+			if(callableObject instanceof SimpleName) {
+				rewriter.set(invocCall, MethodInvocation.EXPRESSION_PROPERTY, callableObject, null);
+        	}else {
     			//其他情况需要增加一行代码，防止final问题。
     			ASTNode stmtNode = (ASTNode)invocationNode;
     			while (!(stmtNode instanceof Statement)) {
@@ -494,7 +498,7 @@ public class Future2Completable {
                 	change.addEdit(edits);
             	}
     			rewriter.set(invocCall, MethodInvocation.EXPRESSION_PROPERTY, ast.newSimpleName(callableName), null);
-    		}
+        	}
         	rewriter.set(invocCall, MethodInvocation.NAME_PROPERTY, ast.newSimpleName("call"), null);
         	//return callable.call();
         	ReturnStatement reSup = ast.newReturnStatement();

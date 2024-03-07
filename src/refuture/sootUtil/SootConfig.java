@@ -81,6 +81,7 @@ public class SootConfig {
     	Options.v().setPhaseOption("cg", "all-reachable:true");
         Options.v().setPhaseOption("cg.spark","enabled:true");
         Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
+//        Options.v().setPhaseOption("cg.spark","force-gc:true");
         if(extremeSpeedModel) {
         	System.out.println("[CGPhaseOptions]:当前为快速模式");
         	Options.v().setPhaseOption("cg.spark","apponly:true");
