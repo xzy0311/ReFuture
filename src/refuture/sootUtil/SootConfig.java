@@ -81,7 +81,6 @@ public class SootConfig {
     	Options.v().setPhaseOption("cg", "all-reachable:true");
         Options.v().setPhaseOption("cg.spark","enabled:true");
         Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
-//        Options.v().setPhaseOption("cg.spark","force-gc:true");
         if(extremeSpeedModel) {
         	System.out.println("[CGPhaseOptions]:当前为快速模式");
         	Options.v().setPhaseOption("cg.spark","apponly:true");
@@ -97,6 +96,7 @@ public class SootConfig {
     	Set<String> libProjectPath = new HashSet<>();
 		PerProjectInfo ppi = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(project);
 		String javaFlag = File.separator+"jre"+File.separator+"lib"+File.separator;
+		sourceClassPath.add(ppi.outputLocation.toOSString().replaceFirst(projectPath, locationPath));
 		for(IClasspathEntry cp : ppi.rawClasspath) {
 			if(cp.getContentKind() == 1) {
 				IPath ip = cp.getOutputLocation();
