@@ -381,12 +381,14 @@ public class AdaptAst {
 			Iterator it = body.getUnits().snapshotIterator();
 			while (it.hasNext()) {
 				Stmt stmt = (Stmt) it.next();
-				if(stmt.toString().contains("bootstrap")&&stmt.getJavaSourceStartLineNumber() == invocLambdaMethodLineNumber) {
-					String unitString = stmt.toString();
-			        int firstLessThanIndex = unitString.indexOf("<");  
-			        int firstColonIndex = unitString.indexOf(":", firstLessThanIndex);  
-			        unitString = unitString.substring(firstLessThanIndex + 1, firstColonIndex);
-			        return Scene.v().getSootClass(unitString);
+				if(stmt.toString().contains("bootstrap")) {
+					if(stmt.getJavaSourceStartLineNumber() == invocLambdaMethodLineNumber||stmt.getJavaSourceStartLineNumber() == invocLambdaMethodLineNumber+1) {
+						String unitString = stmt.toString();
+				        int firstLessThanIndex = unitString.indexOf("<");  
+				        int firstColonIndex = unitString.indexOf(":", firstLessThanIndex);  
+				        unitString = unitString.substring(firstLessThanIndex + 1, firstColonIndex);
+				        return Scene.v().getSootClass(unitString);
+					}
 				}
 			}
 					
