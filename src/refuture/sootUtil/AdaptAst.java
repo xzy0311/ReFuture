@@ -36,10 +36,14 @@ import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
 import soot.Unit;
+import soot.Value;
 import soot.ValueBox;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
+import soot.jimple.internal.JArrayRef;
+import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JIfStmt;
+import soot.jimple.internal.JNewArrayExpr;
 import soot.toolkits.graph.BriefUnitGraph;
 import soot.toolkits.scalar.LocalDefs;
 
@@ -192,7 +196,6 @@ public class AdaptAst {
 		}else {
 			throw new RefutureException(exp);
 		}
-		SootClass sc = getSootClass4InvocNode(exp);
 		SootMethod sm = getSootMethod4invocNode(exp);
 		if(invocInLambda(exp)>0) {
 			sm = getSootRealFunction4InLambda(exp);
@@ -326,13 +329,13 @@ public class AdaptAst {
 		//得到lambda的SootClass,通过调用Lambda的MIV所在的Body和Stmt.
 		for(int i = 0 ;i < InvocLambdaMethodList.size();i++) {
 			ASTNode invocLambdaMethod = InvocLambdaMethodList.get(i);
-			mainMethod = getSootRealFunction4Lambda(mainMethod,invocLambdaMethod,sc.getName());
+			mainMethod = getSootRealFunction4Lambda(mainMethod,invocLambdaMethod,sc.getName(),exp);
 		}
 		return mainMethod;
 	}
 	// 得到方法调用及其外部的SootMethod, 以及主类的SootClass.getName().得到存在于主SootClass中的实际Lambda表达式内容的方法的SootMethod.
-	private static SootMethod getSootRealFunction4Lambda(SootMethod sm,ASTNode invocLambdaMethod,String mainClassName) {
-		SootClass lambdaClass = getInvocSootLambdaOnBody(sm,invocLambdaMethod);
+	private static SootMethod getSootRealFunction4Lambda(SootMethod sm,ASTNode invocLambdaMethod,String mainClassName,ASTNode exp) {
+		SootClass lambdaClass = getInvocSootLambdaOnBody(sm,invocLambdaMethod,exp);
     	SootMethod method = getSootFunction4Lambda(lambdaClass);
     	//新的情况，在lambda表达式中，并没有直接的调用这个函数。而是又调用存在于主类的一个lambda方法，并且里面包含行号。
 		//在关键的方法中，筛选调用了主类定义的方法的语句，通过字符串匹配，得到方法签名，然后进入该方法进行寻找。
@@ -359,7 +362,7 @@ public class AdaptAst {
 		return mainClassMethodList.get(0);
 	}
 	// 得到调用Lambda的MIV,及其所在的SootMethod中实际调用的Lambda的SootClass.
-	private static SootClass getInvocSootLambdaOnBody(SootMethod sm,ASTNode invocLambdaMethod){
+	private static SootClass getInvocSootLambdaOnBody(SootMethod sm,ASTNode invocLambdaMethod,ASTNode exp){
 		//这里得到了对应的JimpleIR中的调用lambda表达式的stmt。
 		CompilationUnit cu = (CompilationUnit)invocLambdaMethod.getRoot();
 		int invocLambdaMethodLineNumber = cu.getLineNumber(invocLambdaMethod.getStartPosition());
@@ -401,11 +404,23 @@ public class AdaptAst {
 			MethodInvocation invocLambdaMethodInvocation = (MethodInvocation)invocLambdaMethod;
 			bMIVstmt=getStmtInternal(invocLambdaMethod,invocLambdaMethodLineNumber,invocLambdaMethodInvocation.getName().toString(),sm);
 			// 寻找第几个参数是Lambda表达式,一般来说不会同时有两个异步任务对象，我就只记录参数中的第一个任务类型的位置
-			for(Object ob :invocLambdaMethodInvocation.arguments()) {
-				if(ob instanceof LambdaExpression) {
-					break;
+			while(!(exp instanceof LambdaExpression)) {
+				exp = exp.getParent();
+			}
+			if(exp.getParent().equals(invocLambdaMethodInvocation)) {
+				for(Object ob :invocLambdaMethodInvocation.arguments()) {
+					if(ob.equals(exp)) {
+						break;
+					}
+					taskNumber++;
 				}
-				taskNumber++;
+			}else {
+				for(Object ob :invocLambdaMethodInvocation.arguments()) {
+					if(ob instanceof LambdaExpression) {
+						break;
+					}
+					taskNumber++;
+				}
 			}
 		}
 		
@@ -429,6 +444,38 @@ public class AdaptAst {
 			throw new RefutureException("不应该不是1");
 		}
 		Unit unit = units.get(0);
+		//处理Arrary类型,这是因为使用了可变参数类型.
+		if(unit instanceof JAssignStmt) {
+			JAssignStmt assignStmt = (JAssignStmt) unit;
+			if(assignStmt.getRightOpBox().getValue() instanceof JNewArrayExpr) {
+				Value arrayLocal = assignStmt.getLeftOpBox().getValue();
+				int c = 1;
+				for(Unit uR:sm.retrieveActiveBody().getUnits()) {
+					if((uR instanceof JAssignStmt)) {
+						Value va = uR.getDefBoxes().get(0).getValue();
+						if(va instanceof JArrayRef) {
+							JArrayRef ar = (JArrayRef)va;
+							if(ar.getBase().equals(arrayLocal)) {
+								if(c == taskNumber) {
+									Value vR = ((JAssignStmt) uR).getRightOp();
+									List<Unit> NUnits =ld.getDefsOfAt((Local) vR,uR);
+									if(NUnits.size() !=1) {
+										throw new RefutureException("不应该不是1");
+									}
+									unit = NUnits.get(0);
+									break;
+								}
+								c++;
+							}
+							
+						}
+					}
+				}
+				
+				
+			}
+				
+		}
 		String unitString = unit.toString();
         int firstLessThanIndex = unitString.indexOf("<");  
         int firstColonIndex = unitString.indexOf(":", firstLessThanIndex);  

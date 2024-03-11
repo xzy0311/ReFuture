@@ -236,9 +236,10 @@ public class AnalysisUtils {
 		while (!(node instanceof TypeDeclaration)) {
 			if (node instanceof MethodDeclaration) {
 				break;
-			}else if(node instanceof LambdaExpression) {
-				break;
 			}
+//			else if(node instanceof LambdaExpression) {
+//				break;
+//			}
 			node = node.getParent();
 		}
 		if(node instanceof MethodDeclaration) {
