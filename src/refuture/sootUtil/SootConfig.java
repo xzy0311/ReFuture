@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
@@ -89,8 +91,8 @@ public class SootConfig {
     
     private static void processClassPath() throws JavaModelException {
     	IProject project = AnalysisUtils.eclipseProject;
-    	String projectPath = project.getFullPath().toOSString();
-    	String locationPath = project.getLocation().toOSString();
+    	String projectPath = Pattern.quote(project.getFullPath().toOSString());
+    	String locationPath = Matcher.quoteReplacement(project.getLocation().toOSString());
     	Set<String> sourceClassPath =new HashSet<>();
     	Set<String> libClassPath = new HashSet<>();
     	Set<String> libProjectPath = new HashSet<>();
@@ -112,7 +114,11 @@ public class SootConfig {
 					if(!libPathString.contains(javaFlag)) {
 			            File file = new File(libPathString);
 			            if (!file.exists()) {
-			               continue;
+			            	libPathString = libPathString.replaceFirst(projectPath,locationPath);
+			            	File file1 = new File(libPathString);
+			            	if (!file1.exists()) {
+			            		continue;
+			            	}
 			            }
 						libClassPath.add(libPathString);
 					}
@@ -134,14 +140,19 @@ public class SootConfig {
 					if(!libPathString.contains(javaFlag)) {
 			            File file = new File(libPathString);
 			            if (!file.exists()) {
-			               continue;
+			            	libPathString = libPathString.replaceFirst(projectPath,locationPath);
+			            	File file1 = new File(libPathString);
+			            	if (!file1.exists()) {
+			            		continue;
+			            	}
 			            }
 						libClassPath.add(libPathString);
 					}
 				}
 			}
 		}
-		for(String libProject: libProjectPath) {
+		for(String libTProject: libProjectPath) {
+			String libProject = Matcher.quoteReplacement(libTProject);
 			for(String classPath :sourceClassPath) {
 				String newLibProjectPath = classPath.replaceFirst(projectPath, libProject);
 		        File file = new File(newLibProjectPath);
