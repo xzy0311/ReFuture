@@ -1093,7 +1093,7 @@ public class ExecutorSubclass {
     					if(wrapperClassesStrings.contains(classSiguture)) wrapFlag = true;
     				}
     				if(wrapFlag) {
-        				AnalysisUtils.debugPrint("进入封装类判断");
+        				System.out.println("进入封装类判断");
         				typeSetStrings = processProxyClass(typeSetStrings, wrapperClassesStrings,(DoublePointsToSet) ptset);
     				}
     			}

@@ -104,7 +104,6 @@ public class CollectionEntrypoint {
 				invocNodeMap.put(cu, new ArrayList<MethodInvocation>());
 			}
 			invocNodeMap.get(cu).add(invocationNode);
-			Future2Completable.canRefactoringNode++;
 		}
 	}
 		
@@ -192,6 +191,7 @@ public class CollectionEntrypoint {
 				}
 				return true;
 			}else {
+				Future2Completable.FutureCanot++;
 				return false;
 			}
 		}else if (parentNode instanceof ReturnStatement ) {
@@ -234,6 +234,7 @@ public class CollectionEntrypoint {
 				}
 				return true;
 			}else {
+				Future2Completable.FutureCanot++;
 				return false;
 			}
 		}

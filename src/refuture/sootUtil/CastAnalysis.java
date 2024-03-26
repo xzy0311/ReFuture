@@ -50,7 +50,7 @@ public class CastAnalysis {
 		PointsToSet ptset = pa.reachingObjects(local);
 		for(JimpleLocal ioLocal:useCastofFuture) {
 			if(ptset.hasNonEmptyIntersection(pa.reachingObjects(ioLocal))) {
-				Future2Completable.FutureCanot++;
+				Future2Completable.FutureCanotC++;
 				AnalysisUtils.debugPrint("Future因使用强制类型转换而被排除");
 				return true;
 			}
