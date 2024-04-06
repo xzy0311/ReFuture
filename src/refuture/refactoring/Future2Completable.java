@@ -303,7 +303,7 @@ public class Future2Completable {
 		System.out.println("重构成功：ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
 				flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue"));
 		
-		System.out.println("重构失败： 提交方法重载："+methodOverload+ "个；     执行器类型不安全："+illExecutor+"+个；    execute使用instanceof："+useInstanceof+"个；   Future变量声明类型不是Future接口"+FutureCanot+"个；   Future变量调用instanceof"+FutureCanotI+"个；    Future变量强制类型转换："+FutureCanotC+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
+		System.out.println("重构失败： 提交方法重载："+methodOverload+ "个；     执行器类型不安全："+illExecutor+"个；    execute使用instanceof："+useInstanceof+"个；   Future变量声明类型不是Future接口"+FutureCanot+"个；   Future变量调用instanceof"+FutureCanotI+"个；    Future变量强制类型转换："+FutureCanotC+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
 		System.out.println("Pointo未命中："+debugUsePoint2num);
 	}
 	
