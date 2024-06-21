@@ -917,8 +917,6 @@ public class ExecutorSubclass {
 	static class ClassInfo{
 		// declar开头的字段，标记着当前类是否声明了字段或者方法，是指实际上是否声明了
 		// 与父类有关的为_signature字段，保存着实际的定义
-		// 这么做的原因是因为接口存在默认方法，类型存在抽象类，通过这种方式我可以无视接口和抽象类，用同一种表示结构，进行表示。
-		// 最后的三个clone字段，代表着，是否体现出与execute()方法的克隆，以保证该类是安全代理该方法。
 		boolean declarField;
 		boolean delcarExecute;
 		boolean declarSubmitR;
