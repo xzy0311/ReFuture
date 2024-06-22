@@ -9,17 +9,18 @@ import org.eclipse.jdt.core.dom.InstanceofExpression;
 import refuture.astvisitor.AllVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
+import soot.Body;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
+import soot.SootMethod;
 import soot.Value;
 import soot.ValueBox;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
 import soot.jimple.internal.JimpleLocal;
-import soot.jimple.toolkits.pointer.FullObjectSet;
 
 public class Instanceof {
 	public static Set<JimpleLocal> useInstanceofRunnable;
@@ -58,21 +59,18 @@ public class Instanceof {
 			}
 		}
 	}
-	public static boolean useInstanceofRunnable(Stmt invocStmt) {
+	public static boolean useInstanceofRunnable(SootMethod executeMethod) {
 		if(useInstanceofRunnable.isEmpty()) return false;
+		Body body = executeMethod.retrieveActiveBody();
 		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-		InvokeExpr ivcExp = invocStmt.getInvokeExpr();
-		List<Value> lv =ivcExp.getArgs();
-		if(lv.get(0)instanceof Local) {
-			Local la1 = (Local) lv.get(0);
-			PointsToSet ptset = pa.reachingObjects(la1);
-			for(JimpleLocal ioLocal:useInstanceofRunnable) {
-				PointsToSet ptsetIO = pa.reachingObjects(ioLocal);
-				if(ptset.hasNonEmptyIntersection(ptsetIO)) {
-					Future2Completable.useInstanceof++;
-					AnalysisUtils.debugPrint("Runnable因使用 instanceof而被排除");
-					return true;
-				}
+		Local la1 = body.getParameterLocals().get(0);
+		PointsToSet ptset = pa.reachingObjects(la1);
+		for(JimpleLocal ioLocal:useInstanceofRunnable) {
+			PointsToSet ptsetIO = pa.reachingObjects(ioLocal);
+			if(ptset.hasNonEmptyIntersection(ptsetIO)) {
+				Future2Completable.useInstanceof++;
+				AnalysisUtils.debugPrint("该类型的execute方法因使用 instanceof而被排除，当前方法签名："+executeMethod.getSignature());
+				return true;
 			}
 		}
 		return false;

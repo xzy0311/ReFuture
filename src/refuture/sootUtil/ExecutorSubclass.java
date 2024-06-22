@@ -61,6 +61,7 @@ public class ExecutorSubclass {
 	/** The all subclasses. */
 	private static Set<SootClass>allExecutorServiceSubClasses;
 	private static Set<SootClass>allExecutorSubClasses;
+	private static Set<SootClass>mayCompleteExecutorClasses;
 	//mustDirtyClass排除了proxyClass，且内部只包含实际类
 	private static HashMap<SootClass,ClassInfo> resultMap;
 	
@@ -96,6 +97,7 @@ public class ExecutorSubclass {
 	 */
 	public static boolean initStaticField() {
 		mayCompleteExecutorSubClasses = new HashSet<SootClass>();
+		mayCompleteExecutorClasses = new HashSet<SootClass>();
 		allFutureSubClasses = new HashSet<String>();
 		resultMap = new HashMap<>();
 		proxySubmitRClass = new HashSet<SootClass>();
@@ -157,6 +159,17 @@ public class ExecutorSubclass {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
 		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
+		for(SootClass sc : allExecutorSubClasses) {
+			SootMethod sm = sc.getMethod("execute(java.lang.Runnable)");
+			if(sm.isConcrete()) {
+				if(Instanceof.useInstanceofRunnable(sm)) {
+					mayCompleteExecutorClasses.add(sc);
+				}else {
+					mustDirtyClasses.add(sc);
+				}
+			}
+		}
+		
 	}
 	
 	/**
@@ -173,9 +186,6 @@ public class ExecutorSubclass {
 		allExecutorServiceSubClasses.addAll(serviceSubImplementers);
 		List<SootClass> serviceSubInterfaces = hierarchy.getSubinterfacesOfIncluding(executorServiceClass);
 		allExecutorServiceSubClasses.addAll(serviceSubInterfaces);
-		
-		
-		
 		SootClass AbsExecutorServiceClass = Scene.v().getSootClass("java.util.concurrent.AbstractExecutorService");
 		SootClass ForkJoinPoolClass = Scene.v().getSootClass("java.util.concurrent.ForkJoinPool");
 		SootClass SThreadPoolExecutorClass = Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor");
@@ -185,7 +195,7 @@ public class ExecutorSubclass {
 		List<SootClass> AbsExecutorServiceSubClasses = hierarchy.getSubclassesOf(AbsExecutorServiceClass);
 
 		/** The all dirty classes. */
-		Set<SootClass> allDirtyClasses = new HashSet<SootClass>();
+		Set<SootClass> allDirtyClasses = new HashSet<SootClass>(mustDirtyClasses);
 		for(SootClass tPESubClass : AbsExecutorServiceSubClasses) {
 			boolean confantFlag = true;
 			boolean flag1,flag2,flag3,flag4,flag5 = false;
@@ -1024,8 +1034,11 @@ public class ExecutorSubclass {
 	 * @return 1, 如果可以进行重构;0,不可重构;2,需要得到绑定并进行判断.
 	 */
 	public static boolean canRefactor(MethodInvocation mInvocation,Stmt invocStmt , int refactorMode) {
+		if(mustDirtyClasses.isEmpty()) {
+			AnalysisUtils.debugPrint("因无污染类,直接通过");
+			return true;
+		}
 		if(invocStmt == null) return false;
-		Set<String> completeSetTypeStrings = getCompleteExecutorSubClassesName();
 		if(refactorMode == 1){//execute()判断
 			Set<String> typeSetStrings = new HashSet<>();
 			List<ValueBox> lvbs = invocStmt.getUseBoxes();
@@ -1043,22 +1056,15 @@ public class ExecutorSubclass {
 	    		}	
 	    	}
 	        if(!typeSetStrings.isEmpty()) {
-				if(completeSetTypeStrings.containsAll(typeSetStrings)) {
+				if(mayCompleteExecutorClasses.containsAll(typeSetStrings)) {
 					//是安全重构的子集，就可以进行重构了。
 					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构,typeName为："+typeSetStrings);
 					return true;
 				}
 			}
-			if(Instanceof.useInstanceofRunnable(invocStmt)) {
-				return false;
-			}else {
-				return true;
-			}
+	        return false;
 		}
-		if(mustDirtyClasses.isEmpty()) {
-			AnalysisUtils.debugPrint("因无污染类,直接通过");
-			return true;
-		}
+		Set<String> completeSetTypeStrings = getCompleteExecutorSubClassesName();
 		Set<String> wrapperClassesStrings = null;
 		Set<SootClass> allDirtyClasses = null;
 		if(refactorMode == 2) {
