@@ -68,8 +68,6 @@ public class Instanceof {
 		for(JimpleLocal ioLocal:useInstanceofRunnable) {
 			PointsToSet ptsetIO = pa.reachingObjects(ioLocal);
 			if(ptset.hasNonEmptyIntersection(ptsetIO)) {
-				Future2Completable.useInstanceof++;
-				AnalysisUtils.debugPrint("该类型的execute方法因使用 instanceof而被排除，当前方法签名："+executeMethod.getSignature());
 				return true;
 			}
 		}

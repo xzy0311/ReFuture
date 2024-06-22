@@ -160,13 +160,17 @@ public class ExecutorSubclass {
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
 		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
 		for(SootClass sc : allExecutorSubClasses) {
-			SootMethod sm = sc.getMethod("execute(java.lang.Runnable)");
-			if(sm.isConcrete()) {
-				if(Instanceof.useInstanceofRunnable(sm)) {
-					mayCompleteExecutorClasses.add(sc);
-				}else {
-					mustDirtyClasses.add(sc);
+			try{
+				SootMethod sm = sc.getMethod("execute(java.lang.Runnable)");
+				if(sm.isConcrete()) {
+					if(Instanceof.useInstanceofRunnable(sm)) {
+						mayCompleteExecutorClasses.add(sc);
+					}else {
+						mustDirtyClasses.add(sc);
+					}
 				}
+			}catch(RuntimeException re) {
+				
 			}
 		}
 		
