@@ -160,18 +160,27 @@ public class ExecutorSubclass {
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
 		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
 		for(SootClass sc : allExecutorSubClasses) {
-			try{
-				SootMethod sm = sc.getMethod("execute(java.lang.Runnable)");
-				if(sm.isConcrete()) {
+				SootMethod sm = getMethodInHierarchy(sc,"execute(java.lang.Runnable)");
+				if(sm != null &&sm.isConcrete()) {
 					if(Instanceof.useInstanceofRunnable(sm)) {
 						mayCompleteExecutorClasses.add(sc);
 					}else {
 						mustDirtyClasses.add(sc);
 					}
 				}
-			}catch(RuntimeException re) {
-				
+		
+		}
+		
+	}
+	
+	public static SootMethod getMethodInHierarchy(SootClass sc ,String subsignature) {
+		if(sc.declaresMethod(subsignature)) {
+			return sc.getMethod(subsignature);
+		}else {
+			if(sc.hasSuperclass()) {
+				return getMethodInHierarchy(sc.getSuperclass(),subsignature);
 			}
+			return null;
 		}
 		
 	}
