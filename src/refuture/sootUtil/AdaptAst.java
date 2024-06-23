@@ -13,6 +13,7 @@ import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.CastExpression;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
@@ -184,7 +185,22 @@ public class AdaptAst {
 	 * @param miv the miv
 	 * @return the jimple invoc stmt
 	 */
+	
+	public static SootMethod getSM4ASTNode(ASTNode exp) {
+
+		SootMethod sm = getSootMethod4invocNode(exp);
+		if(invocInLambda(exp)>0) {
+			sm = getSootRealFunction4InLambda(exp);
+		}
+		return sm;
+	}
 	public static Stmt getJimpleStmt(ASTNode exp) {
+		SootMethod sm =getSM4ASTNode(exp);
+		if(!AnalysisUtils.skipMethodName.isEmpty()) {
+			if (AnalysisUtils.skipMethodName.contains(sm.getSignature())) {
+				return null;
+			}
+		}
 		CompilationUnit cu = (CompilationUnit)exp.getRoot();
 		int lineNumber = cu.getLineNumber(exp.getStartPosition());//行号
 		String expName;
@@ -193,27 +209,110 @@ public class AdaptAst {
 		}else if(exp instanceof MethodInvocation) {
 			MethodInvocation miv = (MethodInvocation)exp;
 			expName = miv.getName().toString();//调用的方法的名称，只包含名称
+		}else if(exp instanceof CastExpression) {
+			return getStmtInternal(exp, lineNumber, sm);
 		}else {
-			throw new RefutureException(exp);
+			throw new RefutureException(sm,"行号为："+String.valueOf(lineNumber));
 		}
-		SootMethod sm = getSootMethod4invocNode(exp);
-		if(invocInLambda(exp)>0) {
-			sm = getSootRealFunction4InLambda(exp);
-		}
+		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:获取的Stmt所在的方法签名"+sm.getSignature());
+		return getStmtInternal(exp, lineNumber, expName, sm);
+	}
+	public static Stmt getJimpleStmt(SootMethod sm ,ASTNode exp) {
 		if(!AnalysisUtils.skipMethodName.isEmpty()) {
 			if (AnalysisUtils.skipMethodName.contains(sm.getSignature())) {
 				return null;
 			}
 		}
-		
+		CompilationUnit cu = (CompilationUnit)exp.getRoot();
+		int lineNumber = cu.getLineNumber(exp.getStartPosition());//行号
+		String expName;
+		if(exp instanceof InstanceofExpression) {
+			expName = "instanceof";
+		}else if(exp instanceof MethodInvocation) {
+			MethodInvocation miv = (MethodInvocation)exp;
+			expName = miv.getName().toString();//调用的方法的名称，只包含名称
+		}else if(exp instanceof CastExpression) {
+			return getStmtInternal(exp, lineNumber, sm);
+		}else {
+			throw new RefutureException(sm,"行号为："+String.valueOf(lineNumber));
+		}
 		AnalysisUtils.debugPrint("[AdaptAST.getJimpleInvocStmt]:获取的Stmt所在的方法签名"+sm.getSignature());
-
 		return getStmtInternal(exp, lineNumber, expName, sm);
-//        return null;
-		//这里后期需要修改为返回null,可以增加程序健壮性。不过走到这里，肯定有程序的源代码，所以应该要有它的class文件的，
-		//也就是说正常情况下不应该出错。
 	}
-
+	//这个重载方法只为cast服务。
+	private static Stmt getStmtInternal(ASTNode exp, int lineNumber, SootMethod sm) {
+		Body body =sm.retrieveActiveBody();
+        Iterator<Unit> i=body.getUnits().snapshotIterator();
+        boolean notLocalFlag = false;// if method is localmethod,its jimple name is stemp name not execute or submit.
+        int jimpleLineNumber =0;
+        int containTargetNum = 0;
+        Stmt TempStmt = null;
+		Comparator<Stmt> myComparator = new Comparator<Stmt>() {
+			@Override
+			public int compare(Stmt o1, Stmt o2) {
+				int num = o1.getJavaSourceStartLineNumber()-o2.getJavaSourceStartLineNumber();
+				if(num !=0) return num;
+				int cnum = o1.getJavaSourceStartColumnNumber()-o2.getJavaSourceStartColumnNumber();
+				return cnum;
+			}
+		};
+		Set<Stmt> mS = new TreeSet<>(myComparator);
+        while(i.hasNext())
+        {
+            Stmt stmt=(Stmt) i.next();
+            if(ExecutorSubclass.isCastExpr(stmt)) {
+            	mS.add(stmt);
+            	notLocalFlag =true;
+            	containTargetNum ++;
+            	if(containTargetNum == 1) {
+            		TempStmt = stmt;
+            	}
+            	jimpleLineNumber = stmt.getJavaSourceStartLineNumber();
+            	if(jimpleLineNumber==lineNumber) {
+            		if(stmt instanceof JIfStmt) {
+            			continue;
+            		}
+            		return stmt;
+            	}
+            }
+            
+        }
+        if(containTargetNum == 1) {
+        	return TempStmt;
+        }
+        if(notLocalFlag) {
+//        	System.out.println("@error[AdaptAST.getJimpleInvocStmt]:获取调用节点对应的Stmt出错，找到有调用名称的语句，但是行号不对应且不是唯一一个这个方法调用在这个方法中{MethodSig:"
+//        +sm.getSignature()+"ASTLineNumber:"+lineNumber+"JimLineNumber:"+jimpleLineNumber);
+        	int count = 0;
+        	int number = 0;
+    		if(exp instanceof InstanceofExpression) {
+    			number = getNoInstance4Block((InstanceofExpression) exp);
+    		}else if(exp instanceof MethodInvocation) {
+    			number = getNoInvoc4Block((MethodInvocation) exp);
+    		}
+    		if(containTargetNum !=mS.size()) {//如果不相等,说明mS中添加元素失败,在if elseif的条件下可能发生,此时,使用
+    			//cfg进行判断.
+    			BriefUnitGraph cfg = new BriefUnitGraph(body);
+    			Iterator cfgIt = cfg.iterator();
+    			while(cfgIt.hasNext()) {
+    				Stmt stmt = (Stmt) cfgIt.next();
+    				if(ExecutorSubclass.isCastExpr(stmt)) {
+    					count++;
+    					if(count == number) {
+    	        			return stmt;
+    	        		}
+    				}
+    			}
+    		}
+			for(Stmt stmt:mS) {
+				count++;
+				if(count == number) {
+        			return stmt;
+        		}
+			}
+        }
+		throw new RefutureException(exp,"排查错误原因。");
+	}
 
 	private static Stmt getStmtInternal(ASTNode exp, int lineNumber, String expName, SootMethod sm) {
 		Body body =sm.retrieveActiveBody();

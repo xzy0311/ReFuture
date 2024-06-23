@@ -160,17 +160,16 @@ public class ExecutorSubclass {
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
 		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
 		for(SootClass sc : allExecutorSubClasses) {
-				SootMethod sm = getMethodInHierarchy(sc,"execute(java.lang.Runnable)");
-				if(sm != null &&sm.isConcrete()) {
-					if(Instanceof.useInstanceofRunnable(sm)) {
-						mayCompleteExecutorClasses.add(sc);
-					}else {
-						mustDirtyClasses.add(sc);
-					}
+			SootMethod sm = getMethodInHierarchy(sc,"void execute(java.lang.Runnable)");
+			if(sm != null &&sm.isConcrete()) {
+				if(Instanceof.useInstanceofRunnable(sm)) {
+					mustDirtyClasses.add(sc);
+				}else {
+					mayCompleteExecutorClasses.add(sc);
 				}
-		
+			}
 		}
-		
+		AnalysisUtils.debugPrint("Executor-mustDirtyClasses:"+mustDirtyClasses.toString());
 	}
 	
 	public static SootMethod getMethodInHierarchy(SootClass sc ,String subsignature) {
@@ -476,11 +475,11 @@ public class ExecutorSubclass {
 			}
 		}
 		AnalysisUtils.debugPrint("");
-		AnalysisUtils.debugPrint(proxySubmitRClass.toString());
+		AnalysisUtils.debugPrint("proxySubmitRClass:"+proxySubmitRClass.toString());
 		AnalysisUtils.debugPrint("");
-		AnalysisUtils.debugPrint(proxySubmitCClass.toString());
+		AnalysisUtils.debugPrint("proxySubmitRClass:"+proxySubmitCClass.toString());
 		AnalysisUtils.debugPrint("");
-		AnalysisUtils.debugPrint(proxySubmitRVClass.toString());
+		AnalysisUtils.debugPrint("proxySubmitRClass:"+proxySubmitRVClass.toString());
 	}
 	private static boolean submitRcloneAnalysis(SootMethod executeMethod,SootMethod submitMethod) {
 		List<String> executeUnits = new ArrayList<>();
@@ -773,7 +772,7 @@ public class ExecutorSubclass {
 		return v.getCastType().toQuotedString();
 	}
 	
-	private static boolean isCastExpr(Stmt stmt) {
+	public static boolean isCastExpr(Stmt stmt) {
 		if(stmt instanceof AbstractDefinitionStmt) {
 			AbstractDefinitionStmt jas = (AbstractDefinitionStmt) stmt;
 			Value v =jas.getRightOp();
@@ -1069,7 +1068,7 @@ public class ExecutorSubclass {
 	    		}	
 	    	}
 	        if(!typeSetStrings.isEmpty()) {
-				if(mayCompleteExecutorClasses.containsAll(typeSetStrings)) {
+				if(getStringInSootClassSet(mayCompleteExecutorClasses).containsAll(typeSetStrings)) {
 					//是安全重构的子集，就可以进行重构了。
 					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构,typeName为："+typeSetStrings);
 					return true;

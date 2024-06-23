@@ -48,7 +48,9 @@ import refuture.sootUtil.AdaptAst;
 import refuture.sootUtil.Cancel;
 import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
+import refuture.sootUtil.NeedTestMethods;
 import soot.SootClass;
+import soot.SootMethod;
 import soot.jimple.Stmt;
 
 /**
@@ -145,7 +147,8 @@ public class Future2Completable {
 					AnalysisUtils.debugPrint("[refactor]类中所有的方法签名"+sc.getMethods());
 				}
 				AnalysisUtils.debugPrint("**第"+invocNum+"个{execute或submit}调用分析开始**********************************************************%n");
-				Stmt invocStmt = AdaptAst.getJimpleStmt(invocationNode);
+				SootMethod sm = AdaptAst.getSM4ASTNode(invocationNode);
+				Stmt invocStmt = AdaptAst.getJimpleStmt(sm,invocationNode);
 				boolean returnValue;
 				int tempNum = debugUsePoint2num;
 				int refactorMode = ExecutorSubclass.arguModel(invocationNode);
@@ -157,18 +160,18 @@ public class Future2Completable {
 			    	flagMaybeMap.put("ExecuteRunnable",flagMaybeMap.get("ExecuteRunnable")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
-						System.out.println("失败");
+						AnalysisUtils.debugPrint("失败");
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 						continue;
 					}
-			    	refactorExecuteRunnable(invocStmt, invocationNode, change, cu);
+			    	refactorExecuteRunnable(invocationNode, change, cu);
 			    	flagMap.put("ExecuteRunnable",flagMap.get("ExecuteRunnable")+1 );
 			        break;
 			    case 2:
 			    	flagMaybeMap.put("SubmitCallable",flagMaybeMap.get("SubmitCallable")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
-						System.out.println("失败");
+						AnalysisUtils.debugPrint("失败");
 						//因执行器类型不安全，不能重构。
 						illExecutor++;
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
@@ -178,7 +181,7 @@ public class Future2Completable {
 			            useCancelTrue++;
 			            continue;
 			        }
-			    	refactorffSubmitCallable(invocStmt, invocationNode, change, cu, invocSubmitNum);
+			    	refactorffSubmitCallable(invocationNode, change, cu, invocSubmitNum);
 			    	flagMap.put("SubmitCallable",flagMap.get("SubmitCallable")+1 );
 			    	scflag = true;
 			    	scClassflag = true;
@@ -187,7 +190,7 @@ public class Future2Completable {
 			    	flagMaybeMap.put("SubmitRunnable",flagMaybeMap.get("SubmitRunnable")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
-						System.out.println("失败");
+						AnalysisUtils.debugPrint("失败");
 						//因执行器类型不安全，不能重构。
 						illExecutor++;
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
@@ -197,14 +200,14 @@ public class Future2Completable {
 			            useCancelTrue++;
 			            continue;
 			        }
-			    	refactorSubmitRunnable(invocStmt, invocationNode, change, cu);
+			    	refactorSubmitRunnable(invocationNode, change, cu);
 			    	flagMap.put("SubmitRunnable",flagMap.get("SubmitRunnable")+1 );
 			        break;
 			    case 4:
 			    	flagMaybeMap.put("SubmitRunnableNValue",flagMaybeMap.get("SubmitRunnableNValue")+1 );
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
-						System.out.println("失败");
+						AnalysisUtils.debugPrint("失败");
 						//因执行器类型不安全，不能重构。
 						illExecutor++;
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
@@ -214,7 +217,7 @@ public class Future2Completable {
 			            useCancelTrue++;
 			            continue;
 			        }
-			    	refactorSubmitRunnableNValue(invocStmt, invocationNode, change, cu);
+			    	refactorSubmitRunnableNValue(invocationNode, change, cu);
 			    	flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
 			    	sRVClassflag = true;
 			    	sRVflag = true;
@@ -223,6 +226,7 @@ public class Future2Completable {
 			    	flag = false;
 			        break;
 				}
+				String methodSig = sm.getSignature();
 				if(flag) {
 					if(fineRefactoring) {
 						ImportRewrite ir = ImportRewrite.create(cu, true);
@@ -241,36 +245,11 @@ public class Future2Completable {
 						}
 						allChanges.add(change);
 					}
-					MethodDeclaration outMD = (MethodDeclaration) AnalysisUtils.getMethodDeclaration4node(invocationNode);
-					if(outMD != null) {
-						ASTNode outTD = outMD.getParent();
-						if(outTD instanceof AnonymousClassDeclaration) {
-							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d,Points未命中:%d%n",i,((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber,debugUsePoint2num-tempNum);
-						}else if(outTD instanceof EnumDeclaration) {
-							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d,Points未命中:%d%n",i,((EnumDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber,debugUsePoint2num-tempNum);
-						}else {
-							System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：%s,行号：%d,Points未命中:%d%n",i,((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber,debugUsePoint2num-tempNum);
-						}
-					}else {
-						TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
-						if(outTD == null) {throw new NullPointerException();}
-						System.out.printf("[Task->CF]:重构成功的第%d个，类名：%s，方法名：字段或者初始化块,行号：%d,Points未命中:%d%n",i,outTD.resolveBinding().getQualifiedName(),lineNumber,debugUsePoint2num-tempNum);
-					}
+					System.out.printf("[Task->CF]:重构成功的第%d个，方法名：%s,行号：%d,Points未命中:%d%n",i,methodSig,lineNumber,debugUsePoint2num-tempNum);
+					NeedTestMethods.getInstance().addRefactoringMethods(methodSig);
 					i = i+1;
 				}else {
-					MethodDeclaration outMD = (MethodDeclaration) AnalysisUtils.getMethodDeclaration4node(invocationNode);
-					if(outMD != null) {
-						ASTNode outTD = outMD.getParent();
-						if(outTD instanceof AnonymousClassDeclaration) {
-							System.out.printf("[Task->CF]:重构失败类名：%s，方法名：%s,行号：%d%n",((AnonymousClassDeclaration) outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber);
-						}else {
-							System.out.printf("[Task->CF]:重构失败类名：%s，方法名：%s,行号：%d%n",((TypeDeclaration)outTD).resolveBinding().getQualifiedName(),outMD.getName().toString(),lineNumber);
-						}
-					}else {
-						TypeDeclaration outTD = AnalysisUtils.getTypeDeclaration4node(invocationNode);
-						if(outTD == null) {throw new NullPointerException();}
-						System.out.printf("[Task->CF]:重构失败类名：%s，方法名：字段或者初始化块,行号：%d%n",outTD.resolveBinding().getQualifiedName(),lineNumber);
-					}
+					System.out.printf("[Task->CF]:重构失败方法名：%s,行号：%d%n",methodSig,lineNumber);
 				}
 				AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n");
 			}// 一个类中所有的调用分析完毕
@@ -300,8 +279,8 @@ public class Future2Completable {
 		System.out.println("重构成功：ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
 				flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue"));
 		
-		System.out.println("重构失败： 提交方法重载："+methodOverload+ "个；     执行器类型不安全："+illExecutor+"个；     Future变量声明类型不是Future接口"+FutureCanot+"个；   Future变量调用instanceof"+FutureCanotI+
-				"个；    Future变量强制类型转换："+FutureCanotC+"个；     因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
+		System.out.println("重构失败： 提交方法重载："+methodOverload+ "个；        Future变量声明类型不是Future接口"+FutureCanot+"个；   Future变量调用instanceof"+FutureCanotI+
+				"个；    Future变量强制类型转换："+FutureCanotC+"个；    执行器类型不安全："+illExecutor+"个；   因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
 		System.out.println("Pointo未命中："+debugUsePoint2num);
 	}
 	
@@ -310,7 +289,7 @@ public class Future2Completable {
 	 * es.execute(r);
 	 * CompletableFuture.runAsync(r, es);
 	 */
-	private static void refactorExecuteRunnable(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
+	private static void refactorExecuteRunnable(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 			//得到execute方法的调用Node。
     	AST ast = invocationNode.getAST();
     	ASTRewrite rewriter = ASTRewrite.create(ast);
@@ -353,7 +332,7 @@ public class Future2Completable {
 	 * @param invocStmt 
 	 * @param cu 
 	 */
-	private static void refactorffSubmitCallable(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu,int[] invocNum) throws JavaModelException, IllegalArgumentException {
+	private static void refactorffSubmitCallable(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu,int[] invocNum) throws JavaModelException, IllegalArgumentException {
 		int flag = 0; //assignment = 1 ; Fragment = 2; ExpressionStatement = 3; MethodInvocation = 4
 		AST ast = null;
 		Assignment invocAssignment = null;
@@ -764,7 +743,7 @@ public class Future2Completable {
 	 * Future f = es.submit(()->{});
 	 * Future f = CompletableFuture.runAsync(()->{},es);
 	 */
-	private static void refactorSubmitRunnable(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
+	private static void refactorSubmitRunnable(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
     	AST ast = invocationNode.getAST();
     	ASTRewrite rewriter = ASTRewrite.create(ast);
     	//重构逻辑
@@ -805,7 +784,7 @@ public class Future2Completable {
 		 
 	 * 
 	 */
-	private static void refactorSubmitRunnableNValue(Stmt invocStmt, MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
+	private static void refactorSubmitRunnableNValue(MethodInvocation invocationNode, TextFileChange change, ICompilationUnit cu) throws JavaModelException, IllegalArgumentException {
 		AST ast = invocationNode.getAST();
 		ASTRewrite rewriter = ASTRewrite.create(ast);
 		MethodInvocation newMiv = ast.newMethodInvocation();

@@ -15,6 +15,7 @@ import org.eclipse.swt.widgets.Text;
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
 import refuture.refactoring.RefutureRefactoring;
+import refuture.sootUtil.NeedTestMethods;
 import refuture.sootUtil.SootConfig;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
@@ -24,6 +25,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	Button btnCheck3;
 	Button btnCheck4;
 	Button btnCheck5;
+	Button btnCheck6;
 	Text textField1;
 	Text textField2;
 	Text textField3;
@@ -63,6 +65,11 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		GridData gdBtnCheck4 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck4.setLayoutData(gdBtnCheck4);
 
+		btnCheck6 = new Button(composite, SWT.PUSH);
+		btnCheck6.setText("输出需验证的签名");
+		GridData gdBtnCheck6 = new GridData(SWT.FILL, SWT.CENTER, true, false);
+		btnCheck6.setLayoutData(gdBtnCheck6);
+		
 		btnCheck5 = new Button(composite, SWT.PUSH);
 		btnCheck5.setText("重新构建调用图");
 		GridData gdBtnCheck5 = new GridData(SWT.FILL, SWT.CENTER, true, false);
@@ -72,6 +79,9 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
         gdBtnCheck5.grabExcessVerticalSpace = true;
 		btnCheck5.setLayoutData(gdBtnCheck5);
 
+		
+		
+		
 		Label label1 = new Label(composite, SWT.NONE);
 		label1.setText("需定位的所在类:");
 		textField1 = new Text(composite, SWT.BORDER);
@@ -166,6 +176,20 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 			@Override
 			public void widgetSelected(SelectionEvent se) {
 					RefutureRefactoring.time = 0;
+			}
+
+			@Override
+			public void widgetDefaultSelected(SelectionEvent e) {
+			}
+		});
+		
+		
+		btnCheck6.addSelectionListener(new SelectionListener(){
+			@Override
+			public void widgetSelected(SelectionEvent se) {
+				if(RefutureRefactoring.time != 0) {
+					NeedTestMethods.getInstance().output2Txt();
+				}
 			}
 
 			@Override
