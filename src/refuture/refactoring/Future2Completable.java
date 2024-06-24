@@ -228,7 +228,6 @@ public class Future2Completable {
 			    	flag = false;
 			        break;
 				}
-				String methodSig = sm.getSignature();
 				if(flag) {
 					if(fineRefactoring) {
 						ImportRewrite ir = ImportRewrite.create(cu, true);
@@ -247,11 +246,11 @@ public class Future2Completable {
 						}
 						allChanges.add(change);
 					}
-					System.out.printf("[Task->CF]:重构成功的第%d个，方法名：%s,行号：%d,Points未命中:%d%n",i,methodSig,lineNumber,debugUsePoint2num-tempNum);
-					NeedTestMethods.getInstance().addRefactoringMethods(methodSig);
+					System.out.printf("[Task->CF]:重构成功的第%d个，方法名：%s,行号：%d,Points未命中:%d%n",i,sm.getSignature(),lineNumber,debugUsePoint2num-tempNum);
+					NeedTestMethods.getInstance().addRefactoringMethods(sm);
 					i = i+1;
 				}else {
-					System.out.printf("[Task->CF]:重构失败方法名：%s,行号：%d%n",methodSig,lineNumber);
+					System.out.printf("[Task->CF]:重构失败方法名：%s,行号：%d%n",sm.getSignature(),lineNumber);
 				}
 				AnalysisUtils.debugPrint("**第"+ invocNum++ +"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****%n");
 			}// 一个类中所有的调用分析完毕
