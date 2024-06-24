@@ -162,6 +162,7 @@ public class Future2Completable {
 			    	returnValue = ExecutorSubclass.canRefactor(invocationNode,invocStmt,refactorMode);
 					if(returnValue == false) {
 						AnalysisUtils.debugPrint("Executor类型失败");
+						illExecutor++;
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 						continue;
 					}
@@ -274,15 +275,15 @@ public class Future2Completable {
 			if(printClassFlag) {AnalysisUtils.debugPrint("--第"+j+++"个可能包含调用的类分析完毕-----------------------------%n");}
 		}//所有的类分析完毕
 		
-		System.out.println("重构前：ExecuteRunnable:"+flagMaybeMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMaybeMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
-				flagMaybeMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMaybeMap.get("SubmitRunnableNValue")+"总共有"+maybeRefactoringNode+"个提交点。");
+		System.out.println("重构前（"+maybeRefactoringNode+"个）：ExecuteRunnable:"+flagMaybeMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMaybeMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
+				flagMaybeMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMaybeMap.get("SubmitRunnableNValue"));
 		
-		System.out.println("重构成功：ExecuteRunnable:"+flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+
-				flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue"));
+		System.out.println("重构成功（"+(flagMap.get("ExecuteRunnable")+flagMap.get("SubmitCallable")+flagMap.get("SubmitRunnable")+flagMap.get("SubmitRunnableNValue"))+"个）：ExecuteRunnable:"+
+		flagMap.get("ExecuteRunnable")+"个；   SubmitCallable:"+flagMap.get("SubmitCallable")+"个；   SubmitRunnable:"+flagMap.get("SubmitRunnable")+"个；   SubmitRunnableNValue:"+flagMap.get("SubmitRunnableNValue"));
 		
-		System.out.println("重构失败： 提交方法重载："+methodOverload+ "个；        Future变量声明类型不是Future接口"+FutureCanot+"个；   Future变量调用instanceof"
-		+FutureCanotI+"个；    Future变量强制类型转换："+FutureCanotC+"个；    execute执行器类型不安全："+illExecutor+"个；    submit执行器类型不安全："
-				+illExecutorService+"个；   因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
+		System.out.println("重构失败（"+(methodOverload+FutureCanot+FutureCanotI+FutureCanotC+illExecutor+illExecutorService+useCancelTrue)+"个）： 提交方法重载："+methodOverload+
+				"个；   Future变量声明类型不是Future接口"+FutureCanot+"个；   Future变量调用instanceof"+FutureCanotI+"个；   Future变量强制类型转换："+FutureCanotC+
+		"个；\n            execute执行器类型不安全："+illExecutor+"个；    submit执行器类型不安全："+illExecutorService+"个；   因调用cancel(true)不能重构的个数为："+useCancelTrue+"个。");
 		System.out.println("Pointo未命中："+debugUsePoint2num);
 	}
 	

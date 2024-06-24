@@ -25,6 +25,7 @@ import refuture.sootUtil.CastAnalysis;
 import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
 import refuture.sootUtil.Instanceof;
+import refuture.sootUtil.NeedTestMethods;
 import refuture.sootUtil.SootConfig;
 
 
@@ -44,6 +45,7 @@ public class RefutureRefactoring extends Refactoring {
 	Date startTime;
 	
 	boolean disableCancelPattern;
+	boolean outputMethods;
 	public static int time = 0;
 	/**
 	 * Instantiates a new future task refactoring.
@@ -64,6 +66,11 @@ public class RefutureRefactoring extends Refactoring {
 		this.disableCancelPattern = pattern;
 		return true;
 	}
+	
+	public boolean setOutPutMethod(boolean pattern) {
+		this.outputMethods = pattern;
+		return true;
+	}
 
 	@Override
 	public String getName() {
@@ -78,6 +85,8 @@ public class RefutureRefactoring extends Refactoring {
 		}
 		InitAllStaticfield.init();//初始化所有的静态字段。
 		this.disableCancelPattern = false;
+		this.outputMethods = false;
+		NeedTestMethods.reset();
 		return RefactoringStatus.createInfoStatus("Ininal condition has been checked");
 	}
 
@@ -113,6 +122,9 @@ public class RefutureRefactoring extends Refactoring {
 		Future2Completable.refactor();
 		Date endTime = new Date();
 		System.out.println("The current ent time is "+ endTime +"已花费:" + ((endTime.getTime()-startTime.getTime())/1000)+"s");
+		if(this.outputMethods) {
+			NeedTestMethods.getInstance().output2Txt();
+		}
 		return null;
 	}
 

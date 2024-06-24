@@ -65,7 +65,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		GridData gdBtnCheck4 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck4.setLayoutData(gdBtnCheck4);
 
-		btnCheck6 = new Button(composite, SWT.PUSH);
+		btnCheck6 = new Button(composite, SWT.CHECK);
 		btnCheck6.setText("输出需验证的签名");
 		GridData gdBtnCheck6 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck6.setLayoutData(gdBtnCheck6);
@@ -183,19 +183,22 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 			}
 		});
 		
-		
 		btnCheck6.addSelectionListener(new SelectionListener(){
 			@Override
-			public void widgetSelected(SelectionEvent se) {
-				if(RefutureRefactoring.time != 0) {
-					NeedTestMethods.getInstance().output2Txt();
-				}
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+				btnCheck6.setEnabled(false);
 			}
 
 			@Override
-			public void widgetDefaultSelected(SelectionEvent e) {
+			public void widgetSelected(SelectionEvent se) {
+				if(btnCheck6.getEnabled()){
+					refactoring.setOutPutMethod(true);
+				}else{
+					refactoring.setOutPutMethod(false);
+				}
 			}
 		});
+		
 		
 		textField1.addModifyListener(e -> {
 		    String input = textField1.getText();

@@ -67,6 +67,8 @@ public class ExecutorSubclass {
 	
 	private static Set<SootClass>mustDirtyClasses;
 	
+	private static Set<SootClass>executeDirtyClasses;
+	
 	private static Set<SootClass>submitRDirtyClasses;
 	
 	private static Set<SootClass>submitCDirtyClasses;
@@ -104,6 +106,7 @@ public class ExecutorSubclass {
 		proxySubmitCClass = new HashSet<SootClass>();
 		proxySubmitRVClass = new HashSet<SootClass>();
 		mustDirtyClasses = new HashSet<SootClass>();
+		executeDirtyClasses = new HashSet<SootClass>();
 		submitRDirtyClasses = new HashSet<SootClass>();
 		submitCDirtyClasses = new HashSet<SootClass>();
 		submitRVDirtyClasses = new HashSet<SootClass>();
@@ -164,6 +167,7 @@ public class ExecutorSubclass {
 			if(sm != null &&sm.isConcrete()) {
 				if(Instanceof.useInstanceofRunnable(sm)) {
 					mustDirtyClasses.add(sc);
+					executeDirtyClasses.add(sc);
 				}else {
 					mayCompleteExecutorClasses.add(sc);
 				}
@@ -1051,41 +1055,27 @@ public class ExecutorSubclass {
 			return true;
 		}
 		if(invocStmt == null) return false;
-		if(refactorMode == 1){//execute()判断
-			Set<String> typeSetStrings = new HashSet<>();
-			List<ValueBox> lvbs = invocStmt.getUseBoxes();
-			Iterator<ValueBox> it =lvbs.iterator();
-	        while(it.hasNext()) {
-	        	Object o = it.next();
-	        	if (o instanceof JimpleLocalBox) {
-	    			//Soot会在JInvocStmt里放入InvocExprBox,里面有JInterfaceInvokeExpr,里面有argBoxes和baseBox,分别存放ImmediateBox,JimpleLocalBox。
-	    			JimpleLocalBox jlb = (JimpleLocalBox) o;
-	    			Local local = (Local)jlb.getValue();
-	    			PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
-	    			PointsToSet ptset = pa.reachingObjects(local);
-	    			Set<Type> typeSet = ptset.possibleTypes();
-	    			typeSetStrings = getStringInTypeSet(typeSet);
-	    		}	
-	    	}
-	        if(!typeSetStrings.isEmpty()) {
-				if(getStringInSootClassSet(mayCompleteExecutorClasses).containsAll(typeSetStrings)) {
-					//是安全重构的子集，就可以进行重构了。
-					AnalysisUtils.debugPrint("[ExecutorSubClass.canRefactor]根据指向分析 可以重构,typeName为："+typeSetStrings);
-					return true;
-				}
-			}
-	        return false;
-		}
-		Set<String> completeSetTypeStrings = getCompleteExecutorSubClassesName();
+		Set<String> completeSetTypeStrings = null;
 		Set<String> wrapperClassesStrings = null;
 		Set<SootClass> allDirtyClasses = null;
-		if(refactorMode == 2) {
+		if(refactorMode == 1){//execute()判断
+			if(executeDirtyClasses.isEmpty()) {
+				AnalysisUtils.debugPrint("因无execute污染类,直接通过");
+				return true;
+			}
+			completeSetTypeStrings = getStringInSootClassSet(mayCompleteExecutorClasses);
+			wrapperClassesStrings = null;
+			allDirtyClasses = executeDirtyClasses;
+		}else if(refactorMode == 2) {
+			completeSetTypeStrings = getCompleteExecutorSubClassesName();
 			wrapperClassesStrings = getStringInSootClassSet(proxySubmitCClass);
 			allDirtyClasses = submitCDirtyClasses;
 		}else if(refactorMode == 3) {
+			completeSetTypeStrings = getCompleteExecutorSubClassesName();
 			wrapperClassesStrings = getStringInSootClassSet(proxySubmitRClass);
 			allDirtyClasses = submitRDirtyClasses;
 		}else if(refactorMode == 4) {
+			completeSetTypeStrings = getCompleteExecutorSubClassesName();
 			wrapperClassesStrings = getStringInSootClassSet(proxySubmitRVClass);
 			allDirtyClasses = submitRVDirtyClasses;
 		}
@@ -1102,8 +1092,7 @@ public class ExecutorSubclass {
     			PointsToSet ptset = pa.reachingObjects(local);
     			Set<Type> typeSet = ptset.possibleTypes();
     			typeSetStrings = getStringInTypeSet(typeSet);
-    			if(!typeSetStrings.isEmpty()) {
-    				//&&wrapperClassesStrings.containsAll(typeSetStrings)
+    			if(wrapperClassesStrings != null && !typeSetStrings.isEmpty()) {
     				boolean wrapFlag = false;
     				for(String classSiguture : typeSetStrings) {
     					if(wrapperClassesStrings.contains(classSiguture)) wrapFlag = true;

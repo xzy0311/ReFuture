@@ -1,14 +1,15 @@
 package refuture.sootUtil;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
+import refuture.refactoring.AnalysisUtils;
 import soot.Scene;
 import soot.SootMethod;
 import soot.jimple.toolkits.callgraph.CallGraph;
@@ -49,6 +50,10 @@ public class NeedTestMethods {
 		}
 		return instance;
 	}
+	
+	public static void reset() {
+		instance = null;
+	}
 
 	public void addRefactoringMethods(String methodSignature) {
 		this.refactoringMethods.add(methodSignature);
@@ -61,7 +66,9 @@ public class NeedTestMethods {
 	}
 	
 	public void output2Txt() {
-		String filePath = "/home/xzy/eclipse-workspace2020/output.txt";
+		String fileName = AnalysisUtils.eclipseProject.getName()+"methods.txt";
+		String path = AnalysisUtils.eclipseProject.getLocation().toOSString();
+		String filePath = path+File.separator+fileName;
 		try {
             FileWriter writer = new FileWriter(filePath);
             // 遍历集合，将每个元素写入文件

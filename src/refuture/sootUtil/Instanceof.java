@@ -59,6 +59,7 @@ public class Instanceof {
 			}
 		}
 	}
+	
 	public static boolean useInstanceofRunnable(SootMethod executeMethod) {
 		if(useInstanceofRunnable.isEmpty()) return false;
 		Body body = executeMethod.retrieveActiveBody();
@@ -73,6 +74,7 @@ public class Instanceof {
 		}
 		return false;
 	}
+	
 	public static boolean useInstanceofFuture(Stmt invocStmt) {
 		if(useInstanceofFuture.isEmpty()) return false;
 		PointsToAnalysis pa = Scene.v().getPointsToAnalysis();
