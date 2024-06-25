@@ -11,6 +11,7 @@ import java.util.Set;
 
 import refuture.refactoring.AnalysisUtils;
 import soot.Scene;
+import soot.SootClass;
 import soot.SootMethod;
 import soot.jimple.toolkits.callgraph.CallGraph;
 import soot.jimple.toolkits.callgraph.Edge;
@@ -48,8 +49,9 @@ public class NeedTestMethods {
 			if(sm.isPublic()) {
 				//2.匿名类
 				String sig = sm.getSignature();
+				SootClass sc = sm.getDeclaringClass();
 				String className =sig.split(":")[0];
-				if(!className.contains("$")) {
+				if(sc.isConcrete()&&!className.contains("$")) {
 					randoopUseSigs.add(cover2RandoopSig(sig));
 				}
 			}
