@@ -163,6 +163,58 @@ public class AdaptAst {
 		}
 		return count;
 	}
+	public static int getNoCast4Block(CastExpression ce) {
+		//1.得到miv所在的方法.
+		MethodDeclaration md = (MethodDeclaration) AnalysisUtils.getMethodDeclaration4node(ce);
+		if(md == null) {
+			throw new RefutureException(ce+"需完善,代码，可能在字段中的方法调用");
+		}
+		int inLambda = invocInLambda(ce);
+		Block block = null;
+		if(inLambda>0) {
+			ASTNode lblock = getBlockInExpLambda(ce);
+			if(lblock instanceof Expression) {
+				return 1;
+			}else {
+				block = (Block) lblock;
+			}
+		}else {
+			block = md.getBody();
+		}
+		//2.在block中进行查找，找到方法调用语句，并按照行号进行排序。
+		Comparator<CastExpression> myComparator = new Comparator<CastExpression>() {
+			@Override
+			public int compare(CastExpression o1, CastExpression o2) {
+				CompilationUnit cu = (CompilationUnit)o1.getRoot();
+				int o1lineNumber = cu.getLineNumber(o1.getStartPosition());//行号
+				CompilationUnit cu2 = (CompilationUnit)o2.getRoot();
+				int o2lineNumber = cu2.getLineNumber(o2.getStartPosition());//行号
+				int result = o1lineNumber-o2lineNumber;
+				if(result == 0) {
+					result = cu.getColumnNumber(o1.getStartPosition())-cu2.getColumnNumber(o2.getStartPosition());
+				}
+				return result;
+			}
+		};
+		Set<CastExpression> mS = new TreeSet<>(myComparator);
+		block.accept(new ASTVisitor() {
+			public boolean visit(CastExpression node) {
+				
+					mS.add(node);
+				
+				return true;
+			}
+		});
+		int count = 0;
+		for(CastExpression smiv:mS) {
+			count ++;
+			if(smiv == ce) {
+				break;
+			}
+		}
+		return count;
+	}
+	
 	/**
 	 * 返回null，如果没有在lambda中，
 	 * 返回Block或者Expression
@@ -210,7 +262,7 @@ public class AdaptAst {
 			MethodInvocation miv = (MethodInvocation)exp;
 			expName = miv.getName().toString();//调用的方法的名称，只包含名称
 		}else if(exp instanceof CastExpression) {
-			return getStmtInternal(exp, lineNumber, sm);
+			return getStmtInternalCast(exp, lineNumber, sm);
 		}else {
 			throw new RefutureException(sm,"行号为："+String.valueOf(lineNumber));
 		}
@@ -232,7 +284,7 @@ public class AdaptAst {
 			MethodInvocation miv = (MethodInvocation)exp;
 			expName = miv.getName().toString();//调用的方法的名称，只包含名称
 		}else if(exp instanceof CastExpression) {
-			return getStmtInternal(exp, lineNumber, sm);
+			return getStmtInternalCast(exp, lineNumber, sm);
 		}else {
 			throw new RefutureException(sm,"行号为："+String.valueOf(lineNumber));
 		}
@@ -240,13 +292,14 @@ public class AdaptAst {
 		return getStmtInternal(exp, lineNumber, expName, sm);
 	}
 	//这个重载方法只为cast服务。
-	private static Stmt getStmtInternal(ASTNode exp, int lineNumber, SootMethod sm) {
+	private static Stmt getStmtInternalCast(ASTNode exp, int lineNumber, SootMethod sm) {
 		Body body =sm.retrieveActiveBody();
         Iterator<Unit> i=body.getUnits().snapshotIterator();
         boolean notLocalFlag = false;// if method is localmethod,its jimple name is stemp name not execute or submit.
         int jimpleLineNumber =0;
         int containTargetNum = 0;
         Stmt TempStmt = null;
+        CastExpression ce = (CastExpression)exp;
 		Comparator<Stmt> myComparator = new Comparator<Stmt>() {
 			@Override
 			public int compare(Stmt o1, Stmt o2) {
@@ -284,12 +337,7 @@ public class AdaptAst {
 //        	System.out.println("@error[AdaptAST.getJimpleInvocStmt]:获取调用节点对应的Stmt出错，找到有调用名称的语句，但是行号不对应且不是唯一一个这个方法调用在这个方法中{MethodSig:"
 //        +sm.getSignature()+"ASTLineNumber:"+lineNumber+"JimLineNumber:"+jimpleLineNumber);
         	int count = 0;
-        	int number = 0;
-    		if(exp instanceof InstanceofExpression) {
-    			number = getNoInstance4Block((InstanceofExpression) exp);
-    		}else if(exp instanceof MethodInvocation) {
-    			number = getNoInvoc4Block((MethodInvocation) exp);
-    		}
+        	int number = getNoCast4Block(ce);
     		if(containTargetNum !=mS.size()) {//如果不相等,说明mS中添加元素失败,在if elseif的条件下可能发生,此时,使用
     			//cfg进行判断.
     			BriefUnitGraph cfg = new BriefUnitGraph(body);
@@ -310,6 +358,22 @@ public class AdaptAst {
         			return stmt;
         		}
 			}
+        }else {
+        	String expName = null;
+        	Expression newExp = ce.getExpression();
+        	if(newExp instanceof InstanceofExpression) {
+    			expName = "instanceof";
+    		}else if(newExp instanceof MethodInvocation) {
+    			MethodInvocation miv = (MethodInvocation)newExp;
+    			expName = miv.getName().toString();//调用的方法的名称，只包含名称
+    		}else if(newExp instanceof CastExpression) {
+    			return getStmtInternalCast(newExp, lineNumber, sm);
+    		}else if(newExp instanceof ClassInstanceCreation) {
+    			expName = "<init>";
+    		}else {
+    			throw new RefutureException(sm,"行号为："+String.valueOf(lineNumber));
+    		}
+        	return getStmtInternal(newExp,lineNumber,expName,sm);
         }
 		throw new RefutureException(exp,"排查错误原因。");
 	}
