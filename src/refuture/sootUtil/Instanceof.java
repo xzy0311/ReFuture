@@ -17,7 +17,6 @@ import soot.Scene;
 import soot.SootMethod;
 import soot.Value;
 import soot.ValueBox;
-import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.internal.ImmediateBox;
 import soot.jimple.internal.JimpleLocal;
@@ -30,12 +29,13 @@ public class Instanceof {
 		useInstanceofFuture = new HashSet<JimpleLocal>();
 		return true;
 	}
-	
 	public static void init() {
 		List<InstanceofExpression> insOfNodes = AllVisiter.getInstance().getInsResult();
+		Set<String> sRs = ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.getAllRelationSubClasses(ExecutorSubclass.runnablesubClasses));
+		Set<String> sFs = ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.getAllRelationSubClasses(ExecutorSubclass.allFutureSubClasses));
 		for(InstanceofExpression insOfNode:insOfNodes) {
-			String qName = insOfNode.getRightOperand().resolveBinding().getQualifiedName();
-			if(ExecutorSubclass.runnablesubClasses.contains(qName)&&!qName.equals("java.lang.Runnable")) {
+			String qName = insOfNode.getRightOperand().resolveBinding().getBinaryName();
+			if(sRs.contains(qName)&&!qName.equals("java.lang.Runnable")) {
 				Stmt stmt = AdaptAst.getJimpleStmt(insOfNode);
 				List<ValueBox> boxes = stmt.getUseBoxes();
 				for(ValueBox box : boxes) {
@@ -47,7 +47,7 @@ public class Instanceof {
 						}
 					}
 				}
-			}else if(ExecutorSubclass.allFutureSubClasses.contains(qName)&&!qName.equals("java.util.concurrent.Future")) {
+			}else if(sFs.contains(qName)&&!qName.equals("java.util.concurrent.Future")) {
 				Stmt stmt = AdaptAst.getJimpleStmt(insOfNode);
 				List<ValueBox> boxes = stmt.getUseBoxes();
 				for(ValueBox box : boxes) {
@@ -58,6 +58,8 @@ public class Instanceof {
 				}
 			}
 		}
+		AnalysisUtils.debugPrint("useInstanceofRunnable:"+useInstanceofRunnable);
+		AnalysisUtils.debugPrint("useInstanceofFuture:"+useInstanceofFuture);
 	}
 	
 	public static boolean useInstanceofRunnable(SootMethod executeMethod) {

@@ -7,7 +7,6 @@ import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 
 import refuture.astvisitor.AllVisiter;
-import refuture.astvisitor.MethodInvocationVisiter;
 
 public class FindThread {
 

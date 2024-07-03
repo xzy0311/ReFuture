@@ -107,13 +107,13 @@ public class RefutureRefactoring extends Refactoring {
 		}
 		ExecutorSubclass.futureAnalysis();
 		ExecutorSubclass.taskTypeAnalysis();
-		ExecutorSubclass.executorSubClassAnalysis();
-		ExecutorSubclass.wrapperClassAnalysis();
-        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
-        AnalysisUtils.debugPrint("instanceof初始化开始");
+		AnalysisUtils.debugPrint("instanceof初始化开始");
         Instanceof.init();
         AnalysisUtils.debugPrint("强制类型转换初始化开始");
         CastAnalysis.init();
+		ExecutorSubclass.executorSubClassAnalysis();
+		ExecutorSubclass.wrapperClassAnalysis();
+        ExecutorSubclass.threadPoolExecutorSubClassAnalysis();
         if(!this.disableCancelPattern) {
         	AnalysisUtils.debugPrint("cancel(true)初始化开始");
 	        Cancel.initCancel(allJavaFiles);

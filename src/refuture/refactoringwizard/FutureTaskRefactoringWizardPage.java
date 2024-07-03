@@ -15,7 +15,6 @@ import org.eclipse.swt.widgets.Text;
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
 import refuture.refactoring.RefutureRefactoring;
-import refuture.sootUtil.NeedTestMethods;
 import refuture.sootUtil.SootConfig;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {

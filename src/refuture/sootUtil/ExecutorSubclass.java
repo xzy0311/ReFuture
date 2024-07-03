@@ -59,8 +59,8 @@ public class ExecutorSubclass {
 	
 	//9月14日记录，目前所有记录的安全的，污染的，附加的类都是用于遇到submit()方法时，判断是否符合重构条件。待添加包装类判断
 	/** The all subclasses. */
-	private static Set<SootClass>allExecutorServiceSubClasses;
-	private static Set<SootClass>allExecutorSubClasses;
+	static Set<SootClass>allExecutorServiceSubClasses;
+	static Set<SootClass>allExecutorSubClasses;
 	private static Set<SootClass>mayCompleteExecutorClasses;
 	//mustDirtyClass排除了proxyClass，且内部只包含实际类
 	private static HashMap<SootClass,ClassInfo> resultMap;
@@ -86,12 +86,12 @@ public class ExecutorSubclass {
 //	private static Set<SootClass>allAdditionalClasses;
 	
 	/** 包括子接口和所有实现类限定名. */
-	public static Set<String> callableSubClasses;
+	public static Set<SootClass> callableSubClasses;
 	
 	/** 包括子接口和所有实现类限定名. */
-	public static Set<String> runnablesubClasses;
+	public static Set<SootClass> runnablesubClasses;
 	
-	public static Set<String>allFutureSubClasses;
+	public static Set<SootClass>allFutureSubClasses;
 	/**
 	 * Inits the static field.
 	 *
@@ -100,7 +100,7 @@ public class ExecutorSubclass {
 	public static boolean initStaticField() {
 		mayCompleteExecutorSubClasses = new HashSet<SootClass>();
 		mayCompleteExecutorClasses = new HashSet<SootClass>();
-		allFutureSubClasses = new HashSet<String>();
+		allFutureSubClasses = new HashSet<SootClass>();
 		resultMap = new HashMap<>();
 		proxySubmitRClass = new HashSet<SootClass>();
 		proxySubmitCClass = new HashSet<SootClass>();
@@ -112,20 +112,40 @@ public class ExecutorSubclass {
 		submitRVDirtyClasses = new HashSet<SootClass>();
 		allExecutorServiceSubClasses= new HashSet<SootClass>();
 		allExecutorSubClasses = new HashSet<SootClass>();
-		callableSubClasses = new HashSet<String>();
-		runnablesubClasses = new HashSet<String>();
+		callableSubClasses = new HashSet<SootClass>();
+		runnablesubClasses = new HashSet<SootClass>();
 		return true;
 	}
+	public static Set<SootClass> getAllRelationSubClasses(Set<SootClass> ss){
+		Set<SootClass> tempResult = new HashSet<SootClass>(ss);
+		Hierarchy h = Scene.v().getActiveHierarchy();
+		ss.forEach(sc->{
+			if(sc.isInterface()) {
+				tempResult.addAll(h.getSuperinterfacesOf(sc));
+			}else {
+				tempResult.addAll(h.getSuperclassesOf(sc));
+			}
+		});
+		Set<SootClass> result = new HashSet<SootClass>(tempResult);
+		tempResult.forEach(sc->{
+			if(!sc.isInterface()) {
+				result.addAll(sc.getInterfaces());
+			}
+		});
+		return result;
+	}
+	
+	
 	public static void futureAnalysis() {
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		SootClass future = Scene.v().getSootClass("java.util.concurrent.Future");
 		hierarchy.getImplementersOf(future).forEach((e)->{
 			e = (SootClass)e;
-			allFutureSubClasses.add(e.getName());
+			allFutureSubClasses.add(e);
 			});
 		hierarchy.getSubinterfacesOfIncluding(future).forEach((e)->{
 			e = (SootClass)e;
-			allFutureSubClasses.add(e.getName());
+			allFutureSubClasses.add(e);
 			});
 		AnalysisUtils.debugPrint("allFutureSubClasses:"+allFutureSubClasses.toString());
 		
@@ -137,19 +157,19 @@ public class ExecutorSubclass {
 		SootClass runnable = Scene.v().getSootClass("java.lang.Runnable");
 		hierarchy.getImplementersOf(callable).forEach((e)->{
 			e = (SootClass)e;
-			callableSubClasses.add(e.getName());
+			callableSubClasses.add(e);
 			});
 		hierarchy.getSubinterfacesOfIncluding(callable).forEach((e)->{
 			e = (SootClass)e;
-			callableSubClasses.add(e.getName());
+			callableSubClasses.add(e);
 			});
 		hierarchy.getImplementersOf(runnable).forEach((e)->{
 			e = (SootClass)e;
-			runnablesubClasses.add(e.getName());
+			runnablesubClasses.add(e);
 			});
 		hierarchy.getSubinterfacesOfIncluding(runnable).forEach((e)->{
 			e = (SootClass)e;
-			runnablesubClasses.add(e.getName());
+			runnablesubClasses.add(e);
 			});
 		AnalysisUtils.debugPrint("");
 		AnalysisUtils.debugPrint("CallableSubClasses:"+callableSubClasses.toString());
@@ -1067,15 +1087,15 @@ public class ExecutorSubclass {
 			wrapperClassesStrings = null;
 			allDirtyClasses = executeDirtyClasses;
 		}else if(refactorMode == 2) {
-			completeSetTypeStrings = getCompleteExecutorSubClassesName();
+			completeSetTypeStrings = getStringInSootClassSet(mayCompleteExecutorSubClasses);
 			wrapperClassesStrings = getStringInSootClassSet(proxySubmitCClass);
 			allDirtyClasses = submitCDirtyClasses;
 		}else if(refactorMode == 3) {
-			completeSetTypeStrings = getCompleteExecutorSubClassesName();
+			completeSetTypeStrings = getStringInSootClassSet(mayCompleteExecutorSubClasses);
 			wrapperClassesStrings = getStringInSootClassSet(proxySubmitRClass);
 			allDirtyClasses = submitRDirtyClasses;
 		}else if(refactorMode == 4) {
-			completeSetTypeStrings = getCompleteExecutorSubClassesName();
+			completeSetTypeStrings = getStringInSootClassSet(mayCompleteExecutorSubClasses);
 			wrapperClassesStrings = getStringInSootClassSet(proxySubmitRVClass);
 			allDirtyClasses = submitRVDirtyClasses;
 		}
@@ -1189,7 +1209,7 @@ public class ExecutorSubclass {
 		if(invocationNode.arguments().size() == 1) {
 			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
 			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
-			if(runnablesubClasses.contains(binaryName)) {
+			if(getStringInSootClassSet(runnablesubClasses).contains(binaryName)) {
 				if(invocName.equals("submit")) {
 					AnalysisUtils.debugPrint("submit(Runnable)模式3");
 					return 3;
@@ -1199,7 +1219,7 @@ public class ExecutorSubclass {
 					return 1;
 				}
 				
-			}else if(callableSubClasses.contains(binaryName)&&invocName.equals("submit")){
+			}else if(getStringInSootClassSet(callableSubClasses).contains(binaryName)&&invocName.equals("submit")){
 				AnalysisUtils.debugPrint("submit(Callable)模式2");
 				return 2;
 			}else {
@@ -1209,7 +1229,7 @@ public class ExecutorSubclass {
 		else if(invocationNode.arguments().size() == 2 && invocName.equals("submit")) {
 			Expression firstArgu = (Expression) invocationNode.arguments().get(0);
 			String binaryName = AnalysisUtils.getTypeName4Exp(firstArgu);
-			if(runnablesubClasses.contains(binaryName)) {
+			if(getStringInSootClassSet(runnablesubClasses).contains(binaryName)) {
 				AnalysisUtils.debugPrint("submit(Runnable,Value)模式4");
 				return 4;
 			}else {
@@ -1233,15 +1253,7 @@ public class ExecutorSubclass {
 		}
 		return rClassesStrings;
 	}
-	public static Set<String> getCompleteExecutorSubClassesName(){
-		return getStringInSootClassSet(mayCompleteExecutorSubClasses);
-	}
-	public static Set<String> getAllExecutorServiceSubClassesName(){
-		return getStringInSootClassSet(allExecutorServiceSubClasses);
-	}
-	public static Set<String> getAllExecutorSubClassesName() {
-		return getStringInSootClassSet(allExecutorSubClasses);
-	}
+
 
 	
 }

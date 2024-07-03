@@ -24,7 +24,6 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
 import refuture.astvisitor.AllVisiter;
-import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
@@ -61,7 +60,7 @@ public class CollectionEntrypoint {
 				if(arguTypeName == null) {
 					throw new RefutureException(invocationNode,"得不到类型绑定");
 				}else if(arguTypeName == "java.lang.Object") {throw new RefutureException(invocationNode,"得到了object");}
-				if(ExecutorSubclass.callableSubClasses.contains(arguTypeName)|| ExecutorSubclass.runnablesubClasses.contains(arguTypeName)) {
+				if(ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.callableSubClasses).contains(arguTypeName)|| ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.runnablesubClasses).contains(arguTypeName)) {
 					isTask = true;
 				}
 			}
@@ -109,8 +108,8 @@ public class CollectionEntrypoint {
 		
 	private static boolean expIsExecutor(MethodInvocation invocationNode) {
 		Expression exp = invocationNode.getExpression();
-		Set <String> allSubNames = ExecutorSubclass.getAllExecutorSubClassesName();
-		Set <String> allSubServiceNames = ExecutorSubclass.getAllExecutorServiceSubClassesName();
+		Set <String> allSubNames = ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.allExecutorSubClasses);
+		Set <String> allSubServiceNames = ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.allExecutorServiceSubClasses);
 		if(exp==null){
 			// 判断invocationNode所在类是否是子类，若是子类，则任务提交点+1.
 //			AnalysisUtils.debugPrint("[entryPointInit]receiverObject为this，继续判断");

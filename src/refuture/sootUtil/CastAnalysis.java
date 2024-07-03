@@ -4,11 +4,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.CastExpression;
 
 import refuture.astvisitor.AllVisiter;
-import refuture.astvisitor.CastVisiter;
 import refuture.refactoring.AnalysisUtils;
 import refuture.refactoring.Future2Completable;
 import soot.PointsToAnalysis;
@@ -30,7 +28,7 @@ public class CastAnalysis {
 		List<CastExpression> castNodes = AllVisiter.getInstance().getCastResult();
 		for(CastExpression castNode:castNodes) {
 			String qName = castNode.resolveTypeBinding().getBinaryName().toString();
-			if(ExecutorSubclass.allFutureSubClasses.contains(qName)&&!qName.equals("java.util.concurrent.Future")) {
+			if(ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.getAllRelationSubClasses(ExecutorSubclass.allFutureSubClasses)).contains(qName)&&!qName.equals("java.util.concurrent.Future")) {
 				Stmt stmt = AdaptAst.getJimpleStmt(castNode);
 				List<ValueBox> boxes = stmt.getUseBoxes();
 				for(ValueBox box : boxes) {
@@ -41,6 +39,7 @@ public class CastAnalysis {
 				}
 			}
 		}
+		AnalysisUtils.debugPrint("useCastofFuture:"+useCastofFuture);
 	}
 	
 	public static boolean useCast(Stmt castStmt) {

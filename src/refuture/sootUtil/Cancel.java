@@ -1,25 +1,20 @@
 package refuture.sootUtil;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
-import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 
 import refuture.astvisitor.AllVisiter;
-import refuture.astvisitor.MethodInvocationVisiter;
 import refuture.refactoring.AnalysisUtils;
-import refuture.refactoring.ForTask;
 import refuture.refactoring.RefutureException;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.PointsToSet;
 import soot.Scene;
-import soot.SootClass;
 import soot.ValueBox;
 import soot.jimple.Stmt;
 import soot.jimple.internal.JimpleLocalBox;
@@ -35,7 +30,7 @@ public class Cancel {
 	}
 	
 	public static void initCancel(List<ICompilationUnit> allJavaFiles) {
-		Set<String> allFutureAndsubName = ExecutorSubclass.allFutureSubClasses;
+		Set<String> allFutureAndsubName = ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.allFutureSubClasses);
 		List<MethodInvocation> invocationNodes = AllVisiter.getInstance().getMInvocResult();
 		for(MethodInvocation invocationNode:invocationNodes) {
 			if(!invocationNode.getName().toString().equals("cancel") || !isTrue(invocationNode) || invocationNode.getExpression() == null) {

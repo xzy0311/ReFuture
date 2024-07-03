@@ -7,6 +7,7 @@ import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CastExpression;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 public class AllVisiter extends ASTVisitor{
 
@@ -56,7 +57,7 @@ public class AllVisiter extends ASTVisitor{
 	public boolean visit(CastExpression node) {
 		castNodes.add(node);
 		return true;
-	}
+	}  
 
 	public List<CastExpression> getCastResult(){
 		return castNodes;
