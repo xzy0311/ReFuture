@@ -28,7 +28,7 @@ public class CastAnalysis {
 		List<CastExpression> castNodes = AllVisiter.getInstance().getCastResult();
 		for(CastExpression castNode:castNodes) {
 			String qName = castNode.resolveTypeBinding().getBinaryName().toString();
-			if(ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.getAllRelationSubClasses(ExecutorSubclass.allFutureSubClasses)).contains(qName)&&!qName.equals("java.util.concurrent.Future")) {
+			if(ExecutorSubclass.getStringInSootClassSet(ExecutorSubclass.getAllRelationSubClasses(ExecutorSubclass.allFutureSubClasses)).contains(qName)&&!qName.equals("java.util.concurrent.Future")&&!qName.equals("java.lang.Object")) {
 				Stmt stmt = AdaptAst.getJimpleStmt(castNode);
 				List<ValueBox> boxes = stmt.getUseBoxes();
 				for(ValueBox box : boxes) {
