@@ -179,18 +179,25 @@ public class ExecutorSubclass {
 
 	public static void executorSubClassAnalysis() {
 		SootClass executorClass = Scene.v().getSootClass("java.util.concurrent.Executor");
+		SootClass ForkJoinPoolClass = Scene.v().getSootClass("java.util.concurrent.ForkJoinPool");
+		SootClass SThreadPoolExecutorClass = Scene.v().getSootClass("java.util.concurrent.ScheduledThreadPoolExecutor");
+		SootClass TPE =  Scene.v().getSootClass("java.util.concurrent.ThreadPoolExecutor");
 		Hierarchy hierarchy = Scene.v().getActiveHierarchy();
 		allExecutorSubClasses.addAll(hierarchy.getImplementersOf(executorClass));
 		allExecutorSubClasses.addAll(hierarchy.getSubinterfacesOfIncluding(executorClass));
 		for(SootClass sc : allExecutorSubClasses) {
-			SootMethod sm = getMethodInHierarchy(sc,"void execute(java.lang.Runnable)");
-			if(sm != null &&sm.isConcrete()) {
-				if(Instanceof.useInstanceofRunnable(sm)) {
-					mustDirtyClasses.add(sc);
-					executeDirtyClasses.add(sc);
-				}else {
-					mayCompleteExecutorClasses.add(sc);
+			if(sc !=ForkJoinPoolClass && sc !=SThreadPoolExecutorClass && sc !=TPE ) {
+				SootMethod sm = getMethodInHierarchy(sc,"void execute(java.lang.Runnable)");
+				if(sm != null &&sm.isConcrete()) {
+					if(Instanceof.useInstanceofRunnable(sm)) {
+						mustDirtyClasses.add(sc);
+						executeDirtyClasses.add(sc);
+					}else {
+						mayCompleteExecutorClasses.add(sc);
+					}
 				}
+			}else {
+				mayCompleteExecutorClasses.add(sc);
 			}
 		}
 		AnalysisUtils.debugPrint("Executor-mustDirtyClasses:"+mustDirtyClasses.toString());
