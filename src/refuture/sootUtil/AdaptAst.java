@@ -370,7 +370,10 @@ public class AdaptAst {
     			return getStmtInternalCast(newExp, lineNumber, sm);
     		}else if(newExp instanceof ClassInstanceCreation) {
     			expName = "<init>";
-    		}else {
+    		}else if(newExp instanceof LambdaExpression) {
+    			expName = "bootstrap$";
+    		}
+    		else {
     			throw new RefutureException(sm,"行号为："+String.valueOf(lineNumber));
     		}
         	return getStmtInternal(newExp,lineNumber,expName,sm);

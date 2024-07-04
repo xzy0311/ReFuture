@@ -105,6 +105,9 @@ public class AnalysisUtils {
 					}
 				}
 				String methodSimpleName = mdNode.getName().toString();
+				if(methodSimpleName.equals("from")) {
+					methodSimpleName = "'"+methodSimpleName+"'";
+				}
 				String methodParameters = getmethodParameters(mdNode);
 				methodSootName = methodReturnTypeName + " " + methodSimpleName + "(" + methodParameters + ")";
 				break;
