@@ -96,9 +96,6 @@ public class CollectionEntrypoint {
 				Future2Completable.methodOverload++;
 				continue;
 			}
-			if(!subSignature.equals("execute(java.lang.Runnable)" ) &&!futureType(invocationNode)) {
-				continue;
-			}
 			if(!invocNodeMap.containsKey(cu)){
 				invocNodeMap.put(cu, new ArrayList<MethodInvocation>());
 			}
@@ -160,84 +157,4 @@ public class CollectionEntrypoint {
 		return false;
 	}
 	
-	private static boolean futureType(MethodInvocation mInvoc) {
-		ASTNode astNode = (ASTNode) mInvoc;
-		ASTNode parentNode = astNode.getParent();
-		Stmt stmt = AdaptAst.getJimpleStmt(mInvoc);
-		if(parentNode instanceof MethodInvocation) {
-			MethodInvocation parentInvocation = (MethodInvocation)parentNode;
-			if(parentInvocation.getExpression() == mInvoc) {
-				return true;
-			}else if(parentInvocation.arguments().contains(mInvoc)) {
-				for(ITypeBinding paraTypeBinding : parentInvocation.resolveMethodBinding().getParameterTypes()) {
-					if(paraTypeBinding.getErasure().getName().equals("Future")) {
-						if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
-							return false;
-						}
-						return true;
-					}
-				}
-				throw new RefutureException(mInvoc);
-			}
-		}else if(parentNode instanceof ExpressionStatement) {
-			return true;
-		}else if(parentNode instanceof VariableDeclarationFragment) {
-			VariableDeclarationFragment parentDeclarationFragment = (VariableDeclarationFragment)parentNode;
-			VariableDeclarationStatement parentDeclarationStatement = (VariableDeclarationStatement)parentDeclarationFragment.getParent();
-			if(parentDeclarationStatement.getType().resolveBinding().getErasure().getName().equals("Future")) {
-				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
-					return false;
-				}
-				return true;
-			}else {
-				Future2Completable.FutureCanot++;
-				return false;
-			}
-		}else if (parentNode instanceof ReturnStatement ) {
-			while (!(parentNode instanceof TypeDeclaration)) {
-				if (parentNode instanceof MethodDeclaration) {
-					break;
-				}else if(parentNode instanceof LambdaExpression) {
-					break;
-				}
-				parentNode = parentNode.getParent();
-			}
-			if(parentNode == null) {
-//				return false;
-				throw new RefutureException(mInvoc);
-			}
-			if(parentNode instanceof MethodDeclaration) {
-				MethodDeclaration md = (MethodDeclaration) parentNode;
-				if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
-					if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
-						return false;
-					}
-					return true;
-				}
-			}else if(parentNode instanceof LambdaExpression) {
-				LambdaExpression le = (LambdaExpression)parentNode;
-				if(le.resolveMethodBinding().getReturnType().getErasure().getName().equals("Future")) {
-					if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
-						return false;
-					}
-					return true;
-				}
-			}else {
-				throw new RefutureException(mInvoc);
-			}
-		}else if(parentNode instanceof Assignment) {
-			Assignment parentAssignment = (Assignment)parentNode;
-			if(parentAssignment.getLeftHandSide().resolveTypeBinding().getErasure().getName().equals("Future")) {
-				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
-					return false;
-				}
-				return true;
-			}else {
-				Future2Completable.FutureCanot++;
-				return false;
-			}
-		}
-		return true;
-	}	
-		
 }

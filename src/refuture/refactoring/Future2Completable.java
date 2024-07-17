@@ -19,6 +19,7 @@ import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.InfixExpression;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
@@ -32,6 +33,7 @@ import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.ThrowStatement;
 import org.eclipse.jdt.core.dom.TryStatement;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
@@ -43,8 +45,10 @@ import org.eclipse.text.edits.TextEdit;
 
 import refuture.sootUtil.AdaptAst;
 import refuture.sootUtil.Cancel;
+import refuture.sootUtil.CastAnalysis;
 import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
+import refuture.sootUtil.Instanceof;
 import refuture.sootUtil.NeedTestMethods;
 import soot.SootClass;
 import soot.SootMethod;
@@ -176,10 +180,13 @@ public class Future2Completable {
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 						continue;
 					}
+					if(!futureType(invocationNode)) {
+						continue;
+					}
 					if (Cancel.futureUseCancelTure(invocationNode, invocStmt)) {
 			            useCancelTrue++;
 			            continue;
-			        }
+			           }
 			    	refactorffSubmitCallable(invocationNode, change, cu, invocSubmitNum);
 			    	flagMap.put("SubmitCallable",flagMap.get("SubmitCallable")+1 );
 			    	scflag = true;
@@ -195,10 +202,13 @@ public class Future2Completable {
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 						continue;
 					}
+					if(!futureType(invocationNode)) {
+						continue;
+					}
 					if (Cancel.futureUseCancelTure(invocationNode, invocStmt)) {
 			            useCancelTrue++;
 			            continue;
-			        }
+			           }
 			    	refactorSubmitRunnable(invocationNode, change, cu);
 			    	flagMap.put("SubmitRunnable",flagMap.get("SubmitRunnable")+1 );
 			        break;
@@ -212,10 +222,13 @@ public class Future2Completable {
 						AnalysisUtils.debugPrint("**第"+invocNum+++"个调用分析完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕****完毕**%n");
 						continue;
 					}
+					if(!futureType(invocationNode)) {
+						continue;
+					}
 					if (Cancel.futureUseCancelTure(invocationNode, invocStmt)) {
 			            useCancelTrue++;
 			            continue;
-			        }
+			           }
 			    	refactorSubmitRunnableNValue(invocationNode, change, cu);
 			    	flagMap.put("SubmitRunnableNValue",flagMap.get("SubmitRunnableNValue")+1 );
 			    	sRVClassflag = true;
@@ -808,6 +821,84 @@ public class Future2Completable {
 	public static List<Change>  getallChanges() {
 		return allChanges;
 	}
-	
+	public static boolean futureType(MethodInvocation mInvoc) {
+		ASTNode astNode = (ASTNode) mInvoc;
+		ASTNode parentNode = astNode.getParent();
+		Stmt stmt = AdaptAst.getJimpleStmt(mInvoc);
+		if(parentNode instanceof MethodInvocation) {
+			MethodInvocation parentInvocation = (MethodInvocation)parentNode;
+			if(parentInvocation.getExpression() == mInvoc) {
+				return true;
+			}else if(parentInvocation.arguments().contains(mInvoc)) {
+				for(ITypeBinding paraTypeBinding : parentInvocation.resolveMethodBinding().getParameterTypes()) {
+					if(paraTypeBinding.getErasure().getName().equals("Future")) {
+						if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
+							return false;
+						}
+						return true;
+					}
+				}
+				throw new RefutureException(mInvoc);
+			}
+		}else if(parentNode instanceof ExpressionStatement) {
+			return true;
+		}else if(parentNode instanceof VariableDeclarationFragment) {
+			VariableDeclarationFragment parentDeclarationFragment = (VariableDeclarationFragment)parentNode;
+			VariableDeclarationStatement parentDeclarationStatement = (VariableDeclarationStatement)parentDeclarationFragment.getParent();
+			if(parentDeclarationStatement.getType().resolveBinding().getErasure().getName().equals("Future")) {
+				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
+					return false;
+				}
+				return true;
+			}else {
+				FutureCanot++;
+				return false;
+			}
+		}else if (parentNode instanceof ReturnStatement ) {
+			while (!(parentNode instanceof TypeDeclaration)) {
+				if (parentNode instanceof MethodDeclaration) {
+					break;
+				}else if(parentNode instanceof LambdaExpression) {
+					break;
+				}
+				parentNode = parentNode.getParent();
+			}
+			if(parentNode == null) {
+//				return false;
+				throw new RefutureException(mInvoc);
+			}
+			if(parentNode instanceof MethodDeclaration) {
+				MethodDeclaration md = (MethodDeclaration) parentNode;
+				if(md.getReturnType2().resolveBinding().getErasure().getName().equals("Future")) {
+					if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
+						return false;
+					}
+					return true;
+				}
+			}else if(parentNode instanceof LambdaExpression) {
+				LambdaExpression le = (LambdaExpression)parentNode;
+				if(le.resolveMethodBinding().getReturnType().getErasure().getName().equals("Future")) {
+					if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
+						return false;
+					}
+					return true;
+				}
+			}else {
+				throw new RefutureException(mInvoc);
+			}
+		}else if(parentNode instanceof Assignment) {
+			Assignment parentAssignment = (Assignment)parentNode;
+			if(parentAssignment.getLeftHandSide().resolveTypeBinding().getErasure().getName().equals("Future")) {
+				if(Instanceof.useInstanceofFuture(stmt)||CastAnalysis.useCast(stmt)) {
+					return false;
+				}
+				return true;
+			}else {
+				FutureCanot++;
+				return false;
+			}
+		}
+		return true;
+	}	
 	
 }
