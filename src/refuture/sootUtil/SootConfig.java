@@ -1,9 +1,19 @@
 package refuture.sootUtil;
 
 import java.io.File;
-import java.util.Collections;
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.internal.core.JavaModelManager;
+import org.eclipse.jdt.internal.core.JavaModelManager.PerProjectInfo;
 
 import refuture.refactoring.AnalysisUtils;
 import soot.PackManager;
@@ -12,36 +22,36 @@ import soot.options.Options;
 
 public class SootConfig {
 	public static boolean extremeSpeedModel;
-	public static Date startTime;
+	
+	public static List<String> sourceClassPath;
+	
+	public static List<String> libClassPath;
+	
 	public static void sootConfigStaticInitial() {
 		extremeSpeedModel = false;
+		sourceClassPath = null;
+		libClassPath = null;
 	}
 	
     public static void setupSoot() {
-    	startTime =new Date();
-		System.out.println("The current start time is "+ startTime);
+    	try {
+			processClassPath();
+		} catch (JavaModelException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         soot.G.reset();
         BasicOptions();
-        JBPhaseOptions();
         CGPhaseOptions();//启用Spark
-
-        System.out.println("[setupSoot]:本次classPath："+Scene.v().getSootClassPath());
-        Scene.v().loadNecessaryClasses();
-        System.out.println("[setupSoot]:加载必要类完毕！");
-        if(!extremeSpeedModel) {
-        	System.out.println("[setupSoot]:当前非极速模式");
-            PackManager.v().runPacks();
-        }
-        System.out.println("[setupSoot]:Soot配置完毕。");
-        Date currentTime = new Date();
-        System.out.println("soot配置完毕的时间"+"The current start time is "+ currentTime+"已花费:"+((currentTime.getTime()-startTime.getTime())/1000)+"s");
+        PackManager.v().runPacks();
+        System.out.println("[setupSoot]:Soot包运行完毕。");
     }
 
     /**
      * 基础配置
      */
     public static void BasicOptions(){
-        // 将给定的类加载路径作为默认类加载路径
+        // 将给定的类加载路径作为默认类加载路径，如果手动设置的话，可以根据不同的待重构项目编译等级来确定jdk具体路径。
         Options.v().set_prepend_classpath(true);
         // 运行soot创建虚类，如果源码中找不到对应源码，soot 会自动创建一个虚拟的类来代替。
         Options.v().set_allow_phantom_refs(true);
@@ -51,44 +61,113 @@ public class SootConfig {
         Options.v().set_keep_line_number(true);
         // Set output format for Soot
         Options.v().set_output_format(Options.output_format_none);
-        // 添加jar包路径
-        Options.v().set_process_jar_dir(getJarFolderPath());
         // 处理目录中所有的类
-        Options.v().set_process_dir(AnalysisUtils.getSootClassPath());
+        Options.v().set_process_dir(sourceClassPath);
+        AnalysisUtils.debugPrint("[setupSoot]:本次process_dir："+Scene.v().getSootClassPath());
+        // 添加jar包路径
+        for(String libPath :libClassPath) {
+        	Scene.v().extendSootClassPath(libPath);
+        }
+        AnalysisUtils.debugPrint("[setupSoot]:本次SootClassPath："+Scene.v().getSootClassPath());
+        Scene.v().loadNecessaryClasses();
+        AnalysisUtils.debugPrint("[setupSoot]:加载必要类完毕！");
     }
 
-    /**
-     * soot 的执行过程可以分为多个阶段（Phase），不同类型的Body，都有自己对应的处理阶段。
-     * 像 JimpleBody 对应的处理阶段叫'jb'，
-     * soot 提供了PhaseOptions，可以通过它来改变 soot 在该阶段的处理方式。
-     */
-    public static void JBPhaseOptions(){
-        Options.v().setPhaseOption("jb", "use-original-names:true");
-    }
 
     /**
      * Spark 是一个灵活的指针分析框架，同时支持创建Call Graph。
      * 选用指针分析算法创建Call Graph。
-     * 除"cg.spark"之外，soot 还支持"cg.cha"（使用CHA算法创建Call Graph）、"cg.paddle"（paddle框架创建）、"CG" （分析整个源代码，包括JDK部分）
      */
     public static void CGPhaseOptions(){
-    	//兼容多个main函数，并且不可抵达的方法也会进行分析。
+    	 // 开启创建CG
     	Options.v().setPhaseOption("cg", "all-reachable:true");
-        // 开启创建CG
         Options.v().setPhaseOption("cg.spark","enabled:true");
-        // 同 BasicOptions 中的 verbose
-        Options.v().setPhaseOption("cg.spark","verbose:true");
-        // 一种复杂的分析方法，能够题升精度，同时会消耗大量时间。
         Options.v().setPhaseOption("cg.spark","on-fly-cg:true");
+        if(extremeSpeedModel) {
+        	System.out.println("[CGPhaseOptions]:当前为快速模式");
+        	Options.v().setPhaseOption("cg.spark","apponly:true");
+        }
+    }
+    
+    private static void processClassPath() throws JavaModelException {
+    	IProject project = AnalysisUtils.eclipseProject;
+    	String projectPath = Pattern.quote(project.getFullPath().toOSString());
+    	String locationPath = Matcher.quoteReplacement(project.getLocation().toOSString());
+    	Set<String> sourceClassPath =new HashSet<>();
+    	Set<String> libClassPath = new HashSet<>();
+    	Set<String> libProjectPath = new HashSet<>();
+		PerProjectInfo ppi = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(project);
+		String javaFlag = File.separator+"jre"+File.separator+"lib"+File.separator;
+		sourceClassPath.add(ppi.outputLocation.toOSString().replaceFirst(projectPath, locationPath));
+		for(IClasspathEntry cp : ppi.rawClasspath) {
+			if(cp.getContentKind() == 1) {
+				IPath ip = cp.getOutputLocation();
+				if(ip != null&& !ip.isEmpty()) {
+					sourceClassPath.add(ip.toOSString().replaceFirst(projectPath, locationPath));
+				}else if(cp.getEntryKind() == IClasspathEntry.CPE_PROJECT){
+					libProjectPath.add(cp.getPath().toOSString());
+				}
+			}else if(cp.getContentKind() ==2 ) {
+				IPath ip = cp.getPath();
+				if(ip != null&& !ip.isEmpty()) {
+					String libPathString = ip.toOSString();
+					if(!libPathString.contains(javaFlag)) {
+			            File file = new File(libPathString);
+			            if (!file.exists()) {
+			            	libPathString = libPathString.replaceFirst(projectPath,locationPath);
+			            	File file1 = new File(libPathString);
+			            	if (!file1.exists()) {
+			            		continue;
+			            	}
+			            }
+						libClassPath.add(libPathString);
+					}
+				}
+			}
+		}
+		for(IClasspathEntry cp : ppi.resolvedClasspath) {
+			if(cp.getContentKind() == 1) {
+				IPath ip = cp.getOutputLocation();
+				if(ip != null&& !ip.isEmpty()) {
+					sourceClassPath.add(ip.toOSString().replaceFirst(projectPath, locationPath));
+				}else if(cp.getEntryKind() == IClasspathEntry.CPE_PROJECT){
+					libProjectPath.add(cp.getPath().toOSString());
+				}
+			}else if(cp.getContentKind() ==2 ) {
+				IPath ip = cp.getPath();
+				if(ip != null&& !ip.isEmpty()) {
+					String libPathString = ip.toOSString();
+					if(!libPathString.contains(javaFlag)) {
+			            File file = new File(libPathString);
+			            if (!file.exists()) {
+			            	libPathString = libPathString.replaceFirst(projectPath,locationPath);
+			            	File file1 = new File(libPathString);
+			            	if (!file1.exists()) {
+			            		continue;
+			            	}
+			            }
+						libClassPath.add(libPathString);
+					}
+				}
+			}
+		}
+		for(String libTProject: libProjectPath) {
+			String libProject = Matcher.quoteReplacement(libTProject);
+			for(String classPath :sourceClassPath) {
+				String newLibProjectPath = classPath.replaceFirst(projectPath, libProject);
+		        File file = new File(newLibProjectPath);
+		        if (file.exists()) {
+		            libClassPath.add(newLibProjectPath);
+		        }
+			}
+		}
+		if(sourceClassPath.isEmpty()) {
+			sourceClassPath.add(ppi.outputLocation.toOSString().replaceFirst(projectPath, locationPath));
+		}
+		
+		SootConfig.sourceClassPath = new ArrayList<String>(sourceClassPath);
+		SootConfig.libClassPath = new ArrayList<String>(libClassPath);
     }
 
-    private static List<String> getJarFolderPath() {
-    	String jarFolderPath = AnalysisUtils.getProjectPath()+File.separator+"lib";
-    	File file = new File(jarFolderPath);
-    	if(file.exists()) {
-    		return Collections.singletonList(jarFolderPath);
-    	}else {
-        	return null;
-    	}
-    }
+    
 }

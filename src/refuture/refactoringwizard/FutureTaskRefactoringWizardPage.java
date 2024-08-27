@@ -9,13 +9,12 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
 
 import refuture.refactoring.Future2Completable;
 import refuture.refactoring.RefutureException;
 import refuture.refactoring.RefutureRefactoring;
-import refuture.sootUtil.Cancel;
 import refuture.sootUtil.SootConfig;
 
 public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
@@ -25,6 +24,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	Button btnCheck3;
 	Button btnCheck4;
 	Button btnCheck5;
+	Button btnCheck6;
 	Text textField1;
 	Text textField2;
 	Text textField3;
@@ -42,7 +42,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 
 		// Button 1
 		btnCheck1 = new Button(composite, SWT.CHECK);
-		btnCheck1.setText("Find Thread Mode");
+		btnCheck1.setText("DebugPrint");
 		GridData gdBtnCheck1 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck1.setLayoutData(gdBtnCheck1);
 
@@ -54,7 +54,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		
 		// Button 3
 		btnCheck3 = new Button(composite, SWT.CHECK);
-		btnCheck3.setText("Extreme Speed Mode(Debug Use)");
+		btnCheck3.setText("Speed Mode");
 		GridData gdBtnCheck3 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck3.setLayoutData(gdBtnCheck3);
 		
@@ -64,11 +64,23 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		GridData gdBtnCheck4 = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		btnCheck4.setLayoutData(gdBtnCheck4);
 
-		btnCheck5 = new Button(composite, SWT.CHECK);
-		btnCheck5.setText("调试用，关闭DefRech");
+		btnCheck6 = new Button(composite, SWT.CHECK);
+		btnCheck6.setText("输出需验证的签名");
+		GridData gdBtnCheck6 = new GridData(SWT.FILL, SWT.CENTER, true, false);
+		btnCheck6.setLayoutData(gdBtnCheck6);
+		
+		btnCheck5 = new Button(composite, SWT.PUSH);
+		btnCheck5.setText("重新构建调用图");
 		GridData gdBtnCheck5 = new GridData(SWT.FILL, SWT.CENTER, true, false);
+		gdBtnCheck5.horizontalAlignment = GridData.END;
+        gdBtnCheck5.verticalAlignment = GridData.END;
+        gdBtnCheck5.grabExcessHorizontalSpace = true;
+        gdBtnCheck5.grabExcessVerticalSpace = true;
 		btnCheck5.setLayoutData(gdBtnCheck5);
 
+		
+		
+		
 		Label label1 = new Label(composite, SWT.NONE);
 		label1.setText("需定位的所在类:");
 		textField1 = new Text(composite, SWT.BORDER);
@@ -84,7 +96,6 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		textField3 = new Text(composite, SWT.BORDER);
 		textField3.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 		
-		// Add listeners and other necessary code
 		// add listener
 		defineListener();
 		// 将 composite 纳入框架的控制
@@ -92,15 +103,7 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 
 		Dialog.applyDialogFont(composite);
 
-//		notifyStatus(true, "refactoring finished");
 	}
-	
-	private void notifyStatus(boolean valid, String message) { 
-		 // 设置错误信息
-		 setErrorMessage(message); 
-		 // 设置页面完成状态
-		 setPageComplete(valid); 
-	 }
 	
 	/**
 	 * define the action listener
@@ -108,18 +111,16 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 	private void defineListener(){
 		RefutureRefactoring refactoring = (RefutureRefactoring) getRefactoring();
 		btnCheck1.addSelectionListener(new SelectionListener(){
-
 			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
 				btnCheck1.setEnabled(false);
 			}
-
 			@Override
 			public void widgetSelected(SelectionEvent se) {
 				if(btnCheck1.getEnabled()){
-					refactoring.setRefactorPattern(2);
+					Future2Completable.debugFlag = true;
 				}else{
-					refactoring.setRefactorPattern(1);
+					Future2Completable.debugFlag = false;
 				}
 			}
 		});
@@ -172,19 +173,31 @@ public class FutureTaskRefactoringWizardPage extends UserInputWizardPage {
 		
 		btnCheck5.addSelectionListener(new SelectionListener(){
 			@Override
+			public void widgetSelected(SelectionEvent se) {
+					RefutureRefactoring.time = 0;
+			}
+
+			@Override
+			public void widgetDefaultSelected(SelectionEvent e) {
+			}
+		});
+		
+		btnCheck6.addSelectionListener(new SelectionListener(){
+			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
-				btnCheck5.setEnabled(false);
+				btnCheck6.setEnabled(false);
 			}
 
 			@Override
 			public void widgetSelected(SelectionEvent se) {
-				if(btnCheck5.getEnabled()){
-					Cancel.debug_UseDefRech = false;
+				if(btnCheck6.getEnabled()){
+					refactoring.setOutPutMethod(true);
 				}else{
-					Cancel.debug_UseDefRech = true;
+					refactoring.setOutPutMethod(false);
 				}
 			}
 		});
+		
 		
 		textField1.addModifyListener(e -> {
 		    String input = textField1.getText();

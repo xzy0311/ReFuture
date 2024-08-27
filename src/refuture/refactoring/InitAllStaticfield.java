@@ -1,7 +1,11 @@
 package refuture.refactoring;
 
+import refuture.astvisitor.AllVisiter;
 import refuture.sootUtil.Cancel;
+import refuture.sootUtil.CastAnalysis;
+import refuture.sootUtil.CollectionEntrypoint;
 import refuture.sootUtil.ExecutorSubclass;
+import refuture.sootUtil.Instanceof;
 import refuture.sootUtil.SootConfig;
 
 public class InitAllStaticfield {
@@ -10,8 +14,11 @@ public class InitAllStaticfield {
 		ExecutorSubclass.initStaticField();
 		Cancel.initStaticField();
 		SootConfig.sootConfigStaticInitial();
-		boolean status1 = ForTask.initStaticField();
-		return status&&status1;
+		CollectionEntrypoint.initStaticField();
+		Instanceof.initStaticField();
+		CastAnalysis.initStaticField();
+		AllVisiter.reSet();
+		return status;
 	}
 
 }
