@@ -1,16 +1,5 @@
-#重构工具的设计
-
-**输入：一个待重构的java项目**
-
-
-**输出：一个重构完成的java项目**
-
-
-**功能：将符合相应条件的futureTask的使用转换为CompletableFuture的使用。**
-
-
-####步骤：
-
-	1.识别相应条件（待完善）
-	1.1
-	2.修改AST完成重构（待完善）
+# 这是一个Future到CompletableFuture自动重构工具。
+>> 基于Eclipse JDT 的一个重构插件。
+# 如何使用
+将源码导入eclipse中，配置好类路径，需要的Lib文件在lib文件夹中。
+然后执行Eclipse Application，在新的eclipse界面中，选中待重构项目，点击菜单栏的重构图标，便可执行重构。
